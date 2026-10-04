@@ -424,6 +424,7 @@ export const fr = {
       coach_changed: "Changement de coach",
       campaign: "Campagne",
       automation: "Automatisation",
+      direct: "Message direct",
     },
     statuses: {
       queued: "En file",

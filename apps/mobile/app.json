@@ -7,9 +7,12 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.korentinb.salledesport"
     },
-    "android": {},
+    "android": {
+      "package": "com.korentinb.salledesport"
+    },
     "web": {
       "bundler": "metro",
       "output": "single"

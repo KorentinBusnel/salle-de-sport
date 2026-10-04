@@ -1285,6 +1285,51 @@ export type Database = {
           },
         ];
       };
+      segments: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          filters: NonNullable<Json>;
+          gym_id: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          filters?: NonNullable<Json>;
+          gym_id: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          filters?: NonNullable<Json>;
+          gym_id?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "segments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "segments_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       stripe_events: {
         Row: {
           id: string;
@@ -1493,6 +1538,46 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      crm_pipeline: {
+        Args: { p_gym_id: string };
+        Returns: {
+          bookings: number;
+          email: string;
+          first_name: string;
+          last_activity_at: string;
+          last_name: string;
+          member_id: string;
+          phone: string;
+          stage: string;
+          status: Database["public"]["Enums"]["member_status"];
+        }[];
+      };
+      filter_members: {
+        Args: { p_filters: Json; p_gym_id: string };
+        Returns: {
+          acquisition_source: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string;
+          gym_id: string;
+          id: string;
+          last_name: string;
+          marketing_email_consent_at: string | null;
+          marketing_whatsapp_consent_at: string | null;
+          phone: string | null;
+          profile_id: string | null;
+          status: Database["public"]["Enums"]["member_status"];
+          stripe_customer_id: string | null;
+          tags: string[];
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "members";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       find_member_duplicates: {
         Args: { p_email: string; p_gym_id: string; p_phone: string };
         Returns: {
@@ -1630,6 +1715,7 @@ export type Database = {
           p_offset?: number;
           p_query?: string;
           p_statuses?: Database["public"]["Enums"]["member_status"][];
+          p_tag?: string;
         };
         Returns: {
           email: string;
@@ -1638,8 +1724,35 @@ export type Database = {
           last_name: string;
           phone: string;
           status: Database["public"]["Enums"]["member_status"];
+          tags: string[];
           total_count: number;
         }[];
+      };
+      segment_members: {
+        Args: { p_segment_id: string };
+        Returns: {
+          acquisition_source: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string;
+          gym_id: string;
+          id: string;
+          last_name: string;
+          marketing_email_consent_at: string | null;
+          marketing_whatsapp_consent_at: string | null;
+          phone: string | null;
+          profile_id: string | null;
+          status: Database["public"]["Enums"]["member_status"];
+          stripe_customer_id: string | null;
+          tags: string[];
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "members";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       session_coach_options: {
         Args: { p_session_id: string };

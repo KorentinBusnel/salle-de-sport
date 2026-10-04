@@ -46,3 +46,27 @@ export function normalizeTags(tags: readonly string[]): string[] {
     ),
   ];
 }
+
+/** Ce qu'implique le passage d'une carte du pipeline d'une étape à une autre. */
+export type PipelineMove =
+  | { kind: "add_trial_tag" }
+  | { kind: "remove_trial_tag" }
+  | { kind: "status"; status: "active" | "suspended" | "cancelled"; confirm: boolean };
+
+/**
+ * Transitions autorisées par glisser-déposer (règles de set_member_status et tag « essai ») :
+ * Prospect ⇄ Essai, Prospect/Essai → Actif, Actif ⇄ Suspendu, toute étape → Résilié (avec
+ * confirmation : adhésion arrêtée ou prospect perdu), Résilié → Actif. Le reste est refusé.
+ */
+export function pipelineMove(from: PipelineStage, to: PipelineStage): PipelineMove | null {
+  if (from === to) return null;
+  if (from === "lead" && to === "trial") return { kind: "add_trial_tag" };
+  if (from === "trial" && to === "lead") return { kind: "remove_trial_tag" };
+  if (to === "active" && from !== "active")
+    return { kind: "status", status: "active", confirm: false };
+  if (from === "active" && to === "suspended")
+    return { kind: "status", status: "suspended", confirm: false };
+  // Résilié : adhésion arrêtée, ou prospect perdu.
+  if (to === "cancelled") return { kind: "status", status: "cancelled", confirm: true };
+  return null;
+}

@@ -85,3 +85,41 @@
     text-wrap: pretty;
   }
 }
+
+/* Réponses de l'assistant (Markdown) : rythme de lecture sobre, aligné sur les tokens. */
+.prose-assistant > * + * {
+  margin-top: 0.6em;
+}
+.prose-assistant ul,
+.prose-assistant ol {
+  padding-left: 1.25rem;
+}
+.prose-assistant ul {
+  list-style: disc;
+}
+.prose-assistant ol {
+  list-style: decimal;
+}
+.prose-assistant li + li {
+  margin-top: 0.2em;
+}
+.prose-assistant strong {
+  font-weight: 600;
+}
+.prose-assistant h1,
+.prose-assistant h2,
+.prose-assistant h3 {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.prose-assistant table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.prose-assistant th,
+.prose-assistant td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}

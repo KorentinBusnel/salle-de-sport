@@ -170,8 +170,18 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `useActionState` + `Field`/`FieldError`, `noValidate` pour des messages en français. Boutons
   d'envoi : `SubmitButton` (état d'envoi). Action irréversible : `ConfirmDialog`. Actions rapides
   sans rechargement (pointage) : Server Action qui renvoie `{ error }` puis `refresh()`.
-- Coque : `components/app-sidebar.tsx` (entrées filtrées par rôle), `PageHeader`, `metadata` par
-  page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message.
+- Coque : `components/app-sidebar.tsx`, entrées construites par `buildNavigation` (`lib/navigation.ts`,
+  testé par rôle) en trois blocs Quotidien / Opérations / Paramètres ; `PageHeader`, `metadata` par
+  page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
+  (`isManagerRole`, `isFrontDeskRole`) dans `lib/auth-roles.ts` (testables, sans `server-only`).
+- Paramètres : une page à onglets (`/parametres?onglet=general|strategies|catalogue|equipe|integrations`,
+  `TabNav`) ; une nouvelle section de réglages y devient un onglet, pas une entrée de menu.
+- **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
+  faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
+  de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
+  interface `components/assistant/` (Hub, ⌘K, résumé de fiche). Un outil qui agit n'agit pas : il
+  **propose** (`proposes: true`), la Server Action de validation exécute. Clé absente : état « non
+  configuré », jamais d'erreur.
 - Tailles tactiles : `pointer-coarse:` dans les variantes (bouton, champ, select) ; le rendu bureau
   ne change pas. Lectures au fil de la frappe : Route Handler (`app/api/…`), pas de Server Action. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
   du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).
@@ -225,5 +235,7 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - `expo export` en local : la session cloud définit `EXPO_PUBLIC_SUPABASE_URL` (projet en ligne),
   qui l'emporte sur `.env.local`. Charger `.env.local` dans le shell et ajouter `--clear` (le
   cache Metro garde les valeurs inlinées).
+- La session cloud définit `ANTHROPIC_BASE_URL` (pour Claude Code) : le client de l'assistant fixe
+  `baseURL: "https://api.anthropic.com"` pour ne pas la reprendre.
 - Ne pas utiliser `pkill -f <motif>` dans une commande qui contient ce motif : il tue son propre
   shell. Viser le nom exact du processus (`pgrep -x next-server`).

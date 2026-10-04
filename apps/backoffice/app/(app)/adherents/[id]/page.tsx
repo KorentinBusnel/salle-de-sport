@@ -12,6 +12,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Flash } from "@/components/flash";
+import { MemberSummary } from "@/components/assistant/member-summary";
 import { CreditsDialog } from "@/components/members/credits-dialog";
 import { PageHeader } from "@/components/page-header";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
@@ -201,6 +202,7 @@ export default async function MemberProfilePage({
         }
         actions={
           <>
+            {manager ? <MemberSummary memberId={member.id} name={name} /> : null}
             {member.status === "prospect" ? (
               <form action={setMemberStatus}>
                 {hidden({ status: "active" })}

@@ -1,6 +1,6 @@
 "use server";
 
-import { normalizeTags, TRIAL_TAG } from "@salle/shared";
+import { normalizeTags } from "@salle/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -139,15 +139,4 @@ export async function bookFromProfile(formData: FormData) {
     p_member_id: id,
   });
   done(path, error, data?.status === "waitlisted" ? "session.addedToWaitlist" : "session.booked");
-}
-
-/** Pipeline : un prospect passe à l'essai (tag « essai »). */
-export async function startTrial(formData: FormData) {
-  const context = await requireRole(isFrontDeskRole);
-  const id = z.guid().parse(formData.get("memberId"));
-  const { error } = await writeTags(context.gym.id, id, (tags) => [...tags, TRIAL_TAG]);
-  revalidatePath("/crm");
-  redirect(
-    withFlash("/crm", error ? { error: errorMessageKey(error) } : { ok: "crm.trialStarted" }),
-  );
 }

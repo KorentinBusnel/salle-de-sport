@@ -47,6 +47,7 @@ export async function saveSettings(
 async function mergeSettings(
   gymId: string,
   patch: Record<string, number | boolean | null>,
+  back = "/parametres",
 ): Promise<never> {
   const supabase = await createClient();
   const { data: gym } = await supabase.from("gyms").select("settings").eq("id", gymId).single();
@@ -59,9 +60,7 @@ async function mergeSettings(
     .update({ settings: { ...current, ...patch } })
     .eq("id", gymId);
   revalidatePath("/", "layout");
-  redirect(
-    withFlash("/parametres", error ? { error: "common.unexpectedError" } : { ok: "common.saved" }),
-  );
+  redirect(withFlash(back, error ? { error: "common.unexpectedError" } : { ok: "common.saved" }));
 }
 
 const shape = gymSettingsSchema.shape;
@@ -100,15 +99,20 @@ export async function saveStrategies(
     return { values, fieldErrors };
   }
 
-  return mergeSettings(context.gym.id, {
-    ...parsed.data,
-    allow_attendance_reset: values.allow_attendance_reset,
-    manager_can_remove_credits: values.manager_can_remove_credits,
-    staff_can_suspend_members: values.staff_can_suspend_members,
-    staff_can_create_members: values.staff_can_create_members,
-  });
+  return mergeSettings(
+    context.gym.id,
+    {
+      ...parsed.data,
+      allow_attendance_reset: values.allow_attendance_reset,
+      manager_can_remove_credits: values.manager_can_remove_credits,
+      staff_can_suspend_members: values.staff_can_suspend_members,
+      staff_can_create_members: values.staff_can_create_members,
+    },
+    "/parametres?onglet=strategies",
+  );
 }
 
+const TEAM = "/parametres?onglet=equipe";
 const teamRole = z.enum(["coach", "staff", "manager", "admin"]);
 
 /** Ajoute un rôle d'équipe à un compte existant (email). Seul un admin attribue admin. */
@@ -116,8 +120,7 @@ export async function addTeamRole(formData: FormData) {
   const context = await requireRole(isManagerRole);
   const email = z.email().safeParse(String(formData.get("email") ?? "").trim());
   const role = teamRole.safeParse(formData.get("role"));
-  if (!email.success || !role.success)
-    redirect(withFlash("/parametres", { error: "team.errors.invalid" }));
+  if (!email.success || !role.success) redirect(withFlash(TEAM, { error: "team.errors.invalid" }));
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_team_role", {
     p_gym_id: context.gym.id,
@@ -125,9 +128,7 @@ export async function addTeamRole(formData: FormData) {
     p_role: role.data,
   });
   revalidatePath("/parametres");
-  redirect(
-    withFlash("/parametres", error ? { error: errorMessageKey(error) } : { ok: "team.added" }),
-  );
+  redirect(withFlash(TEAM, error ? { error: errorMessageKey(error) } : { ok: "team.added" }));
 }
 
 export async function removeTeamRole(formData: FormData) {
@@ -141,7 +142,5 @@ export async function removeTeamRole(formData: FormData) {
     p_role: role,
   });
   revalidatePath("/parametres");
-  redirect(
-    withFlash("/parametres", error ? { error: errorMessageKey(error) } : { ok: "team.removed" }),
-  );
+  redirect(withFlash(TEAM, error ? { error: errorMessageKey(error) } : { ok: "team.removed" }));
 }

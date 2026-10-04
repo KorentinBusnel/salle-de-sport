@@ -53,6 +53,83 @@ export type Database = {
           },
         ];
       };
+      ai_conversations: {
+        Row: {
+          created_at: string;
+          gym_id: string;
+          id: string;
+          profile_id: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          gym_id: string;
+          id?: string;
+          profile_id: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          gym_id?: string;
+          id?: string;
+          profile_id?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_conversations_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ai_messages: {
+        Row: {
+          content: NonNullable<Json>;
+          conversation_id: string;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          role: string;
+        };
+        Insert: {
+          content: NonNullable<Json>;
+          conversation_id: string;
+          created_at?: string;
+          gym_id: string;
+          id?: string;
+          role: string;
+        };
+        Update: {
+          content?: NonNullable<Json>;
+          conversation_id?: string;
+          created_at?: string;
+          gym_id?: string;
+          id?: string;
+          role?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_gym_id_fkey";
+            columns: ["conversation_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_conversations";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
       audit_log: {
         Row: {
           action: string;
@@ -1594,6 +1671,45 @@ export type Database = {
           },
         ];
       };
+      weekly_briefs: {
+        Row: {
+          content: string;
+          generated_at: string;
+          generated_by: string | null;
+          gym_id: string;
+          week_start: string;
+        };
+        Insert: {
+          content: string;
+          generated_at?: string;
+          generated_by?: string | null;
+          gym_id: string;
+          week_start: string;
+        };
+        Update: {
+          content?: string;
+          generated_at?: string;
+          generated_by?: string | null;
+          gym_id?: string;
+          week_start?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "weekly_briefs_generated_by_fkey";
+            columns: ["generated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "weekly_briefs_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1859,6 +1975,17 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      log_ai_call: {
+        Args: {
+          p_conversation_id?: string;
+          p_gym_id: string;
+          p_input_tokens: number;
+          p_model: string;
+          p_output_tokens: number;
+          p_tools: string[];
+        };
+        Returns: undefined;
+      };
       move_session: {
         Args: { p_session_id: string; p_starts_at: string };
         Returns: {
@@ -2001,6 +2128,10 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      send_direct_message: {
+        Args: { p_body: string; p_gym_id: string; p_member_ids: string[]; p_subject: string };
+        Returns: number;
+      };
       session_coach_options: {
         Args: { p_session_id: string };
         Returns: {
@@ -2017,6 +2148,27 @@ export type Database = {
         Returns: {
           booked: number;
           coach_conflict: boolean;
+          waitlisted: number;
+        }[];
+      };
+      session_stats: {
+        Args: {
+          p_discipline_id?: string;
+          p_from: string;
+          p_gym_id: string;
+          p_local_time?: string;
+          p_to: string;
+        };
+        Returns: {
+          attended: number;
+          booked: number;
+          cancelled: boolean;
+          capacity: number;
+          coaches: string;
+          discipline: string;
+          no_show: number;
+          session_id: string;
+          starts_at: string;
           waitlisted: number;
         }[];
       };
@@ -2100,7 +2252,12 @@ export type Database = {
       interaction_direction: "inbound" | "outbound" | "internal";
       member_status: "prospect" | "active" | "suspended" | "cancelled";
       message_origin:
-        "session_cancelled" | "session_moved" | "coach_changed" | "campaign" | "automation";
+        | "session_cancelled"
+        | "session_moved"
+        | "coach_changed"
+        | "campaign"
+        | "automation"
+        | "direct";
       message_status: "queued" | "logged" | "sent" | "failed";
       payment_method: "card" | "sepa_debit" | "cash" | "other";
       payment_status: "pending" | "succeeded" | "failed" | "refunded";
@@ -2253,6 +2410,7 @@ export const Constants = {
         "coach_changed",
         "campaign",
         "automation",
+        "direct",
       ],
       message_status: ["queued", "logged", "sent", "failed"],
       payment_method: ["card", "sepa_debit", "cash", "other"],

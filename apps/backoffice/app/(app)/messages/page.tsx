@@ -27,6 +27,7 @@ const ORIGINS = [
   "coach_changed",
   "campaign",
   "automation",
+  "direct",
 ] as const;
 const STATUSES = ["queued", "logged", "sent", "failed"] as const;
 const PAGE_SIZE = 30;

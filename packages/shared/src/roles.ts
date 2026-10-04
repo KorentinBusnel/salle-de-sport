@@ -19,3 +19,14 @@ export function canSeeFinancials(role: GymRole): boolean {
 export function isStaffRole(role: GymRole): boolean {
   return role !== "member";
 }
+
+/** Rôles d'équipe, du plus étendu au plus restreint. */
+const TEAM_ROLE_PRIORITY: readonly GymRole[] = ["admin", "manager", "staff", "coach"];
+
+/**
+ * Rôle qui détermine l'accès au back office quand un profil cumule plusieurs
+ * rôles dans une salle ; null s'il n'a aucun rôle d'équipe.
+ */
+export function primaryTeamRole(roles: readonly GymRole[]): GymRole | null {
+  return TEAM_ROLE_PRIORITY.find((role) => roles.includes(role)) ?? null;
+}

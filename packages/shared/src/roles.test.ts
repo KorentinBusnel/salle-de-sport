@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canSeeFinancials, GYM_ROLES, gymRoleSchema, isStaffRole } from "./roles.ts";
+import {
+  canSeeFinancials,
+  GYM_ROLES,
+  gymRoleSchema,
+  isStaffRole,
+  primaryTeamRole,
+} from "./roles.ts";
 
 describe("gymRoleSchema", () => {
   it("accepte chaque rôle connu", () => {
@@ -22,5 +28,17 @@ describe("canSeeFinancials", () => {
 describe("isStaffRole", () => {
   it("exclut uniquement les adhérents", () => {
     expect(GYM_ROLES.filter((role) => !isStaffRole(role))).toEqual(["member"]);
+  });
+});
+
+describe("primaryTeamRole", () => {
+  it("retient le rôle le plus étendu", () => {
+    expect(primaryTeamRole(["member", "coach", "manager"])).toBe("manager");
+    expect(primaryTeamRole(["coach", "staff"])).toBe("staff");
+  });
+
+  it("renvoie null pour un simple adhérent", () => {
+    expect(primaryTeamRole(["member"])).toBeNull();
+    expect(primaryTeamRole([])).toBeNull();
   });
 });

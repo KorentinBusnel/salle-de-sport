@@ -20,7 +20,8 @@
     "db:lint": "supabase db lint --level warning --fail-on warning && supabase db advisors --local --level warn --fail-on warn",
     "db:types": "supabase gen types typescript --local --schema public > packages/supabase/src/database.types.ts && prettier --write packages/supabase/src/database.types.ts",
     "env:local": "./scripts/env-local.sh",
-    "dev": "turbo run dev"
+    "dev": "turbo run dev",
+    "env:check": "node scripts/check-env-example.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

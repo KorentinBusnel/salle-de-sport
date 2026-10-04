@@ -118,6 +118,14 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `private.enqueue_message` (clé `dedupe_key` pour l'idempotence), qui l'ajoute aussi aux
   `interactions`. Pas d'envoi réel : un job `pg_cron` passe les messages `queued` → `logged`.
   Avis aux inscrits d'une séance : `private.notify_session_members`.
+- Autres écritures métier **par fonctions** : `move_session` (déplacement, inscrits prévenus),
+  `replace_session_coach` (tracé dans `coach_shifts`), `send_campaign`, `add_team_role` /
+  `remove_team_role`. Lectures agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`,
+  `filter_members` (filtres JSON = `segmentFiltersSchema` de `packages/shared`, droits de
+  l'appelant), `session_coach_options`.
+- Emailing : variables `{prenom}`, `{nom}`, `{salle}` rendues en SQL (`private.render_template`) ;
+  campagnes et automatisations marketing **exigent le consentement email** ; idempotence par
+  `dedupe_key`. Jobs `pg_cron` : séances, file d'envoi, campagnes programmées, automatisations.
 - Compteurs `class_sessions.booked_count` / `waitlist_count` : tenus par trigger, ne jamais les
   écrire à la main ; ils sont publiés en Realtime (places en direct dans l'app).
 - `supabase/seed.sql` est **déterministe** (`pg_temp.rnd`, UUID dérivés de clés) et relatif à la
@@ -161,6 +169,11 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Tailles tactiles : `pointer-coarse:` dans les variantes (bouton, champ, select) ; le rendu bureau
   ne change pas. Lectures au fil de la frappe : Route Handler (`app/api/…`), pas de Server Action. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
   du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).
+- Réglages de la salle : `getGymSettings` (`lib/settings.ts`). Fiche coach de l'utilisateur :
+  `getOwnCoachId` (`lib/coaches.ts`). Heure locale → instant : `zonedInstant` (shared), jamais
+  « minuit + minutes » (jours de changement d'heure).
+- Planning en glisser-déposer : `components/planning/week-dnd.tsx` (@dnd-kit) enveloppe la grille
+  rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant `move_session`.
 - Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
   du React Compiler refuse `Date.now()` dans le rendu.
 

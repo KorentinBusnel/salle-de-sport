@@ -36,8 +36,9 @@ projet Supabase **de dev** en ligne (`https://yxxbflwosragyfwbdrix.supabase.co`)
    <https://qr.expo.dev/eas-update?projectId=988f49db-e539-432d-87df-5e81a5e6770e&runtimeVersion=exposdk:57.0.0&channel=preview>
    — ou ouvrir directement le lien
    `exp://u.expo.dev/988f49db-e539-432d-87df-5e81a5e6770e?runtime-version=exposdk%3A57.0.0&channel-name=preview`.
-3. Le planning public s'affiche sans connexion. Les comptes de démo ci-dessus existent aussi sur
-   le projet de dev.
+3. Se connecter avec `adherent@demo.local` / `demo1234` (abonnement illimité, peut réserver), ou
+   créer un compte : la fiche reste « en attente d'activation » jusqu'à ce que l'accueil l'active
+   dans le back office (et, sans abonnement, que le gérant ajoute des crédits).
 
 Republier après une modification (depuis `apps/mobile`, avec `EXPO_TOKEN` défini) :
 

@@ -89,9 +89,14 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - **Chaque nouvelle table** a ses tests dans `supabase/tests/database/` : au minimum, un adhérent
   ne voit pas les données d'un autre, et une salle ne voit pas celles d'une autre. Les tests
   créent leurs propres données dans une transaction annulée et ne dépendent pas du seed.
-- Réserver, annuler, promouvoir depuis la liste d'attente : **fonctions Postgres
-  transactionnelles avec verrou sur la séance** (phase 1). Pas d'`insert` direct des adhérents
-  sur `bookings`.
+- Réserver, annuler, pointer, promouvoir : **uniquement via les fonctions** `book_session`,
+  `cancel_booking`, `set_attendance`, `cancel_session` (verrou `for update` sur la séance). Aucune
+  écriture directe sur `bookings` pour `authenticated`. `supabase/tests/concurrency.sh` (lancé par
+  `pnpm db:test` et en CI) vérifie l'absence de surréservation.
+- Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
+  `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
+- Compteurs `class_sessions.booked_count` / `waitlist_count` : tenus par trigger, ne jamais les
+  écrire à la main ; ils sont publiés en Realtime (places en direct dans l'app).
 - `supabase/seed.sql` est **déterministe** (`pg_temp.rnd`, UUID dérivés de clés) et relatif à la
   date du reset. Comptes de démo : mot de passe `demo1234`, données fictives uniquement.
 - Projet Supabase **de dev en ligne** : la connexion Postgres directe est bloquée depuis les
@@ -122,6 +127,11 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `app/globals.css`. Ajouter un composant : `pnpm dlx shadcn@latest add <nom>` dans
   `apps/backoffice`.
 - `typecheck` lance `next typegen` (génère `next-env.d.ts`, ignoré par git) avant `tsc`.
+- Mutations : Server Actions + Zod, appel des fonctions SQL, puis `redirect(withFlash(...))`
+  (`lib/flash.ts`) pour afficher le résultat. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
+  du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).
+- Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
+  du React Compiler refuse `Date.now()` dans le rendu.
 
 ## App mobile (Expo)
 
@@ -135,6 +145,11 @@ En session cloud, démarrer Supabase sans les services inutiles :
   publication dans le README. N'utiliser que des modules natifs inclus dans Expo Go tant qu'il
   n'y a pas de build installable sur iPhone.
 - Development build iOS : simulateur uniquement (`eas.json`, profil `development`).
+- Navigation : `Stack.Protected` dans `app/_layout.tsx` (connexion → onboarding → onglets) ;
+  état de l'adhérent partagé par `MemberProvider` (`lib/member.tsx`), à rafraîchir après chaque
+  action. Confirmations : `confirmAsync` (`Alert` ne fait rien sur le web).
+- Tests navigateur de l'export web : les onglets ont le rôle `tab`, et un écran empilé garde le
+  précédent dans le DOM (cibler le dernier champ).
 
 ## Outillage : pièges connus
 
@@ -144,4 +159,7 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - `turbo` génère un `AGENTS.md` s'il détecte un agent : désactivé (`agentGuidance: false`).
 - `BRIEF.md` est exclu de Prettier (document rédigé à la main).
 - Docker en session cloud : `pnpm docker:start` gère le `docker.pid` périmé laissé par un
-  redémarrage du conteneur.
+  redémarrage du conteneur. Après un redémarrage, certains conteneurs Supabase (Realtime) peuvent
+  manquer : `supabase stop` puis `supabase start`.
+- Ne pas utiliser `pkill -f <motif>` dans une commande qui contient ce motif : il tue son propre
+  shell. Viser le nom exact du processus (`pgrep -x next-server`).

@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AppSidebar, type NavGroup } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getTeamContext, isFrontDeskRole, isManagerRole } from "@/lib/auth";
 import { getOwnCoachId } from "@/lib/coaches";
+import { buildNavigation } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
@@ -42,65 +43,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     prospects = count ?? 0;
   }
 
-  // Coach sans autre rôle d'équipe : sa fiche (disponibilités) et ses heures.
+  // Coach sans rôle de gestion : sa fiche (disponibilités) et ses heures.
   const ownCoachId = manager ? null : await getOwnCoachId(context.userId, context.gym.id);
-
-  const groups: NavGroup[] = [
-    {
-      label: t("nav.groupDaily"),
-      items: [
-        { href: "/", label: t("nav.today"), icon: "today" },
-        { href: "/planning", label: t("nav.planning"), icon: "planning" },
-        ...(manager ? [{ href: "/indicateurs", label: t("nav.kpis"), icon: "kpis" as const }] : []),
-        ...(ownCoachId
-          ? [
-              {
-                href: `/coachs/${ownCoachId}`,
-                label: t("nav.myProfile"),
-                icon: "coaches" as const,
-              },
-              { href: "/coachs/heures", label: t("nav.myHours"), icon: "hours" as const },
-            ]
-          : []),
-      ],
-    },
-  ];
-  if (frontDesk || manager) {
-    groups.push({
-      label: t("nav.groupManage"),
-      items: [
-        ...(frontDesk
-          ? [
-              {
-                href: "/adherents",
-                label: t("nav.members"),
-                icon: "members" as const,
-                badge: prospects,
-              },
-            ]
-          : []),
-        ...(manager
-          ? [
-              { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" as const },
-              { href: "/coachs", label: t("nav.coaches"), icon: "coaches" as const },
-              { href: "/crm", label: t("nav.crm"), icon: "crm" as const },
-              { href: "/segments", label: t("nav.segments"), icon: "segments" as const },
-              { href: "/emailing", label: t("nav.emailing"), icon: "emailing" as const },
-              { href: "/messages", label: t("nav.messages"), icon: "messages" as const },
-            ]
-          : []),
-      ],
-    });
-  }
-  if (manager) {
-    groups.push({
-      label: t("nav.groupAdmin"),
-      items: [
-        { href: "/catalogue", label: t("nav.catalog"), icon: "catalog" },
-        { href: "/parametres", label: t("nav.settings"), icon: "settings" },
-      ],
-    });
-  }
+  const groups = buildNavigation(context.role, { prospects, ownCoachId });
 
   const sidebarState = (await cookies()).get("sidebar_state")?.value;
 

@@ -35,7 +35,7 @@ function failure(error: { code?: string } | null): Result {
 }
 
 function done(error: { code?: string } | null): Result {
-  revalidatePath("/catalogue");
+  revalidatePath("/parametres");
   revalidatePath("/planning", "layout");
   refresh();
   return failure(error);

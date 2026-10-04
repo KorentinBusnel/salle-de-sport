@@ -8,13 +8,13 @@ import {
   DumbbellIcon,
   FilterIcon,
   KanbanIcon,
-  LayersIcon,
   HouseIcon,
   LogOutIcon,
   MailPlusIcon,
   MailIcon,
   RepeatIcon,
   SettingsIcon,
+  SparklesIcon,
   UsersIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -59,7 +59,7 @@ const ICONS = {
   segments: FilterIcon,
   emailing: MailPlusIcon,
   kpis: ChartColumnIcon,
-  catalog: LayersIcon,
+  hub: SparklesIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

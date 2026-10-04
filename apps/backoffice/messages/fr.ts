@@ -61,11 +61,12 @@ export const fr = {
   nav: {
     signOut: "Se déconnecter",
     groupDaily: "Quotidien",
-    groupManage: "Gestion",
-    groupAdmin: "Administration",
+    groupOperations: "Opérations",
+    groupSettings: "Paramètres",
     skipToContent: "Aller au contenu",
     badge: "{count} à traiter",
     today: "Aujourd'hui",
+    hub: "Hub 360°",
     planning: "Planning",
     templates: "Cours récurrents",
     members: "Adhérents",
@@ -382,6 +383,14 @@ export const fr = {
   },
   settings: {
     title: "Paramètres",
+    sections: "Sections des paramètres",
+    tab: {
+      general: "Général",
+      strategies: "Stratégies",
+      catalogue: "Catalogue",
+      equipe: "Équipe",
+      integrations: "Intégrations",
+    },
     bookingRules: "Règles de réservation",
     bookingRulesHint: "Appliquées immédiatement dans l'app des adhérents.",
     maxUpcoming: "Nombre maximum de réservations à venir par adhérent",
@@ -766,6 +775,40 @@ export const fr = {
     errors: {
       duplicate: "Ce nom existe déjà.",
       invalid: "Valeur invalide.",
+    },
+  },
+  integrations: {
+    status: {
+      connected: "Connecté",
+      missing: "Clé manquante",
+      later: "Bientôt",
+      payments: "Phase paiements",
+    },
+    model: "Modèle : {model}",
+    claude: {
+      name: "Assistant Claude",
+      hint: "Répond aux questions du Hub 360° et prépare des actions que vous validez.",
+      next: "Ajoutez ANTHROPIC_API_KEY dans la configuration de l'hébergement (Vercel, Production et Preview).",
+    },
+    gmail: {
+      name: "Gmail",
+      hint: "Échanges email avec les adhérents, rattachés à leur fiche.",
+      next: "À brancher : boîte partagée ou individuelle, compte Google Workspace (questions ouvertes du brief).",
+    },
+    whatsapp: {
+      name: "WhatsApp Business",
+      hint: "Messages WhatsApp entrants et sortants dans la timeline.",
+      next: "À brancher : numéro dédié et compte Meta Business vérifié.",
+    },
+    pennylane: {
+      name: "Pennylane",
+      hint: "Chiffre d'affaires, charges et trésorerie, en lecture seule.",
+      next: "À brancher : clé API Pennylane.",
+    },
+    stripe: {
+      name: "Stripe",
+      hint: "Abonnements, paiements et relances.",
+      next: "Arrive avec la phase paiements.",
     },
   },
   strategies: {

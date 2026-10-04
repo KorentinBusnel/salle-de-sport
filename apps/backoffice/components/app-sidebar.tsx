@@ -36,6 +36,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
 
 const ICONS = {
@@ -57,17 +58,6 @@ export function activeHref(pathname: string, hrefs: string[]): string | undefine
       href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`),
     )
     .sort((a, b) => b.length - a.length)[0];
-}
-
-export function initials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
 }
 
 export function AppSidebar({

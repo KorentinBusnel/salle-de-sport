@@ -16,3 +16,15 @@ export function gymFormatters(timeZone: string) {
     dateTime: (date: Date | string) => dateTime.format(new Date(date)),
   };
 }
+
+/** Initiales d'un nom (« Nadia Lambert » → « NL »), pour les avatars. */
+export function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
+}

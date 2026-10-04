@@ -1,36 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { groupSessionsByDay, type PlanningSession } from "./planning";
+import { planningDays, spotsText } from "./planning";
 
-const session = (id: string, startsAt: string): PlanningSession => ({
-  id,
-  starts_at: startsAt,
-  ends_at: startsAt,
-  capacity: 16,
-  disciplines: { name: "CrossFit", color: "#dc2626" },
-  coaches: { display_name: "Julien M." },
-});
-
-describe("groupSessionsByDay", () => {
-  // Samedi 4 octobre 2026, 10 h à Paris.
-  const now = new Date("2026-10-04T08:00:00Z");
-
-  it("regroupe par jour local et nomme aujourd'hui et demain", () => {
-    const days = groupSessionsByDay(
-      [
-        session("c", "2026-10-06T16:30:00Z"),
-        session("a", "2026-10-04T16:30:00Z"),
-        session("b", "2026-10-05T05:00:00Z"),
-      ],
-      "Europe/Paris",
-      now,
-    );
-    expect(days.map((d) => d.title)).toEqual(["Aujourd'hui", "Demain", "Mardi 6 octobre"]);
-    expect(days.map((d) => d.data.map((s) => s.id))).toEqual([["a"], ["b"], ["c"]]);
+describe("planningDays", () => {
+  it("liste 7 jours locaux à partir d'aujourd'hui", () => {
+    // Dimanche 4 octobre 2026, 10 h à Paris.
+    const days = planningDays(new Date("2026-10-04T08:00:00Z"), "Europe/Paris");
+    expect(days.map((d) => d.label)).toEqual([
+      "Aujourd'hui",
+      "Demain",
+      "Mar. 6",
+      "Mer. 7",
+      "Jeu. 8",
+      "Ven. 9",
+      "Sam. 10",
+    ]);
+    expect(days[1]?.start.toISOString()).toBe("2026-10-04T22:00:00.000Z");
   });
 
-  it("rattache une séance à 0 h 30 heure locale au lendemain", () => {
-    // 22 h 30 UTC le 4 = 0 h 30 le 5 à Paris.
-    const days = groupSessionsByDay([session("late", "2026-10-04T22:30:00Z")], "Europe/Paris", now);
-    expect(days[0]?.title).toBe("Demain");
+  it("traverse le passage à l'heure d'hiver sans sauter de jour", () => {
+    const days = planningDays(new Date("2026-10-24T10:00:00Z"), "Europe/Paris", 3);
+    expect(days.map((d) => d.start.toISOString())).toEqual([
+      "2026-10-23T22:00:00.000Z",
+      "2026-10-24T22:00:00.000Z",
+      "2026-10-25T23:00:00.000Z",
+    ]);
+  });
+});
+
+describe("spotsText", () => {
+  it("affiche les places restantes", () => {
+    expect(spotsText(16, 12, 0)).toEqual({ full: false, text: "4 places" });
+    expect(spotsText(16, 15, 0)).toEqual({ full: false, text: "1 place" });
+  });
+
+  it("signale une séance complète et sa liste d'attente", () => {
+    expect(spotsText(12, 12, 0)).toEqual({ full: true, text: "Complet" });
+    expect(spotsText(12, 12, 3)).toEqual({ full: true, text: "Complet · 3 en attente" });
   });
 });

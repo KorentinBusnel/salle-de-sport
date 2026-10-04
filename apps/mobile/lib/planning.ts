@@ -1,53 +1,43 @@
-import { zonedDayRange } from "@salle/shared";
+import { spotsLeft, zonedDayRange } from "@salle/shared";
 import { t } from "@/lib/i18n";
 
-export type PlanningSession = {
-  id: string;
-  starts_at: string;
-  ends_at: string;
-  capacity: number;
-  disciplines: { name: string; color: string } | null;
-  coaches: { display_name: string } | null;
-};
+export type PlanningDay = { key: string; start: Date; end: Date; label: string };
 
-export type PlanningDay = { key: string; title: string; data: PlanningSession[] };
-
-/**
- * Regroupe les séances par jour local de la salle, dans l'ordre chronologique,
- * avec « Aujourd'hui » et « Demain » pour les deux premiers jours.
- */
-export function groupSessionsByDay(
-  sessions: readonly PlanningSession[],
-  timeZone: string,
-  now: Date,
-): PlanningDay[] {
-  const today = zonedDayRange(now, timeZone).start.getTime();
-  const tomorrow = zonedDayRange(new Date(today + 36 * 3_600_000), timeZone).start.getTime();
-  const dayFormat = new Intl.DateTimeFormat("fr-FR", {
-    timeZone,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
-  const days = new Map<number, PlanningDay>();
-  const sorted = [...sessions].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  for (const session of sorted) {
-    const startsAt = new Date(session.starts_at);
-    const dayStart = zonedDayRange(startsAt, timeZone).start.getTime();
-    let day = days.get(dayStart);
-    if (!day) {
-      const label = dayFormat.format(startsAt);
-      const title =
-        dayStart === today
-          ? t("planning.today")
-          : dayStart === tomorrow
-            ? t("planning.tomorrow")
-            : label.charAt(0).toUpperCase() + label.slice(1);
-      day = { key: new Date(dayStart).toISOString(), title, data: [] };
-      days.set(dayStart, day);
-    }
-    day.data.push(session);
+/** Les `count` prochains jours locaux de la salle, avec « Aujourd'hui » et « Demain ». */
+export function planningDays(now: Date, timeZone: string, count = 7): PlanningDay[] {
+  const format = new Intl.DateTimeFormat("fr-FR", { timeZone, weekday: "short", day: "numeric" });
+  const days: PlanningDay[] = [];
+  let { start, end } = zonedDayRange(now, timeZone);
+  for (let index = 0; index < count; index++) {
+    const raw = format.format(start);
+    const label =
+      index === 0
+        ? t("planning.today")
+        : index === 1
+          ? t("planning.tomorrow")
+          : raw.charAt(0).toUpperCase() + raw.slice(1);
+    days.push({ key: start.toISOString(), start, end, label });
+    // Le lendemain : la journée qui contient « fin + 1 h » (journées de 23 h ou 25 h comprises).
+    ({ start, end } = zonedDayRange(new Date(end.getTime() + 3_600_000), timeZone));
   }
-  return [...days.values()];
+  return days;
+}
+
+/** Libellé des places d'une séance. */
+export function spotsText(
+  capacity: number,
+  booked: number,
+  waitlist: number,
+): { text: string; full: boolean } {
+  const left = spotsLeft(capacity, booked);
+  if (left === 0) {
+    return {
+      full: true,
+      text: waitlist > 0 ? t("planning.fullWithWaitlist", { count: waitlist }) : t("planning.full"),
+    };
+  }
+  return {
+    full: false,
+    text: left === 1 ? t("planning.oneSpotLeft") : t("planning.spotsLeft", { count: left }),
+  };
 }

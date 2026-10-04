@@ -1411,6 +1411,24 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      search_members: {
+        Args: {
+          p_gym_id: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_statuses?: Database["public"]["Enums"]["member_status"][];
+        };
+        Returns: {
+          email: string;
+          first_name: string;
+          id: string;
+          last_name: string;
+          phone: string;
+          status: Database["public"]["Enums"]["member_status"];
+          total_count: number;
+        }[];
+      };
       set_attendance: {
         Args: { p_booking_id: string; p_status: Database["public"]["Enums"]["booking_status"] };
         Returns: {

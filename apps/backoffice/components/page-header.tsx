@@ -8,14 +8,14 @@ export function PageHeader({
   actions,
 }: {
   title: ReactNode;
-  description?: ReactNode;
-  breadcrumb?: ReactNode;
-  actions?: ReactNode;
+  description?: ReactNode | undefined;
+  breadcrumb?: ReactNode | undefined;
+  actions?: ReactNode | undefined;
 }) {
   return (
     <header className="grid gap-3">
       {breadcrumb}
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="grid gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           {description ? (

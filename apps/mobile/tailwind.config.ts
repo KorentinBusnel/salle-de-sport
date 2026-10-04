@@ -7,7 +7,12 @@ import nativewindPreset from "nativewind/preset";
 // sous les mêmes noms que le thème v4 du back office (brand-600, bg-primary,
 // text-muted-foreground, rounded-xl…) pour que les classes soient identiques.
 export default {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  content: [
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    // Classes de ton partagées (packages/shared/src/display.ts).
+    "../../packages/shared/src/**/*.ts",
+  ],
   presets: [nativewindPreset],
   theme: {
     extend: {

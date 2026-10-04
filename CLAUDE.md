@@ -114,6 +114,10 @@ En session cloud, démarrer Supabase sans les services inutiles :
   (`strategy_disabled`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
+- **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
+  `private.enqueue_message` (clé `dedupe_key` pour l'idempotence), qui l'ajoute aussi aux
+  `interactions`. Pas d'envoi réel : un job `pg_cron` passe les messages `queued` → `logged`.
+  Avis aux inscrits d'une séance : `private.notify_session_members`.
 - Compteurs `class_sessions.booked_count` / `waitlist_count` : tenus par trigger, ne jamais les
   écrire à la main ; ils sont publiés en Realtime (places en direct dans l'app).
 - `supabase/seed.sql` est **déterministe** (`pg_temp.rnd`, UUID dérivés de clés) et relatif à la
@@ -195,5 +199,8 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Docker en session cloud : `pnpm docker:start` gère le `docker.pid` périmé laissé par un
   redémarrage du conteneur. Après un redémarrage, certains conteneurs Supabase (Realtime) peuvent
   manquer : `supabase stop` puis `supabase start`.
+- `expo export` en local : la session cloud définit `EXPO_PUBLIC_SUPABASE_URL` (projet en ligne),
+  qui l'emporte sur `.env.local`. Charger `.env.local` dans le shell et ajouter `--clear` (le
+  cache Metro garde les valeurs inlinées).
 - Ne pas utiliser `pkill -f <motif>` dans une commande qui contient ce motif : il tue son propre
   shell. Viser le nom exact du processus (`pgrep -x next-server`).

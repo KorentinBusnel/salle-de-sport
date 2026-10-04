@@ -1,7 +1,20 @@
 // Textes de l'interface. Toute chaîne affichée passe par une clé (i18n prévue, BRIEF §10.8).
 export const fr = {
   app: {
-    title: "Back office",
+    title: "Espace équipe",
+  },
+  errors: {
+    forbiddenRole: "Cette page est réservée à un autre rôle de l'équipe.",
+    notFoundTitle: "Page introuvable",
+    notFoundBody: "Cette page n'existe pas ou n'est plus disponible.",
+    backHome: "Retour à Aujourd'hui",
+    errorTitle: "Un problème est survenu",
+    errorBody: "La page n'a pas pu se charger. Vérifiez la connexion puis réessayez.",
+    retry: "Réessayer",
+  },
+  topbar: {
+    searchPlaceholder: "Rechercher un adhérent…",
+    searchLabel: "Rechercher un adhérent (raccourci /)",
   },
   ui: {
     close: "Fermer",
@@ -37,6 +50,11 @@ export const fr = {
   },
   nav: {
     signOut: "Se déconnecter",
+    groupDaily: "Quotidien",
+    groupManage: "Gestion",
+    groupAdmin: "Administration",
+    skipToContent: "Aller au contenu",
+    badge: "{count} à traiter",
     today: "Aujourd'hui",
     planning: "Planning",
     templates: "Cours récurrents",

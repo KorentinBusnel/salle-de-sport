@@ -1,7 +1,10 @@
 import { asMessageKey } from "@/lib/flash";
 import { t } from "@/lib/i18n";
 
-/** Message de retour d'une action, transmis par l'URL (?ok=… ou ?erreur=…). */
+/**
+ * Message de retour d'une action (?ok=… ou ?erreur=…) pour les navigateurs sans
+ * JavaScript ; sinon FlashToast l'affiche en toast.
+ */
 export function Flash({
   ok,
   error,
@@ -13,15 +16,17 @@ export function Flash({
   const errorKey = asMessageKey(Array.isArray(error) ? error[0] : error);
   if (!okKey && !errorKey) return null;
   return (
-    <p
-      role={errorKey ? "alert" : "status"}
-      className={
-        errorKey
-          ? "rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-          : "rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success"
-      }
-    >
-      {t(errorKey ?? okKey ?? "common.saved")}
-    </p>
+    <noscript>
+      <p
+        role={errorKey ? "alert" : "status"}
+        className={
+          errorKey
+            ? "rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            : "rounded-lg bg-success/10 px-3 py-2 text-sm text-success"
+        }
+      >
+        {t(errorKey ?? okKey ?? "common.saved")}
+      </p>
+    </noscript>
   );
 }

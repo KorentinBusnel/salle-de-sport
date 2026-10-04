@@ -1,6 +1,6 @@
 import "server-only";
 import { canSeeFinancials, type GymRole, primaryTeamRole } from "@salle/shared";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
@@ -71,9 +71,9 @@ export function isFrontDeskRole(role: GymRole): boolean {
   return role === "staff" || isManagerRole(role);
 }
 
-/** Contexte d'équipe avec un rôle suffisant : page introuvable sinon. */
+/** Contexte d'équipe avec un rôle suffisant : retour à l'accueil avec un message sinon. */
 export async function requireRole(allowed: (role: GymRole) => boolean): Promise<TeamContext> {
   const context = await requireTeamContext();
-  if (!allowed(context.role)) notFound();
+  if (!allowed(context.role)) redirect("/?erreur=errors.forbiddenRole");
   return context;
 }

@@ -24,3 +24,6 @@ supabase/.temp/
 
 # Next.js
 next-env.d.ts
+
+# Expo
+expo-env.d.ts

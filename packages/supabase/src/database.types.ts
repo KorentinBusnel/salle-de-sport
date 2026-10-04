@@ -1311,6 +1311,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      adjust_credits: {
+        Args: { p_delta: number; p_member_id: string; p_note?: string };
+        Returns: number;
+      };
       book_session: {
         Args: { p_member_id?: string; p_session_id: string };
         Returns: {
@@ -1381,6 +1385,66 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_member: {
+        Args: {
+          p_email?: string;
+          p_first_name: string;
+          p_force?: boolean;
+          p_gym_id: string;
+          p_last_name: string;
+          p_phone?: string;
+          p_status?: Database["public"]["Enums"]["member_status"];
+        };
+        Returns: {
+          acquisition_source: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string;
+          gym_id: string;
+          id: string;
+          last_name: string;
+          marketing_email_consent_at: string | null;
+          marketing_whatsapp_consent_at: string | null;
+          phone: string | null;
+          profile_id: string | null;
+          status: Database["public"]["Enums"]["member_status"];
+          stripe_customer_id: string | null;
+          tags: string[];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "members";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      find_member_duplicates: {
+        Args: { p_email: string; p_gym_id: string; p_phone: string };
+        Returns: {
+          acquisition_source: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string;
+          gym_id: string;
+          id: string;
+          last_name: string;
+          marketing_email_consent_at: string | null;
+          marketing_whatsapp_consent_at: string | null;
+          phone: string | null;
+          profile_id: string | null;
+          status: Database["public"]["Enums"]["member_status"];
+          stripe_customer_id: string | null;
+          tags: string[];
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "members";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       generate_sessions: {
         Args: { p_from: string; p_gym_id: string; p_to: string };
         Returns: number;
@@ -1407,6 +1471,28 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "members";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      reset_attendance: {
+        Args: { p_booking_id: string };
+        Returns: {
+          booked_at: string;
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          session_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          updated_at: string;
+          waitlist_position: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -1447,6 +1533,32 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      set_member_status: {
+        Args: { p_member_id: string; p_status: Database["public"]["Enums"]["member_status"] };
+        Returns: {
+          acquisition_source: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string;
+          gym_id: string;
+          id: string;
+          last_name: string;
+          marketing_email_consent_at: string | null;
+          marketing_whatsapp_consent_at: string | null;
+          phone: string | null;
+          profile_id: string | null;
+          status: Database["public"]["Enums"]["member_status"];
+          stripe_customer_id: string | null;
+          tags: string[];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "members";
           isOneToOne: true;
           isSetofReturn: false;
         };

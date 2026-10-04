@@ -185,10 +185,10 @@ select is((select count(*) from public.subscriptions), 0::bigint, 'accueil : ne 
 select is((select count(*) from public.credit_ledger), 0::bigint, 'accueil : ne voit pas les crédits');
 select is((select count(*) from public.coach_compensations), 0::bigint, 'accueil : ne voit pas la rémunération des coachs');
 select is((select count(*) from public.interactions), 0::bigint, 'accueil : ne voit pas le CRM');
-select lives_ok(
+select throws_ok(
   $$insert into public.members (gym_id, first_name, last_name) values
     ('aaaaaaaa-0000-0000-0000-000000000000', 'Nouveau', 'Prospect')$$,
-  'accueil : crée une fiche dans sa salle'
+  '42501', null, 'accueil : pas d''insertion directe (create_member uniquement)'
 );
 select throws_ok(
   $$insert into public.members (gym_id, first_name, last_name) values

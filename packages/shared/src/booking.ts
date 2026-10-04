@@ -9,21 +9,34 @@ export const gymSettingsSchema = z.object({
   max_upcoming_bookings: z.number().int().min(1).max(50).default(5),
   /** Délai d'annulation recommandé, affiché seulement : l'annulation reste libre. */
   cancellation_recommended_hours: z.number().min(0).max(72).default(2),
+  /** L'accueil inscrit un retardataire jusqu'à N minutes après le début (0 : jamais). */
+  late_booking_minutes: z.number().int().min(0).max(60).default(0),
+  /** Le pointage ouvre N minutes avant le début (null : à tout moment). */
+  attendance_opens_minutes_before: z.number().int().min(0).max(1440).nullable().default(null),
+  /** « Remettre à confirmé » un adhérent pointé présent ou absent. */
+  allow_attendance_reset: z.boolean().default(false),
+  /** Le gérant peut retirer des crédits (motif obligatoire). */
+  manager_can_remove_credits: z.boolean().default(false),
+  /** L'accueil peut suspendre et réactiver une fiche (sinon : gérant seulement). */
+  staff_can_suspend_members: z.boolean().default(false),
+  /** L'accueil peut créer une fiche (sinon : gérant seulement). */
+  staff_can_create_members: z.boolean().default(false),
 });
 
 export type GymSettings = z.infer<typeof gymSettingsSchema>;
 
+/** Valeurs par défaut : celles que les fonctions SQL appliquent en l'absence de réglage. */
+export const DEFAULT_GYM_SETTINGS: GymSettings = gymSettingsSchema.parse({});
+
 /** Lit gyms.settings en complétant les valeurs absentes ou invalides par les défauts. */
 export function parseGymSettings(raw: unknown): GymSettings {
   const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  return {
-    max_upcoming_bookings: gymSettingsSchema.shape.max_upcoming_bookings
-      .catch(5)
-      .parse(source.max_upcoming_bookings),
-    cancellation_recommended_hours: gymSettingsSchema.shape.cancellation_recommended_hours
-      .catch(2)
-      .parse(source.cancellation_recommended_hours),
-  };
+  const settings = { ...DEFAULT_GYM_SETTINGS };
+  for (const key of Object.keys(gymSettingsSchema.shape) as (keyof GymSettings)[]) {
+    const parsed = gymSettingsSchema.shape[key].safeParse(source[key]);
+    if (parsed.success) Object.assign(settings, { [key]: parsed.data });
+  }
+  return settings;
 }
 
 /** Codes levés par les fonctions SQL de réservation (raise exception '<code>'). */
@@ -46,6 +59,15 @@ export const BOOKING_ERROR_CODES = [
   "not_authenticated",
   "terms_not_accepted",
   "waiver_not_accepted",
+  "session_full",
+  "attendance_not_open",
+  "strategy_disabled",
+  "invalid_amount",
+  "reason_required",
+  "insufficient_credits",
+  "invalid_transition",
+  "invalid_input",
+  "duplicate_member",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

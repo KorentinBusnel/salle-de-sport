@@ -12,6 +12,12 @@ export const fr = {
     submitting: "Connexion…",
     invalidInput: "Saisissez une adresse email et un mot de passe.",
     invalidCredentials: "Adresse email ou mot de passe incorrect.",
+    serviceError:
+      "Connexion au service d'authentification impossible : vérifiez l'URL et la clé Supabase de cet environnement.",
+    sessionRejected:
+      "Connexion réussie mais session refusée par le serveur : vérifiez la clé Supabase de cet environnement.",
+    noTeamRole:
+      "Ce compte n'a pas de rôle d'équipe (coach, accueil, gérant) dans la salle : demandez-le au gérant.",
   },
   nav: {
     signOut: "Se déconnecter",

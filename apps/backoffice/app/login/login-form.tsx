@@ -4,13 +4,14 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { t } from "@/lib/i18n";
+import { type MessageKey, t } from "@/lib/i18n";
 import { signIn, type SignInState } from "./actions";
 
 const initialState: SignInState = { error: null };
 
-export function LoginForm() {
+export function LoginForm({ notice }: { notice?: MessageKey | undefined }) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
+  const error = state.error ?? notice ?? null;
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -28,9 +29,10 @@ export function LoginForm() {
           required
         />
       </div>
-      {state.error ? (
+      {error ? (
         <p role="alert" className="text-sm text-destructive">
-          {t(state.error)}
+          {t(error)}
+          {state.detail ? <span className="block text-xs">{state.detail}</span> : null}
         </p>
       ) : null}
       <Button type="submit" disabled={pending}>

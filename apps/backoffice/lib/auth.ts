@@ -53,9 +53,10 @@ export const getTeamContext = cache(async (): Promise<ContextResult> => {
   return { status: "no-team" };
 });
 
-/** Contexte d'équipe obligatoire : redirige vers /login sinon. */
+/** Contexte d'équipe obligatoire : redirige vers /login sinon (avec le motif si connecté). */
 export async function requireTeamContext(): Promise<TeamContext> {
   const result = await getTeamContext();
+  if (result.status === "no-team") redirect("/login?motif=sans-role");
   if (result.status !== "team") redirect("/login");
   return result.context;
 }

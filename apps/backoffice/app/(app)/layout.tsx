@@ -65,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         signOut={signOut}
       />
       <SidebarInset className="min-w-0 bg-card md:peer-data-[variant=inset]:shadow-border">
-        <AppTopbar search={frontDesk} />
+        <AppTopbar search={frontDesk} assistant={manager} />
         <main id="contenu" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
           {children}
         </main>

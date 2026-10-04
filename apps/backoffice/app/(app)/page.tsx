@@ -100,8 +100,8 @@ export default async function DashboardPage() {
   const cancelled = sessions.length - scheduled.length;
 
   const kpis = (
-    <section className="@container" aria-label={t("dashboard.indicators")}>
-      <div className="grid gap-3 @min-[34rem]:grid-cols-2 @min-[60rem]:grid-cols-4">
+    <section aria-label={t("dashboard.indicators")}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(12.5rem,1fr))] gap-3">
         <KpiCard
           icon={CalendarCheckIcon}
           label={isCoachOnly ? t("dashboard.mySessions") : t("dashboard.sessions")}

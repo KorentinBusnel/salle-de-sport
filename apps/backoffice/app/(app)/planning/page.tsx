@@ -177,7 +177,7 @@ export default async function PlanningPage({
   const daySessions = sessions.filter((s) => s.dayKey === selectedKey);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 gap-6">
       <PageHeader
         title={t("planning.weekOf", { date: format.longDayInline(week.start) })}
         actions={
@@ -361,7 +361,10 @@ export default async function PlanningPage({
 
           {/* Vue semaine : grille horaire, en-têtes et heures collants. */}
           <section
-            className={cn(view === "jour" ? "hidden" : view === "semaine" ? "" : "hidden lg:block")}
+            className={cn(
+              "min-w-0",
+              view === "jour" ? "hidden" : view === "semaine" ? "" : "hidden lg:block",
+            )}
             aria-label={t("planning.weekView")}
           >
             <div className="max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl bg-card shadow-border">

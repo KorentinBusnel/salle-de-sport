@@ -1,5 +1,7 @@
-import { colors } from "@salle/ui";
+import { BOOKING_STATUS_TONE } from "@salle/shared";
+import { colors, shadows } from "@salle/ui";
 import { Pressable, Text, View } from "react-native";
+import { Gauge, StatusPill } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import { spotsText } from "@/lib/planning";
 
@@ -29,38 +31,67 @@ export function SessionCard({
   const startsAt = new Date(session.starts_at);
   const minutes = Math.round((Date.parse(session.ends_at) - startsAt.getTime()) / 60_000);
   const spots = spotsText(session.capacity, session.booked_count, session.waitlist_count);
+  const color = session.disciplines?.color ?? colors.neutral[300];
+  const label = [
+    time.format(startsAt),
+    session.disciplines?.name,
+    session.coaches?.display_name,
+    spots.text,
+    myStatus
+      ? myStatus.status === "waitlisted"
+        ? t("planning.waitlisted", { position: myStatus.position ?? "?" })
+        : t("planning.booked")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
-      className="mx-4 mb-2 flex-row items-center gap-4 rounded-lg border border-neutral-100 bg-neutral-0 px-4 py-3 active:bg-neutral-50"
+      className="mx-4 mb-3 overflow-hidden rounded-xl bg-card active:scale-[0.98] active:bg-muted"
+      style={{ boxShadow: shadows.border }}
     >
-      <View className="w-14">
-        <Text className="text-base font-semibold text-neutral-900">{time.format(startsAt)}</Text>
-        <Text className="text-xs text-neutral-500">{t("planning.duration", { minutes })}</Text>
-      </View>
-      <View
-        className="h-10 w-1 rounded-full"
-        style={{ backgroundColor: session.disciplines?.color ?? colors.neutral[300] }}
-      />
-      <View className="flex-1 gap-0.5">
-        <Text className="text-base font-medium text-neutral-900">{session.disciplines?.name}</Text>
-        <Text className="text-sm text-neutral-500">{session.coaches?.display_name}</Text>
-      </View>
-      <View className="items-end gap-1">
-        {myStatus ? (
-          <Text className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
-            {myStatus.status === "waitlisted"
-              ? t("planning.waitlisted", { position: myStatus.position ?? "?" })
-              : t("planning.booked")}
-          </Text>
-        ) : null}
-        <Text
-          className={`text-sm ${spots.full ? "font-semibold text-brand-700" : "text-neutral-500"}`}
-        >
-          {spots.text}
-        </Text>
+      <View className="flex-row">
+        <View className="w-1" style={{ backgroundColor: color }} />
+        <View className="flex-1 gap-3 px-4 py-3.5">
+          <View className="flex-row items-start gap-4">
+            <View className="w-14">
+              <Text className="text-lg font-semibold text-foreground tabular-nums">
+                {time.format(startsAt)}
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                {t("planning.duration", { minutes })}
+              </Text>
+            </View>
+            <View className="flex-1 gap-0.5">
+              <Text className="text-base font-semibold text-foreground">
+                {session.disciplines?.name}
+              </Text>
+              <Text className="text-sm text-muted-foreground">{session.coaches?.display_name}</Text>
+            </View>
+            {myStatus ? (
+              <StatusPill
+                tone={myStatus.status === "waitlisted" ? BOOKING_STATUS_TONE.waitlisted : "brand"}
+                label={
+                  myStatus.status === "waitlisted"
+                    ? t("planning.waitlisted", { position: myStatus.position ?? "?" })
+                    : t("planning.booked")
+                }
+              />
+            ) : null}
+          </View>
+          <View className="flex-row items-center gap-3">
+            <Gauge booked={session.booked_count} capacity={session.capacity} className="flex-1" />
+            <Text
+              className={`text-xs tabular-nums ${spots.full ? "font-semibold text-warning" : "text-muted-foreground"}`}
+            >
+              {spots.text}
+            </Text>
+          </View>
+        </View>
       </View>
     </Pressable>
   );

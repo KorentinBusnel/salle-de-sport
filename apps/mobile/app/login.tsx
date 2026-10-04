@@ -24,15 +24,15 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
         <ScrollView contentContainerClassName="flex-grow justify-center gap-6 px-6 py-10">
           <View className="gap-2">
-            <Text className="text-3xl font-bold text-neutral-900">{t("auth.loginTitle")}</Text>
-            <Text className="text-base text-neutral-500">{t("auth.loginSubtitle")}</Text>
+            <Text className="text-3xl font-bold text-foreground">{t("auth.loginTitle")}</Text>
+            <Text className="text-base text-muted-foreground">{t("auth.loginSubtitle")}</Text>
           </View>
           <View className="gap-4">
             <Field
@@ -61,7 +61,7 @@ export default function LoginScreen() {
             busy={busy}
             disabled={!email || !password}
           />
-          <Link href="/signup" className="text-center text-base font-medium text-brand-700">
+          <Link href="/signup" className="text-center text-base font-medium text-primary">
             {t("auth.toSignup")}
           </Link>
         </ScrollView>

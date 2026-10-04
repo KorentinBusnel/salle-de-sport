@@ -1,9 +1,12 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { canCancel, isLateCancellation, spotsLeft } from "@salle/shared";
-import { colors } from "@salle/ui";
+import { colors, semantic } from "@salle/ui";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
-import { Button, ErrorState, Loading, Notice } from "@/components/ui";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useToast } from "@/components/toast";
+import { Button, Card, ErrorState, Gauge, Loading, Notice, RollingNumber } from "@/components/ui";
 import { addSessionToCalendar, calendarAvailable } from "@/lib/calendar";
 import { confirmAsync } from "@/lib/confirm";
 import { errorText } from "@/lib/errors";
@@ -30,9 +33,8 @@ export default function SessionScreen() {
   const { state, refresh: refreshMember } = useMember();
   const [session, setSession] = useState<SessionDetail | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ tone: "success" | "error" | "info"; text: string } | null>(
-    null,
-  );
+  const toast = useToast();
+  const insets = useSafeAreaInsets();
   const [now, setNow] = useState(() => new Date());
 
   const load = useCallback(async () => {
@@ -93,13 +95,10 @@ export default function SessionScreen() {
     success: string,
   ) {
     setBusy(true);
-    setNotice(null);
     const { error } = await action();
     await Promise.all([refreshMember(), load()]);
     setBusy(false);
-    setNotice(
-      error ? { tone: "error", text: errorText(error) } : { tone: "success", text: success },
-    );
+    toast(error ? "error" : "success", error ? errorText(error) : success);
   }
 
   async function book() {
@@ -135,88 +134,125 @@ export default function SessionScreen() {
       location: gym.name,
       timeZone: gym.timezone,
     });
-    setNotice({ tone: result.ok ? "success" : "error", text: result.message });
+    toast(result.ok ? "success" : "error", result.message);
   }
 
-  return (
-    <ScrollView contentContainerClassName="gap-5 px-5 py-6">
+  const status = cancelled ? (
+    <Notice tone="error">{t("session.cancelled")}</Notice>
+  ) : booking?.status === "attended" ? (
+    <Notice tone="success">{t("session.attended")}</Notice>
+  ) : booking?.status === "no_show" ? (
+    <Notice>{t("session.noShow")}</Notice>
+  ) : started ? (
+    <Notice>{t("session.started")}</Notice>
+  ) : booking ? (
+    <Notice tone="success">
+      {booking.status === "waitlisted"
+        ? t("session.youAreWaitlisted", { position: booking.waitlist_position ?? "?" })
+        : t("session.youAreBooked")}
+    </Notice>
+  ) : member.status !== "active" ? (
+    <Notice>{t("session.notActive")}</Notice>
+  ) : null;
+
+  // Action principale ancrée en bas d'écran, à portée de pouce.
+  const actions =
+    cancelled ||
+    started ||
+    booking?.status === "attended" ||
+    booking?.status === "no_show" ? null : booking ? (
       <View className="gap-2">
-        <View className="flex-row items-center gap-2">
-          <View
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: session.disciplines?.color ?? colors.neutral[300] }}
-          />
-          <Text className="text-2xl font-bold text-neutral-900">{session.disciplines?.name}</Text>
-        </View>
-        <Text className="text-base text-neutral-700">
-          {day.charAt(0).toUpperCase() + day.slice(1)} · {time.format(startsAt)} –{" "}
-          {time.format(new Date(session.ends_at))}
-        </Text>
-        {session.coaches ? (
-          <Text className="text-base text-neutral-500">
-            {t("session.with", { coach: session.coaches.display_name })}
-          </Text>
-        ) : null}
-        {session.rooms ? (
-          <Text className="text-base text-neutral-500">
-            {t("session.room", { room: session.rooms.name })}
-          </Text>
-        ) : null}
-      </View>
-
-      <View className="gap-1 rounded-lg border border-neutral-100 bg-neutral-0 px-4 py-3">
-        <Text className="text-base font-medium text-neutral-900">
-          {t("session.capacity", { booked: session.booked_count, capacity: session.capacity })}
-        </Text>
-        {session.waitlist_count > 0 ? (
-          <Text className="text-sm text-neutral-500">
-            {t("session.waitlistCount", { count: session.waitlist_count })}
-          </Text>
-        ) : null}
-      </View>
-
-      {notice ? <Notice tone={notice.tone}>{notice.text}</Notice> : null}
-
-      {cancelled ? (
-        <Notice tone="error">{t("session.cancelled")}</Notice>
-      ) : booking?.status === "attended" ? (
-        <Notice tone="success">{t("session.attended")}</Notice>
-      ) : booking?.status === "no_show" ? (
-        <Notice>{t("session.noShow")}</Notice>
-      ) : started ? (
-        <Notice>{t("session.started")}</Notice>
-      ) : booking ? (
-        <View className="gap-3">
-          <Notice tone="success">
-            {booking.status === "waitlisted"
-              ? t("session.youAreWaitlisted", { position: booking.waitlist_position ?? "?" })
-              : t("session.youAreBooked")}
-          </Notice>
-          <Button
-            label={
-              booking.status === "waitlisted" ? t("session.leaveWaitlist") : t("session.cancel")
-            }
-            variant="destructive"
-            onPress={cancel}
-            busy={busy}
-          />
-          {calendarAvailable ? (
-            <Button
-              label={t("session.addToCalendar")}
-              variant="secondary"
-              onPress={addToCalendar}
-            />
-          ) : null}
-        </View>
-      ) : member.status !== "active" ? (
-        <Notice>{t("session.notActive")}</Notice>
-      ) : (
         <Button
-          label={full ? t("session.joinWaitlist") : t("session.book")}
-          onPress={book}
+          label={booking.status === "waitlisted" ? t("session.leaveWaitlist") : t("session.cancel")}
+          variant="destructive"
+          onPress={cancel}
           busy={busy}
         />
-      )}
-    </ScrollView>
+        {calendarAvailable ? (
+          <Button label={t("session.addToCalendar")} variant="secondary" onPress={addToCalendar} />
+        ) : null}
+      </View>
+    ) : member.status === "active" ? (
+      <Button
+        label={full ? t("session.joinWaitlist") : t("session.book")}
+        onPress={book}
+        busy={busy}
+      />
+    ) : null;
+
+  const color = session.disciplines?.color ?? colors.neutral[300];
+  const details = [
+    {
+      icon: "time-outline" as const,
+      text: `${time.format(startsAt)} – ${time.format(new Date(session.ends_at))}`,
+    },
+    session.coaches
+      ? {
+          icon: "person-outline" as const,
+          text: t("session.with", { coach: session.coaches.display_name }),
+        }
+      : null,
+    session.rooms
+      ? { icon: "location-outline" as const, text: t("session.room", { room: session.rooms.name }) }
+      : null,
+  ].filter((d) => d !== null);
+
+  return (
+    <View className="flex-1 bg-background">
+      <ScrollView contentContainerClassName="gap-4 px-4 py-5">
+        <Card className="overflow-hidden">
+          <View className="h-1.5" style={{ backgroundColor: color }} />
+          <View className="gap-3 px-4 py-4">
+            <View className="gap-1">
+              <Text className="text-2xl font-bold text-foreground">
+                {session.disciplines?.name}
+              </Text>
+              <Text className="text-base text-muted-foreground">
+                {day.charAt(0).toUpperCase() + day.slice(1)}
+              </Text>
+            </View>
+            <View className="gap-2">
+              {details.map((detail) => (
+                <View key={detail.icon} className="flex-row items-center gap-2">
+                  <Ionicons name={detail.icon} size={16} color={semantic["muted-foreground"]} />
+                  <Text className="text-base text-foreground tabular-nums">{detail.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </Card>
+
+        <Card className="gap-3 px-4 py-4">
+          <View className="flex-row items-end justify-between">
+            <Text className="text-sm text-muted-foreground">{t("session.spotsTaken")}</Text>
+            <View className="flex-row items-baseline">
+              <RollingNumber
+                value={session.booked_count}
+                className="text-2xl font-semibold text-foreground"
+              />
+              <Text className="text-base text-muted-foreground tabular-nums">
+                /{session.capacity}
+              </Text>
+            </View>
+          </View>
+          <Gauge booked={session.booked_count} capacity={session.capacity} />
+          {session.waitlist_count > 0 ? (
+            <Text className="text-sm text-muted-foreground">
+              {t("session.waitlistCount", { count: session.waitlist_count })}
+            </Text>
+          ) : null}
+        </Card>
+
+        {status}
+      </ScrollView>
+      {actions ? (
+        <View
+          className="border-t border-border bg-card px-4 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+        >
+          {actions}
+        </View>
+      ) : null}
+    </View>
   );
 }

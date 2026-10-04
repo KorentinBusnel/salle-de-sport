@@ -1,11 +1,12 @@
 import { spotsLeft, zonedDayRange } from "@salle/shared";
 import { t } from "@/lib/i18n";
 
-export type PlanningDay = { key: string; start: Date; end: Date; label: string };
+export type PlanningDay = { key: string; start: Date; end: Date; label: string; date: string };
 
 /** Les `count` prochains jours locaux de la salle, avec « Aujourd'hui » et « Demain ». */
 export function planningDays(now: Date, timeZone: string, count = 7): PlanningDay[] {
   const format = new Intl.DateTimeFormat("fr-FR", { timeZone, weekday: "short", day: "numeric" });
+  const dayMonth = new Intl.DateTimeFormat("fr-FR", { timeZone, day: "numeric", month: "short" });
   const days: PlanningDay[] = [];
   let { start, end } = zonedDayRange(now, timeZone);
   for (let index = 0; index < count; index++) {
@@ -16,7 +17,14 @@ export function planningDays(now: Date, timeZone: string, count = 7): PlanningDa
         : index === 1
           ? t("planning.tomorrow")
           : raw.charAt(0).toUpperCase() + raw.slice(1);
-    days.push({ key: start.toISOString(), start, end, label });
+    days.push({
+      key: start.toISOString(),
+      start,
+      end,
+      label,
+      // Sous-libellé : la date pour « Aujourd'hui » / « Demain », rien sinon (déjà dans le libellé).
+      date: index < 2 ? dayMonth.format(start) : "",
+    });
     // Le lendemain : la journée qui contient « fin + 1 h » (journées de 23 h ou 25 h comprises).
     ({ start, end } = zonedDayRange(new Date(end.getTime() + 3_600_000), timeZone));
   }

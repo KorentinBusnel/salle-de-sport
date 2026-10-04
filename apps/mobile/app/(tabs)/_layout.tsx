@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { colors } from "@salle/ui";
+import { semantic } from "@salle/ui";
 import { Tabs } from "expo-router";
 import { t } from "@/lib/i18n";
 
@@ -7,10 +7,13 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.brand[600],
-        tabBarInactiveTintColor: colors.neutral[500],
-        headerTintColor: colors.neutral[900],
-        sceneStyle: { backgroundColor: colors.neutral[50] },
+        tabBarActiveTintColor: semantic.primary,
+        tabBarInactiveTintColor: semantic["muted-foreground"],
+        headerTintColor: semantic.foreground,
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: semantic.card },
+        tabBarStyle: { backgroundColor: semantic.card, borderTopColor: semantic.border },
+        sceneStyle: { backgroundColor: semantic.background },
       }}
     >
       <Tabs.Screen

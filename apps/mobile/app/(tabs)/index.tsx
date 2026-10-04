@@ -1,8 +1,10 @@
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, RefreshControl, ScrollView, Text, View } from "react-native";
+import { FlatList, RefreshControl, ScrollView, View } from "react-native";
 import { type CardSession, SessionCard } from "@/components/session-card";
-import { Chip, ErrorState, Loading } from "@/components/ui";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { semantic } from "@salle/ui";
+import { Chip, EmptyState, ErrorState, Loading, Skeleton } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import { useMember } from "@/lib/member";
 import { planningDays } from "@/lib/planning";
@@ -109,7 +111,16 @@ export default function PlanningScreen() {
   if (state.status !== "ready" || !gym)
     return <ErrorState message={t("common.unexpectedError")} onRetry={refreshMember} />;
   if (failed && !sessions) return <ErrorState message={t("planning.loadError")} onRetry={load} />;
-  if (!sessions) return <Loading />;
+  if (!sessions)
+    return (
+      <View className="gap-3 px-4 pt-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-3/4" />
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </View>
+    );
 
   const selectedDay = days.find((d) => d.key === dayKey) ?? days[0];
   const disciplines = [...new Map(sessions.map((s) => [s.discipline_id, s.disciplines])).entries()];
@@ -144,6 +155,7 @@ export default function PlanningScreen() {
               <Chip
                 key={day.key}
                 label={day.label}
+                sublabel={day.date || undefined}
                 selected={day.key === selectedDay?.key}
                 onPress={() => setDayKey(day.key)}
               />
@@ -191,7 +203,17 @@ export default function PlanningScreen() {
         </View>
       }
       ListEmptyComponent={
-        <Text className="px-4 py-8 text-center text-neutral-500">{t("planning.empty")}</Text>
+        <EmptyState
+          icon={
+            <Ionicons
+              name="calendar-clear-outline"
+              size={22}
+              color={semantic["muted-foreground"]}
+            />
+          }
+          title={t("planning.empty")}
+          body={t("planning.emptyHint")}
+        />
       }
       renderItem={({ item }) => (
         <SessionCard

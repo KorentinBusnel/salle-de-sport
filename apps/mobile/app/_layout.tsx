@@ -1,7 +1,8 @@
 import "../global.css";
-import { colors } from "@salle/ui";
+import { semantic } from "@salle/ui";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { ToastProvider } from "@/components/toast";
 import { Loading } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { t } from "@/lib/i18n";
@@ -18,9 +19,10 @@ function RootNavigator() {
   return (
     <Stack
       screenOptions={{
-        headerTintColor: colors.neutral[900],
-        headerStyle: { backgroundColor: colors.neutral[0] },
-        contentStyle: { backgroundColor: colors.neutral[50] },
+        headerTintColor: semantic.foreground,
+        headerStyle: { backgroundColor: semantic.card },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: semantic.background },
       }}
     >
       <Stack.Protected guard={!signedIn}>
@@ -42,8 +44,10 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MemberProvider>
-        <StatusBar style="dark" />
-        <RootNavigator />
+        <ToastProvider>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </ToastProvider>
       </MemberProvider>
     </AuthProvider>
   );

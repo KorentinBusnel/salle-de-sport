@@ -1,8 +1,10 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, RefreshControl, SectionList, Text, View } from "react-native";
-import { colors } from "@salle/ui";
-import { ErrorState, Loading } from "@/components/ui";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { BOOKING_STATUS_TONE } from "@salle/shared";
+import { colors, semantic, shadows } from "@salle/ui";
+import { EmptyState, ErrorState, Loading, StatusPill } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import { type MyBooking, useMember } from "@/lib/member";
 
@@ -66,11 +68,24 @@ export default function BookingsScreen() {
       contentContainerClassName="pb-8"
       renderSectionHeader={({ section }) => (
         <View>
-          <Text className="px-4 pb-2 pt-5 text-sm font-semibold uppercase tracking-wide text-neutral-700">
+          <Text className="px-4 pb-2 pt-5 text-sm font-semibold text-muted-foreground">
             {section.title}
           </Text>
           {section.data.length === 0 ? (
-            <Text className="px-4 pb-2 text-neutral-500">{section.empty}</Text>
+            section.key === "upcoming" ? (
+              <EmptyState
+                icon={
+                  <Ionicons
+                    name="calendar-outline"
+                    size={22}
+                    color={semantic["muted-foreground"]}
+                  />
+                }
+                title={section.empty}
+              />
+            ) : (
+              <Text className="px-4 pb-2 text-sm text-muted-foreground">{section.empty}</Text>
+            )
           ) : null}
         </View>
       )}
@@ -78,7 +93,8 @@ export default function BookingsScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push(`/session/${item.class_sessions.id}`)}
-          className="mx-4 mb-2 flex-row items-center gap-3 rounded-lg border border-neutral-100 bg-neutral-0 px-4 py-3 active:bg-neutral-50"
+          className="mx-4 mb-2 flex-row items-center gap-3 rounded-xl bg-card px-4 py-3 active:scale-[0.98] active:bg-muted"
+          style={{ boxShadow: shadows.border }}
         >
           <View
             className="h-9 w-1 rounded-full"
@@ -87,18 +103,21 @@ export default function BookingsScreen() {
             }}
           />
           <View className="flex-1">
-            <Text className="text-base font-medium text-neutral-900">
+            <Text className="text-base font-semibold text-foreground">
               {item.class_sessions.disciplines?.name}
             </Text>
-            <Text className="text-sm text-neutral-500">
+            <Text className="text-sm text-muted-foreground tabular-nums">
               {format.format(new Date(item.class_sessions.starts_at))}
             </Text>
           </View>
-          <Text className="text-sm font-medium text-neutral-700">
-            {item.status === "waitlisted"
-              ? `${t("bookings.status.waitlisted")} (${item.waitlist_position ?? "?"})`
-              : t(`bookings.status.${item.status}`)}
-          </Text>
+          <StatusPill
+            tone={BOOKING_STATUS_TONE[item.status]}
+            label={
+              item.status === "waitlisted"
+                ? `${t("bookings.status.waitlisted")} (${item.waitlist_position ?? "?"})`
+                : t(`bookings.status.${item.status}`)
+            }
+          />
         </Pressable>
       )}
     />

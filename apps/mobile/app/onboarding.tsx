@@ -28,11 +28,11 @@ export default function OnboardingScreen() {
 
   return (
     <ScrollView contentContainerClassName="gap-5 px-6 py-6">
-      <Text className="text-base text-neutral-700">{t("onboarding.body")}</Text>
+      <Text className="text-base text-foreground">{t("onboarding.body")}</Text>
       <View className="gap-2">
         <Checkbox label={t("auth.acceptTerms")} checked={terms} onChange={setTerms} />
         <Checkbox label={t("auth.acceptWaiver")} checked={waiver} onChange={setWaiver} />
-        <Text className="text-xs text-neutral-500">{t("auth.legalPending")}</Text>
+        <Text className="text-xs text-muted-foreground">{t("auth.legalPending")}</Text>
       </View>
       {error ? <Notice tone="error">{error}</Notice> : null}
       <Button

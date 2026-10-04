@@ -64,7 +64,7 @@ export default function SignupScreen() {
       className="flex-1"
     >
       <ScrollView contentContainerClassName="gap-5 px-6 py-6">
-        <Text className="text-base text-neutral-500">{t("auth.signupSubtitle")}</Text>
+        <Text className="text-base text-muted-foreground">{t("auth.signupSubtitle")}</Text>
         <View className="gap-4">
           <Field
             label={t("auth.firstName")}
@@ -98,7 +98,7 @@ export default function SignupScreen() {
         <View className="gap-2">
           <Checkbox label={t("auth.acceptTerms")} checked={terms} onChange={setTerms} />
           <Checkbox label={t("auth.acceptWaiver")} checked={waiver} onChange={setWaiver} />
-          <Text className="text-xs text-neutral-500">{t("auth.legalPending")}</Text>
+          <Text className="text-xs text-muted-foreground">{t("auth.legalPending")}</Text>
         </View>
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
         <Button label={t("auth.signup")} onPress={submit} busy={busy} />

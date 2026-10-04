@@ -143,12 +143,12 @@ create temp table seed_coaches (
   employment public.employment_type, rate_cents int, bio text
 );
 insert into seed_coaches values
-  ('c1', 'coach1@demo.local', 'Julien', 'Morel', array['crossfit','hyrox'], 'employee', 2400, 'CrossFit L2, ancien rugbyman.'),
-  ('c2', 'coach2@demo.local', 'Sarah', 'Benali', array['crossfit','renfo'], 'employee', 2400, 'Spécialiste haltérophilie et mobilité.'),
+  ('c1', 'coach1@demo.local', 'Julien', 'Morel', array['crossfit','hyrox'], 'freelance', 3200, 'CrossFit L2, ancien rugbyman.'),
+  ('c2', 'coach2@demo.local', 'Sarah', 'Benali', array['crossfit','renfo'], 'freelance', 3200, 'Spécialiste haltérophilie et mobilité.'),
   ('c3', 'coach3@demo.local', 'Maxime', 'Roux', array['hyrox','run'], 'freelance', 3800, 'Finisher Hyrox Elite 15, coach running.'),
   ('c4', 'coach4@demo.local', 'Inès', 'Garnier', array['renfo','run'], 'freelance', 3500, 'Préparatrice physique, marathonienne.'),
   ('c5', 'coach5@demo.local', 'Thomas', 'Faure', array['crossfit'], 'freelance', 3500, 'Coach CrossFit, créneaux du matin.'),
-  ('c6', 'coach6@demo.local', 'Clara', 'Duval', array['renfo','crossfit'], 'employee', 2200, 'Renforcement, prévention des blessures.');
+  ('c6', 'coach6@demo.local', 'Clara', 'Duval', array['renfo','crossfit'], 'freelance', 3000, 'Renforcement, prévention des blessures.');
 
 -- Comptes d'authentification (mot de passe : demo1234), hachage calculé une seule fois.
 create temp table seed_users as

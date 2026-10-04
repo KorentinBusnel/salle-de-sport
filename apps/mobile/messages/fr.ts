@@ -156,5 +156,8 @@ export const fr = {
     invalid_transition: "Changement de statut impossible.",
     invalid_input: "Informations incomplètes.",
     duplicate_member: "Cette fiche existe déjà.",
+    session_ended: "La séance est terminée.",
+    coach_not_found: "Coach introuvable.",
+    same_coach: "Même coach.",
   },
 } as const;

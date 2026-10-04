@@ -68,6 +68,9 @@ export const BOOKING_ERROR_CODES = [
   "invalid_transition",
   "invalid_input",
   "duplicate_member",
+  "session_ended",
+  "coach_not_found",
+  "same_coach",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

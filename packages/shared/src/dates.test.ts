@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  monthRange,
   zonedDateKey,
   zonedDayRange,
   zonedMinutesOfDay,
@@ -86,5 +87,24 @@ describe("zonedDateKey et zonedMinutesOfDay", () => {
 
   it("zonedStartOfDateKey renvoie minuit local", () => {
     expect(zonedStartOfDateKey("2026-10-25", PARIS).toISOString()).toBe("2026-10-24T22:00:00.000Z");
+  });
+});
+
+describe("monthRange", () => {
+  it("donne les bornes du mois et les mois voisins", () => {
+    expect(monthRange("2026-02")).toEqual({
+      from: "2026-02-01",
+      to: "2026-02-28",
+      previous: "2026-01",
+      next: "2026-03",
+    });
+    expect(monthRange("2028-02")?.to).toBe("2028-02-29");
+    expect(monthRange("2026-12")?.next).toBe("2027-01");
+    expect(monthRange("2026-01")?.previous).toBe("2025-12");
+  });
+
+  it("refuse un mois invalide", () => {
+    expect(monthRange("2026-13")).toBeNull();
+    expect(monthRange("oct")).toBeNull();
   });
 });

@@ -106,3 +106,24 @@ export function zonedWeek(
   if (!first || !last) throw new Error("semaine invalide");
   return { start: first.start, end: last.end, days };
 }
+
+/** Mois « AAAA-MM » : premier et dernier jour civils (« AAAA-MM-JJ »), mois précédent et suivant. */
+export function monthRange(monthKey: string): {
+  from: string;
+  to: string;
+  previous: string;
+  next: string;
+} | null {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthKey);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const key = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
+  return {
+    from: `${key(year, month)}-01`,
+    to: `${key(year, month)}-${String(lastDay).padStart(2, "0")}`,
+    previous: month === 1 ? key(year - 1, 12) : key(year, month - 1),
+    next: month === 12 ? key(year + 1, 1) : key(year, month + 1),
+  };
+}

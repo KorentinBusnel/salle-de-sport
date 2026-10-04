@@ -1448,6 +1448,17 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      coach_hours: {
+        Args: { p_from: string; p_gym_id: string; p_to: string };
+        Returns: {
+          amount_cents: number;
+          coach_id: string;
+          display_name: string;
+          hourly_rate_cents: number;
+          minutes: number;
+          sessions: number;
+        }[];
+      };
       create_member: {
         Args: {
           p_email?: string;
@@ -1538,6 +1549,32 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      replace_session_coach: {
+        Args: { p_coach_id: string; p_note?: string; p_session_id: string };
+        Returns: {
+          booked_count: number;
+          cancellation_reason: string | null;
+          capacity: number;
+          coach_id: string | null;
+          created_at: string;
+          discipline_id: string;
+          ends_at: string;
+          gym_id: string;
+          id: string;
+          room_id: string | null;
+          starts_at: string;
+          status: Database["public"]["Enums"]["session_status"];
+          template_id: string | null;
+          updated_at: string;
+          waitlist_count: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "class_sessions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       reset_attendance: {
         Args: { p_booking_id: string };
         Returns: {
@@ -1576,6 +1613,17 @@ export type Database = {
           phone: string;
           status: Database["public"]["Enums"]["member_status"];
           total_count: number;
+        }[];
+      };
+      session_coach_options: {
+        Args: { p_session_id: string };
+        Returns: {
+          available: boolean;
+          coach_id: string;
+          display_name: string;
+          has_conflict: boolean;
+          is_current: boolean;
+          teaches_discipline: boolean;
         }[];
       };
       set_attendance: {

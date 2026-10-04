@@ -162,5 +162,7 @@ export const fr = {
     campaign_not_found: "Campagne introuvable.",
     campaign_not_editable: "Campagne déjà envoyée.",
     segment_not_found: "Segment introuvable.",
+    account_not_found: "Compte introuvable.",
+    cannot_remove_self: "Action impossible sur votre propre rôle.",
   },
 } as const;

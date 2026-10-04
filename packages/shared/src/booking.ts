@@ -74,6 +74,8 @@ export const BOOKING_ERROR_CODES = [
   "campaign_not_found",
   "campaign_not_editable",
   "segment_not_found",
+  "account_not_found",
+  "cannot_remove_self",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

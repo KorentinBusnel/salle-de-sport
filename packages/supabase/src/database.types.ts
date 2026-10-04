@@ -1518,6 +1518,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_team_role: {
+        Args: {
+          p_email: string;
+          p_gym_id: string;
+          p_role: Database["public"]["Enums"]["gym_role"];
+        };
+        Returns: string;
+      };
       adjust_credits: {
         Args: { p_delta: number; p_member_id: string; p_note?: string };
         Returns: number;
@@ -1707,6 +1715,7 @@ export type Database = {
         Args: { p_from: string; p_gym_id: string; p_to: string };
         Returns: number;
       };
+      gym_kpis: { Args: { p_from: string; p_gym_id: string; p_to: string }; Returns: Json };
       join_gym: {
         Args: { p_terms_accepted: boolean; p_waiver_accepted: boolean };
         Returns: {
@@ -1766,6 +1775,14 @@ export type Database = {
           member_name: string;
           subject: string;
         }[];
+      };
+      remove_team_role: {
+        Args: {
+          p_gym_id: string;
+          p_profile_id: string;
+          p_role: Database["public"]["Enums"]["gym_role"];
+        };
+        Returns: undefined;
       };
       replace_session_coach: {
         Args: { p_coach_id: string; p_note?: string; p_session_id: string };
@@ -1958,6 +1975,16 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      team_members: {
+        Args: { p_gym_id: string };
+        Returns: {
+          email: string;
+          first_name: string;
+          last_name: string;
+          profile_id: string;
+          roles: Database["public"]["Enums"]["gym_role"][];
+        }[];
       };
     };
     Enums: {

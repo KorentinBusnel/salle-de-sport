@@ -1,0 +1,251 @@
+# BRIEF — Plateforme de gestion de salle de sport (CrossFit · Hyrox · Renfo · Run)
+
+> Document de référence pour Claude Code. À lire en entier avant toute implémentation.
+> Toujours commencer une nouvelle phase en **plan mode**, valider le plan, puis implémenter.
+> Les décisions prises en cours de route sont consignées en **section 12**.
+
+---
+
+## 1. Contexte & objectifs
+
+Une salle de sport multi-disciplines (CrossFit, Hyrox, renforcement, running club) veut remplacer son outil actuel (type Bsport) par sa propre plateforme.
+
+**Deux produits :**
+
+| Produit | Utilisateurs | Rôle |
+|---|---|---|
+| **App mobile adhérent** (iOS + Android) | Adhérents | Réserver des cours, gérer et payer son abonnement, voir ses paiements |
+| **Back office web** | Gérants, coachs, staff accueil | Exploitation quotidienne + **vision 360°** de l'activité |
+
+**Différenciation vs Bsport :** un *Hub 360°* qui agrège Gmail, WhatsApp, Pennylane et Stripe, avec un assistant Claude capable de répondre à des questions sur l'activité (« Combien de résiliations ce mois-ci et pourquoi ? », « Quels adhérents n'ont pas réservé depuis 3 semaines ? ») et de proposer des actions (relance, message, campagne).
+
+**Critères de succès MVP :**
+- Un adhérent peut s'inscrire, souscrire un abonnement, payer et réserver un cours en < 3 minutes.
+- Un gérant pilote planning, abonnements et paiements sans autre outil.
+- Le Hub 360° affiche une fiche adhérent unifiée (réservations, paiements, échanges email/WhatsApp).
+
+---
+
+## 2. Stack technique
+
+| Couche | Choix | Remarques |
+|---|---|---|
+| App mobile | **Expo** (React Native, TypeScript, Expo Router) | Build & publication via **EAS Build / EAS Submit**, mises à jour OTA via **EAS Update** |
+| Back office | **Next.js** (App Router, TypeScript) | Hébergé sur **Vercel** |
+| UI back office | Tailwind CSS + shadcn/ui | Tables : TanStack Table ; calendrier : FullCalendar ou équivalent |
+| UI mobile | **NativeWind** (Tailwind pour RN) — *décidé* | Mêmes classes que le back office ; tokens partagés via `packages/ui` |
+| Backend / BDD | **Supabase** : Postgres, Auth, Storage, Realtime, Edge Functions, pg_cron | Row Level Security obligatoire sur toutes les tables |
+| Paiements | **Stripe** : Billing (abonnements), Checkout / Payment Sheet, Customer Portal, webhooks | CB + prélèvement SEPA |
+| Emails transactionnels | Resend (ou Postmark) + React Email | Distinct de Gmail (Gmail = boîte du gérant) |
+| IA | **API Claude** (Anthropic) avec tool use | Assistant du Hub 360° |
+| Intégrations | Gmail API, WhatsApp Business Cloud API (Meta), API Pennylane | Voir section 7 |
+| Monorepo | **Turborepo** + pnpm | Partage des types et de la logique métier |
+| Qualité | ESLint, Prettier, Vitest, Playwright (web), Maestro (mobile) | CI GitHub Actions |
+| Monitoring | Sentry (web + mobile) | |
+
+**Pourquoi Vercel :** pertinent pour le back office Next.js (déploiements de preview par PR, intégration native Supabase). Il n'héberge pas l'app mobile : celle-ci passe par EAS. Les traitements longs ou planifiés (synchros, webhooks) vivent dans Supabase Edge Functions + pg_cron, pas dans les fonctions Vercel.
+
+**Paiement dans l'app mobile :** l'abonnement à une salle est un service consommé physiquement, donc Stripe est autorisé (pas d'obligation d'achat in-app Apple/Google). Le préciser dans les notes de revue App Store.
+
+---
+
+## 3. Architecture du repo
+
+```
+/
+├── apps/
+│   ├── mobile/            # Expo (adhérents)
+│   └── backoffice/        # Next.js (gérants, coachs)
+├── packages/
+│   ├── shared/            # types, schémas Zod, logique métier (règles de réservation, crédits)
+│   ├── supabase/          # client typé + types générés (supabase gen types)
+│   └── ui/                # tokens de design partagés (couleurs, typo)
+├── supabase/
+│   ├── migrations/        # SQL versionné — seule source de vérité du schéma
+│   ├── functions/         # Edge Functions (stripe-webhook, sync-gmail, sync-pennylane, whatsapp-webhook, ai-assistant…)
+│   └── seed.sql           # données de démo réalistes
+├── BRIEF.md
+└── CLAUDE.md              # conventions de code (à générer en phase 0)
+```
+
+**Principes :**
+- Toute règle métier (annulation tardive, décompte de crédits, liste d'attente) est codée **une seule fois** dans `packages/shared` ou en SQL, jamais dupliquée entre mobile et web.
+- Les opérations qui modifient la capacité ou les crédits (réserver, annuler, promouvoir depuis la liste d'attente) sont des **fonctions Postgres transactionnelles** avec verrou sur la session, pour éviter les surréservations en cas de requêtes simultanées. `packages/shared` porte la logique d'affichage et de validation côté client.
+- Les Edge Functions tournent sous **Deno** : `packages/shared` doit rester du TypeScript pur, sans dépendance propre à Node, pour pouvoir y être importé.
+- Les secrets (Stripe, Anthropic, Meta, Google, Pennylane) ne sont **jamais** côté client : uniquement Edge Functions ou routes serveur Next.js.
+- Prévoir le **multi-salles** dès le schéma (`gym_id` sur les tables métier), même si une seule salle au lancement.
+
+---
+
+## 4. Modèle de données (première version)
+
+| Table | Champs clés |
+|---|---|
+| `gyms` | nom, adresse, fuseau, paramètres (délai d'annulation, pénalités) |
+| `profiles` | lien `auth.users`, téléphone, date de naissance, contact d'urgence |
+| *rôles par salle* | table de liaison profil × salle × rôle (`member`, `coach`, `staff`, `manager`, `admin`) : un même profil peut avoir des rôles différents selon la salle. `staff` = accueil (cf. §6). Nom et forme exacte à fixer dans le plan de phase 0 |
+| `members` | salle, profil (**facultatif** : un prospect venu par email ou WhatsApp n'a pas de compte), prénom, nom, email, téléphone, statut (prospect, actif, suspendu, résilié), source d'acquisition, `stripe_customer_id`, tags |
+| `coaches` | profil, disciplines, taux horaire, statut (salarié / freelance) |
+| `disciplines` | CrossFit, Hyrox, Renfo, Run… couleur, description |
+| `rooms` | salle / zone, capacité |
+| `class_templates` | discipline, coach par défaut, jour, heure, durée, capacité — sert à générer les récurrences |
+| `class_sessions` | occurrence datée : template, coach, salle, capacité, statut (planifiée, annulée) |
+| `bookings` | session, membre, statut (confirmée, liste d'attente, annulée, no-show, présent), horodatages |
+| `plans` | offre, **type** (abonnement récurrent / carnet / séance unique), prix, `stripe_price_id`, disciplines incluses, engagement ; pour un carnet : nombre de crédits et durée de validité |
+| `subscriptions` | membre, plan, `stripe_subscription_id`, statut, dates (abonnements récurrents uniquement) |
+| `credit_ledger` | membre, mouvement (+ achat de carnet, + renouvellement, − réservation, + recrédit sur annulation, − expiration), référence (paiement, réservation). Le solde de crédits = somme des mouvements |
+| `payments` | membre, montant, statut, `stripe_invoice_id`, date, moyen de paiement |
+| `coach_availabilities` / `coach_shifts` | planning coach, remplacements |
+| `interactions` | journal unifié du CRM : type (email, WhatsApp, appel, note), sens, résumé, lien vers la source |
+| `campaigns` | emailing / WhatsApp : segment, contenu, statut, statistiques |
+| `accounting_entries` | données Pennylane synchronisées (CA, charges, factures fournisseurs) |
+| `integrations` | jetons OAuth chiffrés (Supabase Vault), état de synchro |
+| `audit_log` | qui a fait quoi, quand |
+
+**RLS :**
+- Un `member` ne lit que ses propres données et le planning public.
+- Un `coach` lit ses sessions, la liste des inscrits de ses cours et son planning.
+- Un `staff` (accueil) lit et gère réservations et fiches adhérents de sa salle, sans données financières.
+- Un `manager` lit et écrit tout ce qui concerne sa salle.
+
+---
+
+## 5. App mobile adhérent (Expo)
+
+### Parcours prioritaires
+1. **Onboarding** : inscription (email magic link + Sign in with Apple / Google), profil, acceptation CGV et décharge de responsabilité.
+2. **Abonnement** : catalogue d'offres → paiement via Stripe Payment Sheet → abonnement actif immédiatement (cas du SEPA : voir §11).
+3. **Planning** : vue semaine filtrable par discipline / coach, places restantes en temps réel (Supabase Realtime).
+4. **Réservation** : réserver, annuler (règle du délai), liste d'attente avec promotion automatique, ajout au calendrier du téléphone.
+5. **Mon compte** : abonnement en cours, crédits restants, historique des paiements et factures PDF, mise à jour du moyen de paiement (Stripe Customer Portal), pause / résiliation selon les règles du plan.
+6. **Notifications push** (Expo Notifications) : rappel avant le cours, place libérée en liste d'attente, échec de paiement.
+
+### V2 (hors MVP)
+Check-in par QR code, suivi des performances (benchmarks CrossFit, temps Hyrox, allures running), parrainage, boutique.
+
+---
+
+## 6. Back office web (Next.js)
+
+### Modules classiques
+| Module | Fonctions |
+|---|---|
+| **Dashboard** | KPIs du jour : réservations, taux de remplissage, nouveaux adhérents, paiements échoués, MRR |
+| **Planning des cours** | Vue calendrier semaine / jour, création de cours récurrents, glisser-déposer, annulation avec notification des inscrits |
+| **Réservations** | Liste des inscrits par cours, pointage des présences, no-shows, ajout manuel d'un adhérent |
+| **Coachs** | Fiches, disciplines, disponibilités, planning, remplacements, heures réalisées (export pour la paie) |
+| **Abonnements & offres** | Création des plans (synchronisés avec Stripe Products / Prices), gestion des abonnements, pauses, remboursements, codes promo |
+| **Paiements** | Liste, filtres, relance des impayés (dunning Stripe + relance manuelle) |
+| **CRM** | Fiches adhérents et prospects, pipeline (lead → essai → abonné → résilié), tags, segments dynamiques |
+| **Emailing** | Campagnes vers un segment, modèles, automatisations (bienvenue, relance inactifs, anniversaire, fin d'engagement) |
+| **Paramètres** | Salle, règles de réservation, rôles et accès staff, intégrations |
+
+### Rôles
+- **Gérant / admin** : accès complet.
+- **Coach** : son planning, ses cours, pointage des présences, fiches de ses adhérents (lecture seule, sans données financières).
+- **Accueil** (rôle `staff`, optionnel) : réservations et fiches adhérents, sans finances.
+
+---
+
+## 7. Hub 360° — la différenciation
+
+Objectif : une seule vue qui réunit tout ce qui se passe autour d'un adhérent et de la salle, avec un assistant Claude pour interroger et agir.
+
+### 7.1 Connecteurs
+| Source | Mécanisme | Ce qu'on récupère | Ce qu'on peut faire |
+|---|---|---|---|
+| **Stripe** | Webhooks → Edge Function `stripe-webhook` | Abonnements, factures, paiements, échecs | Relancer, rembourser (avec validation humaine) |
+| **Gmail** | OAuth Google (scopes minimum) + Gmail API, synchro périodique / push Pub/Sub | Fils d'échange avec adhérents et prospects, rattachés par adresse email | Créer un brouillon de réponse |
+| **WhatsApp** | WhatsApp Business Cloud API (Meta) + webhook entrant | Messages entrants / sortants rattachés par numéro | Envoyer un message (modèles approuvés hors fenêtre 24 h) |
+| **Pennylane** | API Pennylane, synchro quotidienne via pg_cron | CA, charges, factures fournisseurs, trésorerie | Lecture seule au MVP |
+
+Tous les échanges sont normalisés dans `interactions` et rattachés à la fiche adhérent → **timeline unifiée**. Un échange avec une adresse ou un numéro inconnu crée une fiche `members` au statut prospect.
+
+**Point d'attention Gmail :** les scopes de lecture Gmail sont classés « restreints » par Google. Une application publique doit passer une vérification avec audit de sécurité ; en mode test, les jetons de rafraîchissement expirent au bout de 7 jours. Si la salle utilise Google Workspace, une application de type « interne » au domaine échappe à ces contraintes. → dépend de la question « boîte partagée ou individuelle » (§11).
+
+### 7.2 Assistant Claude
+- Edge Function `ai-assistant` appelant l'API Claude avec **tool use**.
+- Outils exposés à Claude (fonctions serveur, jamais d'accès SQL libre) : `search_members`, `get_member_timeline`, `get_kpis(period)`, `get_class_fill_rate`, `get_churn_list`, `get_financials(period)`, `draft_email`, `draft_whatsapp`, `create_segment`.
+- **Toute action sortante** (envoi d'email, WhatsApp, remboursement) passe par une **validation humaine** dans l'interface : Claude prépare, le gérant valide.
+- Cas d'usage cibles :
+  - « Résume-moi la semaine » → remplissage, nouveaux adhérents, résiliations, impayés, messages non traités.
+  - « Qui risque de partir ? » → adhérents sans réservation depuis X jours, baisse de fréquence, échec de paiement.
+  - « Marge du mois ? » → croisement Stripe (revenus) × Pennylane (charges) × heures coachs.
+  - Fiche adhérent : résumé automatique de l'historique et suggestion de prochaine action.
+- **Brief hebdomadaire** automatique (pg_cron, lundi matin) envoyé au gérant.
+
+### 7.3 Données & conformité
+- Jetons OAuth chiffrés dans Supabase Vault.
+- Ne transmettre à Claude que les données nécessaires à la question ; journaliser les appels dans `audit_log`.
+- RGPD : consentement marketing distinct (email / WhatsApp), export et suppression des données d'un adhérent, durée de conservation définie, registre des traitements.
+
+---
+
+## 8. Stripe — règles d'implémentation
+
+- Un `Customer` Stripe par adhérent, créé à l'inscription.
+- Les `Products` / `Prices` sont créés depuis le back office et synchronisés (Stripe = source de vérité pour la facturation, Supabase = miroir).
+- Abonnements récurrents → Stripe Billing. **Carnets et séances uniques → paiement unique** (Payment Sheet / Checkout en mode paiement), qui alimente `credit_ledger`.
+- Webhooks à traiter a minima : `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed`, `checkout.session.completed`, `payment_intent.succeeded`.
+- Webhooks **idempotents** (stocker l'`event.id` traité).
+- Moyens de paiement : CB + SEPA Direct Debit. Un prélèvement SEPA n'est confirmé qu'après plusieurs jours ouvrés et peut échouer après coup (voir §11).
+- Customer Portal Stripe pour la mise à jour du moyen de paiement et le téléchargement des factures.
+- Tout développer en **mode test** avec Stripe CLI pour les webhooks en local.
+
+---
+
+## 9. Phasage
+
+| Phase | Contenu | Livrable |
+|---|---|---|
+| **0 — Fondations** | Monorepo, Supabase (projet de dev), schéma initial + RLS, seed, CI, déploiement Vercel du back office, build EAS de dev, `CLAUDE.md` | Squelette qui tourne de bout en bout |
+| **1 — Cœur réservation** | Planning, cours récurrents, réservation / annulation / liste d'attente (mobile + back office), Auth | Un adhérent réserve un cours créé par le gérant |
+| **2 — Paiements** | Stripe Billing, offres, Payment Sheet, webhooks, historique des paiements, Customer Portal, relances | Parcours abonnement → paiement → réservation complet |
+| **3 — Back office complet** | Coachs et leur planning, CRM, segments, emailing et automatisations, dashboard KPIs | Le gérant n'a plus besoin de l'ancien outil |
+| **4 — Hub 360°** | Connecteurs Gmail, WhatsApp, Pennylane, timeline unifiée, assistant Claude, brief hebdo | Vision 360° + assistant |
+| **5 — Mise en production** | Tests E2E, RGPD, publication App Store / Play Store, migration des données de l'ancien outil | Lancement |
+
+Chaque phase se termine par : tests verts, seed à jour, démo des parcours, mise à jour de ce brief si une décision a changé.
+
+---
+
+## 10. Consignes de travail pour Claude Code
+
+1. **Planifier avant de coder** : pour chaque phase, proposer un plan (fichiers, migrations, tâches), attendre validation.
+2. **Migrations SQL** uniquement via `supabase/migrations`, jamais de modification manuelle du schéma. Régénérer les types après chaque migration.
+3. **RLS testées** : chaque nouvelle table a ses policies et un test qui vérifie qu'un membre ne voit pas les données d'un autre.
+4. **TypeScript strict** partout ; validation des entrées avec Zod (partagé dans `packages/shared`).
+5. **Pas de secret côté client.** Variables d'environnement documentées dans `.env.example`. Aucun secret commité dans le dépôt.
+6. **Petits commits** thématiques, une PR par fonctionnalité.
+7. **Données de démo** réalistes : ~150 adhérents, 6 coachs, 4 disciplines, 3 mois d'historique de réservations et paiements.
+8. Interface en **français** ; prévoir l'i18n (clés de traduction) sans traduire au MVP.
+9. En cas d'ambiguïté métier, **poser la question** plutôt que d'inventer une règle.
+
+---
+
+## 11. Questions ouvertes
+
+Aucune ne bloque la phase 0 (le schéma reste générique : règles de réservation dans les paramètres de la salle, statut coach en champ, `gym_id` partout). Chacune est à trancher au début de la phase indiquée.
+
+- [ ] *(phase 1)* Une seule salle ou plusieurs sites à court terme ?
+- [ ] *(phase 1)* Règles de réservation : délai d'annulation, pénalité no-show, nombre max de réservations simultanées ?
+- [ ] *(phase 2)* Types d'offres exacts (illimité, carnets, découverte, étudiants, entreprises) et durée d'engagement ? Durée de validité des carnets ?
+- [ ] *(phase 2)* **SEPA** : accès ouvert dès la souscription (risque d'impayé découvert quelques jours plus tard) ou seulement après confirmation du prélèvement ?
+- [ ] *(phase 3)* Coachs salariés ou freelances (impact sur le suivi des heures et l'export paie) ?
+- [ ] *(phase 3/5)* Remplace-t-on totalement Bsport ? Si oui, quelles données migrer et sous quel format d'export ?
+- [ ] *(phase 4)* Numéro WhatsApp Business dédié disponible et compte Meta Business vérifié ?
+- [ ] *(phase 4)* Gmail : boîte partagée de la salle ou boîtes individuelles des gérants ? La salle est-elle sur Google Workspace (cf. §7.1) ?
+- [ ] *(phase 4)* Budget de fonctionnement mensuel visé (Supabase, Vercel, EAS, API Claude, WhatsApp) ?
+- [ ] *(dès que possible)* Charte graphique / identité de la salle disponible ? À défaut, palette provisoire dans `packages/ui`.
+
+---
+
+## 12. Journal des décisions
+
+| Date | Décision |
+|---|---|
+| 2026-10-04 | **Environnement de dev** : sessions Claude Code dans le cloud (claude.ai/code) sur un dépôt GitHub. Le poste local n'a ni Node, ni Git, ni Docker, ni droits admin. |
+| 2026-10-04 | **Supabase** : vérifier en début de phase 0 si Docker est disponible dans l'environnement cloud (Supabase local). À défaut, utiliser un projet Supabase en ligne dédié au développement, distinct de la production. |
+| 2026-10-04 | **UI mobile** : NativeWind. |
+| 2026-10-04 | **Comptes** : GitHub existe. Supabase, Vercel et Expo (EAS) sont à créer pendant la phase 0. Les clés sont saisies dans la configuration de l'environnement cloud, jamais dans le dépôt. |
+| 2026-10-04 | **Modèle de données** : rôles portés par salle (profil × salle × rôle), ajout du rôle `staff` (accueil), `members` utilisable sans compte (prospects), `plans.type` (récurrent / carnet / séance), registre `credit_ledger`, réservations via fonctions Postgres transactionnelles. |

@@ -146,3 +146,26 @@ export async function markAllAttended(formData: FormData) {
     ),
   );
 }
+
+/** Remplacement du coach (gérant) : tracé dans coach_shifts, inscrits prévenus. */
+export async function replaceCoach(formData: FormData) {
+  const sessionId = uuid.parse(formData.get("sessionId"));
+  const coachId = uuid.parse(formData.get("coachId"));
+  const note = z
+    .string()
+    .trim()
+    .max(200)
+    .catch("")
+    .parse(formData.get("note") ?? "");
+  const supabase = await createClient();
+  await finish(
+    sessionId,
+    () =>
+      supabase.rpc("replace_session_coach", {
+        p_session_id: sessionId,
+        p_coach_id: coachId,
+        ...(note ? { p_note: note } : {}),
+      }),
+    "session.coachReplaced",
+  );
+}

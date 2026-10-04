@@ -3,6 +3,8 @@
 import {
   CalendarDaysIcon,
   ChevronsUpDownIcon,
+  ClockIcon,
+  DumbbellIcon,
   HouseIcon,
   LogOutIcon,
   MailIcon,
@@ -46,6 +48,8 @@ const ICONS = {
   templates: RepeatIcon,
   members: UsersIcon,
   messages: MailIcon,
+  coaches: DumbbellIcon,
+  hours: ClockIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

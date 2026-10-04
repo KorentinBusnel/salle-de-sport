@@ -5,6 +5,7 @@ import { AppTopbar } from "@/components/app-topbar";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getTeamContext, isFrontDeskRole, isManagerRole } from "@/lib/auth";
+import { getOwnCoachId } from "@/lib/coaches";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
@@ -41,12 +42,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     prospects = count ?? 0;
   }
 
+  // Coach sans autre rôle d'équipe : sa fiche (disponibilités) et ses heures.
+  const ownCoachId = manager ? null : await getOwnCoachId(context.userId, context.gym.id);
+
   const groups: NavGroup[] = [
     {
       label: t("nav.groupDaily"),
       items: [
         { href: "/", label: t("nav.today"), icon: "today" },
         { href: "/planning", label: t("nav.planning"), icon: "planning" },
+        ...(ownCoachId
+          ? [
+              {
+                href: `/coachs/${ownCoachId}`,
+                label: t("nav.myProfile"),
+                icon: "coaches" as const,
+              },
+              { href: "/coachs/heures", label: t("nav.myHours"), icon: "hours" as const },
+            ]
+          : []),
       ],
     },
   ];
@@ -67,6 +81,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(manager
           ? [
               { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" as const },
+              { href: "/coachs", label: t("nav.coaches"), icon: "coaches" as const },
               { href: "/messages", label: t("nav.messages"), icon: "messages" as const },
             ]
           : []),

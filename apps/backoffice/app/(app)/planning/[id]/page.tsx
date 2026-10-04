@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { isFrontDeskRole, isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters, initials } from "@/lib/format";
@@ -37,6 +38,7 @@ import {
   cancelSession,
   markAllAttended,
   markAttendance,
+  replaceCoach,
   resetAttendance,
   setAttendance,
 } from "./actions";
@@ -109,6 +111,22 @@ export default async function SessionPage({
       ? null
       : startsAt - settings.attendance_opens_minutes_before * 60_000;
   const attendanceOpen = attendanceOpensAt === null || now.getTime() >= attendanceOpensAt;
+
+  // Remplaçants possibles (gérant) : disponibles et compétents d'abord.
+  const canReplaceCoach = manager && scheduled && phase !== "past";
+  const coachOptions = canReplaceCoach
+    ? (
+        (await (await createClient()).rpc("session_coach_options", { p_session_id: session.id }))
+          .data ?? []
+      )
+        .filter((c) => !c.is_current)
+        .sort(
+          (a, b) =>
+            Number(b.available && !b.has_conflict) - Number(a.available && !a.has_conflict) ||
+            Number(b.teaches_discipline) - Number(a.teaches_discipline) ||
+            a.display_name.localeCompare(b.display_name),
+        )
+    : [];
 
   const memberName = (m: { first_name: string; last_name: string } | null) =>
     m ? `${m.first_name} ${m.last_name}` : t("common.none");
@@ -443,6 +461,38 @@ export default async function SessionPage({
                   action={bookMember}
                   full={full}
                 />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canReplaceCoach && coachOptions.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("session.replaceCoach")}</CardTitle>
+                <CardDescription>{t("session.replaceCoachHint")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form action={replaceCoach} className="grid gap-3">
+                  <input type="hidden" name="sessionId" value={session.id} />
+                  <Label htmlFor="replace-coach" className="sr-only">
+                    {t("session.newCoach")}
+                  </Label>
+                  <NativeSelect id="replace-coach" name="coachId" required className="w-full">
+                    {coachOptions.map((c) => (
+                      <NativeSelectOption key={c.coach_id} value={c.coach_id}>
+                        {c.display_name} ·{" "}
+                        {c.has_conflict
+                          ? t("session.coachBusy")
+                          : c.available
+                            ? t("session.coachAvailable")
+                            : t("session.coachUnavailable")}
+                        {c.teaches_discipline ? "" : ` · ${t("session.coachOtherDiscipline")}`}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                  <Input name="note" maxLength={200} placeholder={t("session.replaceNote")} />
+                  <SubmitButton variant="outline">{t("session.replaceCoachConfirm")}</SubmitButton>
+                </form>
               </CardContent>
             </Card>
           ) : null}

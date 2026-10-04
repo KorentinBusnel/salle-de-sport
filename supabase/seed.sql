@@ -571,3 +571,24 @@ update public.interactions i
 set occurred_at = o.created_at
 from public.outbound_messages o
 where i.source_ref = 'outbound:' || o.id;
+
+-- ---------------------------------------------------------------------------
+-- Emailing : modèles, segment et automatisations (désactivées) de démonstration
+-- ---------------------------------------------------------------------------
+
+insert into public.email_templates (id, gym_id, name, subject, body) values
+  (pg_temp.sid('tpl:welcome'), pg_temp.sid('gym'), 'Bienvenue', 'Bienvenue chez {salle}, {prenom} !',
+   E'Bonjour {prenom},\n\nVotre fiche est active : réservez vos premiers cours depuis l''app.\n\nÀ très vite,\nL''équipe {salle}'),
+  (pg_temp.sid('tpl:inactive'), pg_temp.sid('gym'), 'On vous attend', '{prenom}, on vous garde une place ?',
+   E'Bonjour {prenom},\n\nCela fait quelque temps que nous ne vous avons pas vu. Les créneaux de la semaine sont ouverts dans l''app.\n\nL''équipe {salle}'),
+  (pg_temp.sid('tpl:birthday'), pg_temp.sid('gym'), 'Anniversaire', 'Joyeux anniversaire {prenom} !',
+   E'Toute l''équipe {salle} vous souhaite un excellent anniversaire.');
+
+insert into public.segments (id, gym_id, name, filters) values
+  (pg_temp.sid('seg:inactive'), pg_temp.sid('gym'), 'Actifs inactifs depuis 14 jours',
+   '{"statuses": ["active"], "inactive_days": 14}');
+
+insert into public.automations (gym_id, kind, enabled, template_id, params) values
+  (pg_temp.sid('gym'), 'welcome', false, pg_temp.sid('tpl:welcome'), '{}'),
+  (pg_temp.sid('gym'), 'inactive', false, pg_temp.sid('tpl:inactive'), '{"days": 14}'),
+  (pg_temp.sid('gym'), 'birthday', false, pg_temp.sid('tpl:birthday'), '{}');

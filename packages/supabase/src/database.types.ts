@@ -101,6 +101,57 @@ export type Database = {
           },
         ];
       };
+      automations: {
+        Row: {
+          created_at: string;
+          enabled: boolean;
+          gym_id: string;
+          id: string;
+          kind: Database["public"]["Enums"]["automation_kind"];
+          last_run_at: string | null;
+          params: NonNullable<Json>;
+          template_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          enabled?: boolean;
+          gym_id: string;
+          id?: string;
+          kind: Database["public"]["Enums"]["automation_kind"];
+          last_run_at?: string | null;
+          params?: NonNullable<Json>;
+          template_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          enabled?: boolean;
+          gym_id?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["automation_kind"];
+          last_run_at?: string | null;
+          params?: NonNullable<Json>;
+          template_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "automations_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "automations_template_id_gym_id_fkey";
+            columns: ["template_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "email_templates";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
       bookings: {
         Row: {
           booked_at: string;
@@ -723,6 +774,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "disciplines_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      email_templates: {
+        Row: {
+          body: string;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          id: string;
+          name: string;
+          subject: string;
+          updated_at: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id: string;
+          id?: string;
+          name: string;
+          subject: string;
+          updated_at?: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id?: string;
+          id?: string;
+          name?: string;
+          subject?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "email_templates_gym_id_fkey";
             columns: ["gym_id"];
             isOneToOne: false;
             referencedRelation: "gyms";
@@ -1660,6 +1759,14 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      preview_template: {
+        Args: { p_body: string; p_gym_id: string; p_member_id?: string; p_subject: string };
+        Returns: {
+          body: string;
+          member_name: string;
+          subject: string;
+        }[];
+      };
       replace_session_coach: {
         Args: { p_coach_id: string; p_note?: string; p_session_id: string };
         Returns: {
@@ -1728,6 +1835,13 @@ export type Database = {
           total_count: number;
         }[];
       };
+      segment_audience: {
+        Args: { p_segment_id: string };
+        Returns: {
+          reachable: number;
+          targeted: number;
+        }[];
+      };
       segment_members: {
         Args: { p_segment_id: string };
         Returns: {
@@ -1752,6 +1866,30 @@ export type Database = {
           to: "members";
           isOneToOne: false;
           isSetofReturn: true;
+        };
+      };
+      send_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: {
+          channel: Database["public"]["Enums"]["campaign_channel"];
+          content: NonNullable<Json>;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          id: string;
+          name: string;
+          scheduled_at: string | null;
+          segment: NonNullable<Json>;
+          sent_at: string | null;
+          stats: NonNullable<Json>;
+          status: Database["public"]["Enums"]["campaign_status"];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "campaigns";
+          isOneToOne: true;
+          isSetofReturn: false;
         };
       };
       session_coach_options: {
@@ -1823,6 +1961,7 @@ export type Database = {
       };
     };
     Enums: {
+      automation_kind: "welcome" | "inactive" | "birthday";
       billing_interval: "month" | "year";
       booking_status: "confirmed" | "waitlisted" | "cancelled" | "no_show" | "attended";
       campaign_channel: "email" | "whatsapp";
@@ -1964,6 +2103,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      automation_kind: ["welcome", "inactive", "birthday"],
       billing_interval: ["month", "year"],
       booking_status: ["confirmed", "waitlisted", "cancelled", "no_show", "attended"],
       campaign_channel: ["email", "whatsapp"],

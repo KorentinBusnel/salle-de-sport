@@ -159,5 +159,8 @@ export const fr = {
     session_ended: "La séance est terminée.",
     coach_not_found: "Coach introuvable.",
     same_coach: "Même coach.",
+    campaign_not_found: "Campagne introuvable.",
+    campaign_not_editable: "Campagne déjà envoyée.",
+    segment_not_found: "Segment introuvable.",
   },
 } as const;

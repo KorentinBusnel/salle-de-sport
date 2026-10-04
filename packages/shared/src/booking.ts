@@ -71,6 +71,9 @@ export const BOOKING_ERROR_CODES = [
   "session_ended",
   "coach_not_found",
   "same_coach",
+  "campaign_not_found",
+  "campaign_not_editable",
+  "segment_not_found",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

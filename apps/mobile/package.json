@@ -24,6 +24,7 @@
     "expo-linking": "~57.0.11",
     "expo-router": "~57.0.24",
     "expo-status-bar": "~57.0.1",
+    "expo-updates": "~57.0.24",
     "nativewind": "^4.2.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -38,7 +39,9 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@babel/plugin-transform-react-jsx": "^7.29.7",
     "@types/react": "~19.2.18",
+    "babel-preset-expo": "~57.0.13",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   }

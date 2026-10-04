@@ -17,10 +17,10 @@ pnpm db:test        # tests RLS (pgTAP)
 
 Créés par `supabase/seed.sql`, mot de passe commun `demo1234` (base locale uniquement).
 
-| Compte | Rôle |
-| --- | --- |
-| `gerant@demo.local` | gérant |
-| `admin@demo.local` | admin |
-| `accueil@demo.local` | accueil |
-| `coach1@demo.local` … `coach6@demo.local` | coachs |
-| `adherent@demo.local` | adhérent avec abonnement illimité |
+| Compte                                    | Rôle                              |
+| ----------------------------------------- | --------------------------------- |
+| `gerant@demo.local`                       | gérant                            |
+| `admin@demo.local`                        | admin                             |
+| `accueil@demo.local`                      | accueil                           |
+| `coach1@demo.local` … `coach6@demo.local` | coachs                            |
+| `adherent@demo.local`                     | adhérent avec abonnement illimité |

@@ -105,6 +105,13 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `cancel_booking`, `set_attendance`, `cancel_session` (verrou `for update` sur la séance). Aucune
   écriture directe sur `bookings` pour `authenticated`. `supabase/tests/concurrency.sh` (lancé par
   `pnpm db:test` et en CI) vérifie l'absence de surréservation.
+- De même, créer une fiche, changer son statut, ajouter ou retirer des crédits : **uniquement via**
+  `create_member`, `set_member_status`, `adjust_credits` (pas d'insert sur `members` ni
+  `credit_ledger`, `update` limité aux colonnes de coordonnées).
+- **Stratégies** de la salle (`gyms.settings`, miroir `gymSettingsSchema`) : lues en SQL par
+  `private.gym_setting_int` / `gym_setting_bool`, désactivées par défaut. Le back office masque
+  une action désactivée (`getGymSettings`, `lib/settings.ts`), la base la refuse
+  (`strategy_disabled`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - Compteurs `class_sessions.booked_count` / `waitlist_count` : tenus par trigger, ne jamais les

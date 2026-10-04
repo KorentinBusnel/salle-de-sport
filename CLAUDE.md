@@ -118,8 +118,14 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `private.enqueue_message` (clé `dedupe_key` pour l'idempotence), qui l'ajoute aussi aux
   `interactions`. Pas d'envoi réel : un job `pg_cron` passe les messages `queued` → `logged`.
   Avis aux inscrits d'une séance : `private.notify_session_members`.
+- **Coachs d'une séance** : `session_coaches` / `template_coaches` font foi (plusieurs coachs,
+  `position` 0 = principal). `class_sessions.coach_id` et `class_templates.default_coach_id` ne
+  sont qu'un miroir tenu par trigger, pour les apps déjà publiées : ne jamais les écrire ni filtrer
+  dessus (utiliser `session_coaches!inner(coach_id)`). Modifier une séance ou un cours :
+  `update_session(id, changes, 'one' | 'following')`, `update_template`, `create_session` ;
+  schémas `classChangesSchema` / `templateChangesSchema` dans `packages/shared`.
 - Autres écritures métier **par fonctions** : `move_session` (déplacement, inscrits prévenus),
-  `replace_session_coach` (tracé dans `coach_shifts`), `send_campaign`, `add_team_role` /
+  `send_campaign`, `add_team_role` /
   `remove_team_role`. Lectures agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`,
   `filter_members` (filtres JSON = `segmentFiltersSchema` de `packages/shared`, droits de
   l'appelant), `session_coach_options`.
@@ -172,6 +178,10 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Réglages de la salle : `getGymSettings` (`lib/settings.ts`). Fiche coach de l'utilisateur :
   `getOwnCoachId` (`lib/coaches.ts`). Heure locale → instant : `zonedInstant` (shared), jamais
   « minuit + minutes » (jours de changement d'heure).
+- **Édition en place** (« à la Notion ») : `components/inline/editable-cell.tsx` (texte, nombre,
+  heure, date, couleur, liste, multi-sélection, interrupteur ; `askScope` pour « cette séance /
+  et les suivantes ») et `add-row.tsx`. L'action serveur reçoit `{ id, field, value, scope }`,
+  valide par Zod et renvoie `{ error, message?, count? }`.
 - Planning en glisser-déposer : `components/planning/week-dnd.tsx` (@dnd-kit) enveloppe la grille
   rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant `move_session`.
 - Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Flash } from "@/components/flash";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { PageHeader } from "@/components/page-header";
+import { DraggableSession, DroppableDay, WeekDnd } from "@/components/planning/week-dnd";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -29,6 +30,7 @@ import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { layoutDay } from "@/lib/week-layout";
+import { moveSession, previewMove } from "./move-actions";
 
 export const metadata: Metadata = { title: t("planning.title") };
 
@@ -175,6 +177,8 @@ export default async function PlanningPage({
     ) : null;
 
   const daySessions = sessions.filter((s) => s.dayKey === selectedKey);
+  // Glisser-déposer : gérant, séances à venir non annulées.
+  const canMove = isManagerRole(context.role);
 
   return (
     <div className="grid min-w-0 gap-6">
@@ -367,125 +371,157 @@ export default async function PlanningPage({
             )}
             aria-label={t("planning.weekView")}
           >
-            <div className="max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl bg-card shadow-border">
-              <div className="grid min-w-[56rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
-                <div className="sticky top-0 left-0 z-30 border-b bg-card" />
-                {week.days.map((day) => {
-                  const isToday = day.key === todayKey;
-                  return (
-                    <div
-                      key={day.key}
-                      aria-current={isToday ? "date" : undefined}
-                      className="sticky top-0 z-20 border-b border-l bg-card px-2 py-2 text-center text-sm font-medium"
-                    >
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-0.5",
-                          isToday && "bg-primary text-primary-foreground",
-                        )}
+            {canMove ? (
+              <p className="mb-2 text-xs text-muted-foreground">{t("planning.dragHint")}</p>
+            ) : null}
+            <WeekDnd
+              enabled={canMove}
+              pxPerMinute={PX_PER_MINUTE}
+              timeZone={tz}
+              actions={{ preview: previewMove, move: moveSession }}
+            >
+              <div className="max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl bg-card shadow-border">
+                <div className="grid min-w-[56rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
+                  <div className="sticky top-0 left-0 z-30 border-b bg-card" />
+                  {week.days.map((day) => {
+                    const isToday = day.key === todayKey;
+                    return (
+                      <div
+                        key={day.key}
+                        aria-current={isToday ? "date" : undefined}
+                        className="sticky top-0 z-20 border-b border-l bg-card px-2 py-2 text-center text-sm font-medium"
                       >
-                        {format.shortDay(day.start)}
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-0.5",
+                            isToday && "bg-primary text-primary-foreground",
+                          )}
+                        >
+                          {format.shortDay(day.start)}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  <div className="sticky left-0 z-10 bg-card" style={{ height: gridHeight }}>
+                    {hours.map((hour) => (
+                      <span
+                        key={hour}
+                        className="absolute right-2 text-xs text-muted-foreground tabular-nums"
+                        style={{ top: (hour - firstHour) * 60 * PX_PER_MINUTE + 2 }}
+                      >
+                        {`${hour} h`}
                       </span>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
 
-                <div className="sticky left-0 z-10 bg-card" style={{ height: gridHeight }}>
-                  {hours.map((hour) => (
-                    <span
-                      key={hour}
-                      className="absolute right-2 text-xs text-muted-foreground tabular-nums"
-                      style={{ top: (hour - firstHour) * 60 * PX_PER_MINUTE + 2 }}
-                    >
-                      {`${hour} h`}
-                    </span>
-                  ))}
-                </div>
-
-                {week.days.map((day) => {
-                  const isToday = day.key === todayKey;
-                  const placed = layoutDay(sessions.filter((s) => s.dayKey === day.key));
-                  return (
-                    <div
-                      key={day.key}
-                      className={cn("relative border-l", isToday && "bg-accent/40")}
-                      style={{ height: gridHeight }}
-                    >
-                      {hours.map((hour) => (
-                        <div
-                          key={hour}
-                          className="absolute inset-x-0 border-t border-dashed border-border"
-                          style={{ top: (hour - firstHour) * 60 * PX_PER_MINUTE }}
-                        />
-                      ))}
-                      {isToday && nowTop !== null ? (
-                        <div
-                          aria-hidden
-                          className="absolute inset-x-0 z-10 h-0.5 bg-destructive before:absolute before:-top-1 before:-left-1 before:size-2.5 before:rounded-full before:bg-destructive"
-                          style={{ top: nowTop }}
-                        />
-                      ) : null}
-                      {placed.map((session) => {
-                        const cancelled = session.status === "cancelled";
-                        const color = session.disciplines?.color ?? "var(--color-neutral-500)";
-                        return (
-                          <Link
-                            key={session.id}
-                            href={`/planning/${session.id}`}
-                            aria-label={ariaLabel(session)}
-                            className={cn(
-                              "absolute overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-xs leading-tight transition-[box-shadow] hover:z-20 hover:shadow-border-hover focus-visible:z-20 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                              cancelled && "opacity-50",
-                            )}
-                            style={{
-                              top: (session.startMinute - firstHour * 60) * PX_PER_MINUTE + 1,
-                              height: Math.max(
-                                28,
-                                (session.endMinute - session.startMinute) * PX_PER_MINUTE - 2,
-                              ),
-                              left: `calc(${(session.lane / session.lanes) * 100}% + 2px)`,
-                              width: `calc(${100 / session.lanes}% - 4px)`,
-                              borderLeftColor: color,
-                              backgroundColor: `color-mix(in oklab, ${color} 12%, var(--color-card))`,
-                            }}
-                          >
-                            <span
-                              className={cn(
-                                "block truncate font-medium",
-                                cancelled && "line-through",
-                              )}
+                  {week.days.map((day) => {
+                    const isToday = day.key === todayKey;
+                    const placed = layoutDay(sessions.filter((s) => s.dayKey === day.key));
+                    return (
+                      <DroppableDay
+                        key={day.key}
+                        dayKey={day.key}
+                        className={cn("relative border-l", isToday && "bg-accent/40")}
+                        style={{ height: gridHeight }}
+                      >
+                        {hours.map((hour) => (
+                          <div
+                            key={hour}
+                            className="absolute inset-x-0 border-t border-dashed border-border"
+                            style={{ top: (hour - firstHour) * 60 * PX_PER_MINUTE }}
+                          />
+                        ))}
+                        {isToday && nowTop !== null ? (
+                          <div
+                            aria-hidden
+                            className="absolute inset-x-0 z-10 h-0.5 bg-destructive before:absolute before:-top-1 before:-left-1 before:size-2.5 before:rounded-full before:bg-destructive"
+                            style={{ top: nowTop }}
+                          />
+                        ) : null}
+                        {placed.map((session) => {
+                          const cancelled = session.status === "cancelled";
+                          const color = session.disciplines?.color ?? "var(--color-neutral-500)";
+                          const movable =
+                            !cancelled && Date.parse(session.starts_at) > now.getTime();
+                          return (
+                            <DraggableSession
+                              key={session.id}
+                              movable={movable}
+                              drag={{
+                                sessionId: session.id,
+                                label: session.disciplines?.name ?? "",
+                                dayKey: session.dayKey,
+                                startMinute: session.startMinute,
+                                duration: session.endMinute - session.startMinute,
+                              }}
+                              className="absolute hover:z-20 focus-within:z-20"
+                              style={{
+                                top: (session.startMinute - firstHour * 60) * PX_PER_MINUTE + 1,
+                                height: Math.max(
+                                  28,
+                                  (session.endMinute - session.startMinute) * PX_PER_MINUTE - 2,
+                                ),
+                                left: `calc(${(session.lane / session.lanes) * 100}% + 2px)`,
+                                width: `calc(${100 / session.lanes}% - 4px)`,
+                              }}
                             >
-                              <span className="tabular-nums">{format.time(session.starts_at)}</span>{" "}
-                              {session.disciplines?.name}
-                            </span>
-                            <span className="block truncate text-foreground/70">
-                              {cancelled ? t("planning.cancelled") : session.coaches?.display_name}
-                            </span>
-                            {!cancelled ? (
-                              <span className="block truncate tabular-nums">
-                                {session.full ? (
-                                  <span className="font-semibold text-warning">
-                                    {t("planning.full")}
-                                  </span>
-                                ) : (
-                                  t("planning.places", {
-                                    booked: session.booked_count,
-                                    capacity: session.capacity,
-                                  })
+                              <Link
+                                href={`/planning/${session.id}`}
+                                aria-label={ariaLabel(session)}
+                                draggable={false}
+                                className={cn(
+                                  "block h-full overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-xs leading-tight transition-[box-shadow] hover:shadow-border-hover focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                                  cancelled && "opacity-50",
                                 )}
-                                {session.waitlist_count > 0
-                                  ? ` · ${t("planning.waitlistShort", { count: session.waitlist_count })}`
-                                  : ""}
-                              </span>
-                            ) : null}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                                style={{
+                                  borderLeftColor: color,
+                                  backgroundColor: `color-mix(in oklab, ${color} 12%, var(--color-card))`,
+                                }}
+                              >
+                                <span
+                                  className={cn(
+                                    "block truncate font-medium",
+                                    cancelled && "line-through",
+                                  )}
+                                >
+                                  <span className="tabular-nums">
+                                    {format.time(session.starts_at)}
+                                  </span>{" "}
+                                  {session.disciplines?.name}
+                                </span>
+                                <span className="block truncate text-foreground/70">
+                                  {cancelled
+                                    ? t("planning.cancelled")
+                                    : session.coaches?.display_name}
+                                </span>
+                                {!cancelled ? (
+                                  <span className="block truncate tabular-nums">
+                                    {session.full ? (
+                                      <span className="font-semibold text-warning">
+                                        {t("planning.full")}
+                                      </span>
+                                    ) : (
+                                      t("planning.places", {
+                                        booked: session.booked_count,
+                                        capacity: session.capacity,
+                                      })
+                                    )}
+                                    {session.waitlist_count > 0
+                                      ? ` · ${t("planning.waitlistShort", { count: session.waitlist_count })}`
+                                      : ""}
+                                  </span>
+                                ) : null}
+                              </Link>
+                            </DraggableSession>
+                          );
+                        })}
+                      </DroppableDay>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </WeekDnd>
           </section>
         </>
       )}

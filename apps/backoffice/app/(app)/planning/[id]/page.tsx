@@ -42,6 +42,7 @@ import {
   resetAttendance,
   setAttendance,
 } from "./actions";
+import { moveSessionForm } from "../move-actions";
 
 const SEATED = ["confirmed", "attended", "no_show"] as const;
 type Seated = (typeof SEATED)[number];
@@ -461,6 +462,40 @@ export default async function SessionPage({
                   action={bookMember}
                   full={full}
                 />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {manager && scheduled && phase === "upcoming" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("session.moveSession")}</CardTitle>
+                <CardDescription>{t("session.moveSessionHint")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form action={moveSessionForm} className="flex flex-wrap items-end gap-3">
+                  <input type="hidden" name="sessionId" value={session.id} />
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-muted-foreground">{t("session.moveDate")}</span>
+                    <Input
+                      type="date"
+                      name="date"
+                      required
+                      defaultValue={zonedDateKey(new Date(session.starts_at), tz)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-muted-foreground">{t("session.moveTime")}</span>
+                    <Input
+                      type="time"
+                      name="time"
+                      required
+                      step={900}
+                      defaultValue={format.time(session.starts_at)}
+                    />
+                  </label>
+                  <SubmitButton variant="outline">{t("session.moveSubmit")}</SubmitButton>
+                </form>
               </CardContent>
             </Card>
           ) : null}

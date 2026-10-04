@@ -84,6 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               { href: "/coachs", label: t("nav.coaches"), icon: "coaches" as const },
               { href: "/crm", label: t("nav.crm"), icon: "crm" as const },
               { href: "/segments", label: t("nav.segments"), icon: "segments" as const },
+              { href: "/emailing", label: t("nav.emailing"), icon: "emailing" as const },
               { href: "/messages", label: t("nav.messages"), icon: "messages" as const },
             ]
           : []),

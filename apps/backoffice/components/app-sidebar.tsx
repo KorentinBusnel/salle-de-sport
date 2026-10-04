@@ -9,6 +9,7 @@ import {
   KanbanIcon,
   HouseIcon,
   LogOutIcon,
+  MailPlusIcon,
   MailIcon,
   RepeatIcon,
   SettingsIcon,
@@ -54,6 +55,7 @@ const ICONS = {
   hours: ClockIcon,
   crm: KanbanIcon,
   segments: FilterIcon,
+  emailing: MailPlusIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

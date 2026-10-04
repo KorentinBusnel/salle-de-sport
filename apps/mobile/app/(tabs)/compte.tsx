@@ -1,5 +1,8 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { MEMBER_STATUS_TONE } from "@salle/shared";
-import { ScrollView, Text, View } from "react-native";
+import { semantic } from "@salle/ui";
+import { router } from "expo-router";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Button, Card, ErrorState, Loading, Notice, StatusPill } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import { useMember } from "@/lib/member";
@@ -64,6 +67,21 @@ export default function AccountScreen() {
       <Text className="px-1 text-sm text-muted-foreground">
         {t("account.upcomingLimit", { count: gym.settings.max_upcoming_bookings })}
       </Text>
+
+      <Pressable
+        onPress={() => router.push("/messages")}
+        accessibilityRole="button"
+        className="active:scale-[0.98]"
+      >
+        <Card className="flex-row items-center gap-3 px-4 py-3.5">
+          <Ionicons name="mail-outline" size={20} color={semantic.foreground} />
+          <View className="flex-1">
+            <Text className="text-base font-medium text-foreground">{t("messages.title")}</Text>
+            <Text className="text-xs text-muted-foreground">{t("messages.hint")}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={semantic["muted-foreground"]} />
+        </Card>
+      </Pressable>
 
       <Button
         label={t("account.signOut")}

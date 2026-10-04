@@ -70,6 +70,7 @@ export const fr = {
     templates: "Cours récurrents",
     members: "Adhérents",
     settings: "Paramètres",
+    messages: "Messages",
   },
   common: {
     save: "Enregistrer",
@@ -174,14 +175,15 @@ export const fr = {
     cancelSessionConfirm: "Annuler la séance",
     cancelReason: "Motif (visible des inscrits)",
     cancelReasonPlaceholder: "Ex. : coach absent",
-    cancelSessionHint: "Toutes les réservations seront annulées et les crédits rendus.",
+    cancelSessionHint:
+      "Toutes les réservations seront annulées, les crédits rendus et les inscrits prévenus par message.",
     notYourSession: "Vous ne voyez les inscrits que de vos propres séances.",
     booked: "Adhérent inscrit.",
     addedToWaitlist: "Séance complète : adhérent ajouté en liste d'attente.",
     bookingCancelled: "Réservation annulée.",
     attendanceSaved: "Présence enregistrée.",
     allAttendedSaved: "Tous les inscrits sont pointés présents.",
-    sessionCancelled: "Séance annulée.",
+    sessionCancelled: "Séance annulée, inscrits prévenus.",
     notFound: "Séance introuvable.",
   },
   bookingStatus: {
@@ -333,6 +335,34 @@ export const fr = {
     errors: {
       maxUpcoming: "Saisissez un nombre entier entre 1 et 50.",
       recommendedHours: "Saisissez un nombre entier d'heures entre 0 et 72.",
+    },
+  },
+  messages: {
+    title: "Messages",
+    count: "{count, plural, =0 {Aucun message} one {# message} other {# messages}}",
+    noDelivery:
+      "Aucun service d'emails n'est encore branché : les messages sont journalisés ici et visibles par chaque adhérent dans l'app, sans envoi réel.",
+    filters: "Filtrer les messages",
+    origin: "Origine",
+    status: "Statut",
+    allOrigins: "Toutes",
+    allStatuses: "Tous",
+    filter: "Filtrer",
+    empty: "Aucun message",
+    emptyHint: "Les avis aux inscrits, campagnes et automatisations apparaîtront ici.",
+    noAddress: "Cette fiche n'a pas d'email : le message n'est visible que dans l'app.",
+    origins: {
+      session_cancelled: "Séance annulée",
+      session_moved: "Séance déplacée",
+      coach_changed: "Changement de coach",
+      campaign: "Campagne",
+      automation: "Automatisation",
+    },
+    statuses: {
+      queued: "En file",
+      logged: "Journalisé",
+      sent: "Envoyé",
+      failed: "Échec",
     },
   },
   strategies: {

@@ -122,6 +122,12 @@ export const fr = {
     upcomingLimit: "Jusqu'à {count} réservations à venir.",
     signOut: "Se déconnecter",
   },
+  messages: {
+    title: "Messages",
+    hint: "Avis de la salle : séances annulées ou déplacées",
+    empty: "Aucun message",
+    emptyHint: "Les avis de la salle vous concernant apparaîtront ici.",
+  },
   bookingErrors: {
     session_not_found: "Séance introuvable.",
     session_cancelled: "Cette séance a été annulée.",

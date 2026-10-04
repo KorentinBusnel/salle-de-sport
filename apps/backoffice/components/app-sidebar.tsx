@@ -5,6 +5,7 @@ import {
   ChevronsUpDownIcon,
   HouseIcon,
   LogOutIcon,
+  MailIcon,
   RepeatIcon,
   SettingsIcon,
   UsersIcon,
@@ -44,6 +45,7 @@ const ICONS = {
   planning: CalendarDaysIcon,
   templates: RepeatIcon,
   members: UsersIcon,
+  messages: MailIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

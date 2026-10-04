@@ -35,6 +35,7 @@ function RootNavigator() {
       <Stack.Protected guard={signedIn && !needsOnboarding}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="session/[id]" options={{ title: t("session.title") }} />
+        <Stack.Screen name="messages" options={{ title: t("messages.title") }} />
       </Stack.Protected>
     </Stack>
   );

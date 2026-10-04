@@ -65,7 +65,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             ]
           : []),
         ...(manager
-          ? [{ href: "/planning/modeles", label: t("nav.templates"), icon: "templates" as const }]
+          ? [
+              { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" as const },
+              { href: "/messages", label: t("nav.messages"), icon: "messages" as const },
+            ]
           : []),
       ],
     });

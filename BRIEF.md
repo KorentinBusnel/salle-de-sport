@@ -173,6 +173,7 @@ Tous les échanges sont normalisés dans `interactions` et rattachés à la fich
   - « Marge du mois ? » → croisement Stripe (revenus) × Pennylane (charges) × heures coachs.
   - Fiche adhérent : résumé automatique de l'historique et suggestion de prochaine action.
 - **Brief hebdomadaire** automatique (pg_cron, lundi matin) envoyé au gérant.
+- **Barre de requête en langage naturel** (« Demander… », façon Claude) dans le back office : accessible depuis la barre du haut et par ⌘K, le gérant pose sa question (« Combien de no-shows ce mois-ci sur le CrossFit de 18 h 30 ? », « Qui n'est pas venu depuis 3 semaines ? ») et reçoit une réponse rédigée en streaming, avec liens vers les fiches et pages concernées. Elle s'appuie sur les mêmes outils serveur que l'assistant (jamais de SQL libre), respecte le rôle de l'utilisateur (RLS) et toute action sortante reste soumise à validation.
 
 ### 7.3 Données & conformité
 - Jetons OAuth chiffrés dans Supabase Vault.
@@ -200,9 +201,9 @@ Tous les échanges sont normalisés dans `interactions` et rattachés à la fich
 |---|---|---|
 | **0 — Fondations** | Monorepo, Supabase (projet de dev), schéma initial + RLS, seed, CI, déploiement Vercel du back office, build EAS de dev, `CLAUDE.md` | Squelette qui tourne de bout en bout |
 | **1 — Cœur réservation** | Planning, cours récurrents, réservation / annulation / liste d'attente (mobile + back office), Auth | Un adhérent réserve un cours créé par le gérant |
-| **2 — Paiements** | Stripe Billing, offres, Payment Sheet, webhooks, historique des paiements, Customer Portal, relances | Parcours abonnement → paiement → réservation complet |
-| **3 — Back office complet** | Coachs et leur planning, CRM, segments, emailing et automatisations, dashboard KPIs | Le gérant n'a plus besoin de l'ancien outil |
-| **4 — Hub 360°** | Connecteurs Gmail, WhatsApp, Pennylane, timeline unifiée, assistant Claude, brief hebdo | Vision 360° + assistant |
+| **2 — Back office complet** *(ex-phase 3)* | Coachs et leur planning, CRM, segments, emailing et automatisations, dashboard KPIs | Le gérant n'a plus besoin de l'ancien outil |
+| **3 — Hub 360°** *(ex-phase 4)* | Connecteurs Gmail, WhatsApp, Pennylane, timeline unifiée, assistant Claude et barre de requête en langage naturel, brief hebdo | Vision 360° + assistant |
+| **4 — Paiements** *(ex-phase 2)* | Stripe Billing, offres, Payment Sheet, webhooks, historique des paiements, Customer Portal, relances | Parcours abonnement → paiement → réservation complet |
 | **5 — Mise en production** | Tests E2E, RGPD, publication App Store / Play Store, migration des données de l'ancien outil | Lancement |
 
 Chaque phase se termine par : tests verts, seed à jour, démo des parcours, mise à jour de ce brief si une décision a changé.
@@ -229,17 +230,15 @@ Aucune ne bloque la phase 0 (le schéma reste générique : règles de réservat
 
 - [x] *(phase 1)* Une seule salle ou plusieurs sites à court terme ? → **une seule salle** (cf. §12, 2026-10-05).
 - [x] *(phase 1)* Règles de réservation : délai d'annulation, pénalité no-show, nombre max de réservations simultanées ? → annulation libre, délai de 2 h indicatif, aucune pénalité, 5 réservations à venir au plus (cf. §12, 2026-10-05).
-- [ ] *(phase 2)* Types d'offres exacts (illimité, carnets, découverte, étudiants, entreprises) et durée d'engagement ? Durée de validité des carnets ?
-- [ ] *(phase 2)* **SEPA** : accès ouvert dès la souscription (risque d'impayé découvert quelques jours plus tard) ou seulement après confirmation du prélèvement ?
-- [ ] *(phase 3)* Coachs salariés ou freelances (impact sur le suivi des heures et l'export paie) ?
-- [ ] *(phase 3/5)* Remplace-t-on totalement Bsport ? Si oui, quelles données migrer et sous quel format d'export ?
-- [ ] *(phase 4)* Numéro WhatsApp Business dédié disponible et compte Meta Business vérifié ?
-- [ ] *(phase 4)* Gmail : boîte partagée de la salle ou boîtes individuelles des gérants ? La salle est-elle sur Google Workspace (cf. §7.1) ?
-- [ ] *(phase 4)* Budget de fonctionnement mensuel visé (Supabase, Vercel, EAS, API Claude, WhatsApp) ?
+- [ ] *(phase paiements)* Types d'offres exacts (illimité, carnets, découverte, étudiants, entreprises) et durée d'engagement ? Durée de validité des carnets ?
+- [ ] *(phase paiements)* **SEPA** : accès ouvert dès la souscription (risque d'impayé découvert quelques jours plus tard) ou seulement après confirmation du prélèvement ?
+- [x] *(back office complet)* Coachs salariés ou freelances ? → **tous freelances** : export des heures valorisées, base de leur facture (cf. §12).
+- [ ] *(back office / mise en production)* Remplace-t-on totalement Bsport ? Si oui, quelles données migrer et sous quel format d'export ?
+- [ ] *(phase Hub)* Numéro WhatsApp Business dédié disponible et compte Meta Business vérifié ?
+- [ ] *(phase Hub)* Gmail : boîte partagée de la salle ou boîtes individuelles des gérants ? La salle est-elle sur Google Workspace (cf. §7.1) ?
+- [ ] *(phase Hub)* Budget de fonctionnement mensuel visé (Supabase, Vercel, EAS, API Claude, WhatsApp) ?
 - [ ] *(dès que possible)* Charte graphique / identité de la salle disponible ? À défaut, palette provisoire dans `packages/ui`.
-- [ ] *(phase 1, suite)* Retardataires : l'accueil peut-il inscrire quelqu'un après l'heure de début (tolérance de quelques minutes) ? Aujourd'hui `book_session` le refuse.
-- [ ] *(phase 1, suite)* Pointage : à partir de quand (dès la veille, 15 min avant, seulement après le début) ? Faut-il pouvoir « remettre à confirmé » après une erreur ?
-- [ ] *(phase 1, suite)* Back office : retrait de crédits (correction) et suspension d'un adhérent ? Création d'une fiche par l'accueil (essai, personne sans l'app) ?
+- [x] *(phase 1, suite)* Retardataires, fenêtre de pointage, retour à « confirmé », retrait de crédits, suspension, création de fiche à l'accueil → **stratégies réglables par le gérant** dans Paramètres (cf. §12).
 
 ---
 
@@ -269,3 +268,5 @@ Aucune ne bloque la phase 0 (le schéma reste générique : règles de réservat
 | 2026-10-04 | **Palette** : on garde l'orange (le lime de Watermelon n'est pas lisible avec du texte blanc), corrigé au niveau **WCAG AA** : `brand-600` `#c2410c`, texte secondaire `#66666f`, bordure des champs `#86868f`, statuts `success` `#167536` / `warning` `#a14a08` / `danger` `#c0201f`. Couche `semantic` (noms shadcn) dans `tokens.ts`, mêmes classes sur le web et le mobile ; un test vérifie les contrastes. Toujours provisoire en attendant la charte (§11). |
 | 2026-10-04 | **Back office** : navigation en barre latérale repliable ; retours d'action en toasts (le message reste porté par l'URL et retiré après affichage) ; vue Jour du planning par défaut sur tablette ; pointage en contrôle segmenté optimiste ; confirmation avant toute annulation. **Recherche d'adhérents** par la fonction `search_members` (RLS, nom complet sans accents, téléphone tous formats). |
 | 2026-10-04 | **App mobile** : police système (SF Pro / Roboto, proches d'Inter) plutôt qu'Inter, qui demanderait une famille par graisse et un écran de démarrage ; Inter reste la police du back office. Toasts avec retour haptique (`expo-haptics`, inclus dans Expo Go). |
+| 2026-10-04 | **Phasage revu** : back office complet (ex-phase 3) → Hub 360° (ex-phase 4) → paiements Stripe (ex-phase 2) → mise en production. Le Hub gagne une **barre de requête en langage naturel** pour le gérant (§7.2). Tout ce qui dépend de Stripe (MRR, offres, relances, « fin d'engagement ») attend la phase paiements. |
+| 2026-10-04 | **Back office complet — décisions** : coachs **tous freelances** (heures réalisées × taux horaire, export CSV par coach). **Pas d'envoi d'email réel** pour l'instant : campagnes, automatisations et avis aux inscrits passent par une file d'envoi journalisée (`outbound_messages`), à brancher plus tard sur un service (Resend ou Brevo). Une séance **déplacée** (glisser-déposer) garde ses réservations et ses inscrits sont prévenus. Les questions ouvertes de la phase 1 deviennent des **stratégies réglables** par le gérant : tolérance de retard pour l'accueil, ouverture du pointage, retour à « confirmé », retrait de crédits, suspension par l'accueil, création de fiche à l'accueil (désactivées par défaut). |

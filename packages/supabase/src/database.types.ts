@@ -1549,6 +1549,32 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      move_session: {
+        Args: { p_session_id: string; p_starts_at: string };
+        Returns: {
+          booked_count: number;
+          cancellation_reason: string | null;
+          capacity: number;
+          coach_id: string | null;
+          created_at: string;
+          discipline_id: string;
+          ends_at: string;
+          gym_id: string;
+          id: string;
+          room_id: string | null;
+          starts_at: string;
+          status: Database["public"]["Enums"]["session_status"];
+          template_id: string | null;
+          updated_at: string;
+          waitlist_count: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "class_sessions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       replace_session_coach: {
         Args: { p_coach_id: string; p_note?: string; p_session_id: string };
         Returns: {
@@ -1624,6 +1650,14 @@ export type Database = {
           has_conflict: boolean;
           is_current: boolean;
           teaches_discipline: boolean;
+        }[];
+      };
+      session_move_preview: {
+        Args: { p_session_id: string; p_starts_at: string };
+        Returns: {
+          booked: number;
+          coach_conflict: boolean;
+          waitlisted: number;
         }[];
       };
       set_attendance: {

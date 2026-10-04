@@ -81,6 +81,17 @@ export function zonedStartOfDateKey(dateKey: string, timeZone: string): Date {
 }
 
 /**
+ * Instant d'une heure locale (minutes depuis minuit) un jour « AAAA-MM-JJ » donné. Les jours de
+ * changement d'heure sont corrigés : 18 h 30 reste 18 h 30 à l'horloge de la salle.
+ */
+export function zonedInstant(dateKey: string, minutes: number, timeZone: string): Date {
+  const guess = new Date(zonedStartOfDateKey(dateKey, timeZone).getTime() + minutes * 60_000);
+  const drift = zonedMinutesOfDay(guess, timeZone) - minutes;
+  // Écart d'un changement d'heure survenu dans la journée (± 60 min), hors passage à minuit.
+  return Math.abs(drift) <= 120 ? new Date(guess.getTime() - drift * 60_000) : guess;
+}
+
+/**
  * Semaine locale (lundi → lundi suivant) contenant l'instant, avec ses 7 jours.
  * Gère les semaines de changement d'heure (167 h ou 169 h).
  */

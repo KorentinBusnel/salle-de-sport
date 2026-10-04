@@ -1,4 +1,6 @@
 -- Cloisonnement des données par rôle et par salle (BRIEF §4).
+-- Les comptages de données publiques sont restreints aux deux salles de test,
+-- pour ne pas dépendre du seed.
 -- Salle A : adhérents m1, m2 et un prospect sans compte ; coachs c1, c2 ;
 -- accueil, gérant, admin. Salle B : adhérent m3 et son gérant.
 begin;
@@ -101,8 +103,8 @@ select is((select count(*) from public.payments), 1::bigint, 'adhérent : voit s
 select is((select count(*) from public.subscriptions), 1::bigint, 'adhérent : voit son seul abonnement');
 select is((select count(*) from public.credit_ledger), 1::bigint, 'adhérent : voit ses seuls crédits');
 select is((select count(*) from public.gym_roles), 1::bigint, 'adhérent : voit ses seuls rôles');
-select is((select count(*) from public.class_sessions), 3::bigint, 'adhérent : voit le planning public');
-select is((select count(*) from public.plans), 2::bigint, 'adhérent : voit les offres actives uniquement');
+select is((select count(*) from public.class_sessions where gym_id in ('aaaaaaaa-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000000')), 3::bigint, 'adhérent : voit le planning public');
+select is((select count(*) from public.plans where gym_id in ('aaaaaaaa-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000000')), 2::bigint, 'adhérent : voit les offres actives uniquement');
 select is((select count(*) from public.coach_compensations), 0::bigint, 'adhérent : ne voit pas la rémunération des coachs');
 select is((select count(*) from public.interactions), 0::bigint, 'adhérent : ne voit pas le CRM');
 select throws_ok(
@@ -205,7 +207,7 @@ select is((select count(*) from public.subscriptions), 1::bigint, 'gérant : voi
 select is((select count(*) from public.credit_ledger), 2::bigint, 'gérant : voit les crédits de sa salle');
 select is((select count(*) from public.coach_compensations), 2::bigint, 'gérant : voit la rémunération des coachs');
 select is((select count(*) from public.interactions), 1::bigint, 'gérant : voit le CRM de sa salle');
-select is((select count(*) from public.plans), 3::bigint, 'gérant : voit ses offres inactives en plus des offres publiques');
+select is((select count(*) from public.plans where gym_id in ('aaaaaaaa-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000000')), 3::bigint, 'gérant : voit ses offres inactives en plus des offres publiques');
 select is_empty(
   $$update public.gyms set name = 'Piratée' where id = 'bbbbbbbb-0000-0000-0000-000000000000' returning id$$,
   'gérant : ne modifie pas une autre salle'
@@ -239,7 +241,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 set local role anon;
 
-select is((select count(*) from public.class_sessions), 3::bigint, 'anon : voit le planning public');
+select is((select count(*) from public.class_sessions where gym_id in ('aaaaaaaa-0000-0000-0000-000000000000', 'bbbbbbbb-0000-0000-0000-000000000000')), 3::bigint, 'anon : voit le planning public');
 select throws_ok(
   $$select * from public.members$$, '42501', null, 'anon : aucun accès aux fiches adhérents'
 );

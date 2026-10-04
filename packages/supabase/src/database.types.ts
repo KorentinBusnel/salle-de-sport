@@ -988,6 +988,69 @@ export type Database = {
           },
         ];
       };
+      outbound_messages: {
+        Row: {
+          body: string;
+          channel: Database["public"]["Enums"]["campaign_channel"];
+          created_at: string;
+          dedupe_key: string | null;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          origin: Database["public"]["Enums"]["message_origin"];
+          processed_at: string | null;
+          ref_id: string | null;
+          status: Database["public"]["Enums"]["message_status"];
+          subject: string;
+          to_address: string | null;
+        };
+        Insert: {
+          body: string;
+          channel?: Database["public"]["Enums"]["campaign_channel"];
+          created_at?: string;
+          dedupe_key?: string | null;
+          gym_id: string;
+          id?: string;
+          member_id: string;
+          origin: Database["public"]["Enums"]["message_origin"];
+          processed_at?: string | null;
+          ref_id?: string | null;
+          status?: Database["public"]["Enums"]["message_status"];
+          subject: string;
+          to_address?: string | null;
+        };
+        Update: {
+          body?: string;
+          channel?: Database["public"]["Enums"]["campaign_channel"];
+          created_at?: string;
+          dedupe_key?: string | null;
+          gym_id?: string;
+          id?: string;
+          member_id?: string;
+          origin?: Database["public"]["Enums"]["message_origin"];
+          processed_at?: string | null;
+          ref_id?: string | null;
+          status?: Database["public"]["Enums"]["message_status"];
+          subject?: string;
+          to_address?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "outbound_messages_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "outbound_messages_member_id_gym_id_fkey";
+            columns: ["member_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "members";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
       payments: {
         Row: {
           amount_cents: number;
@@ -1578,6 +1641,9 @@ export type Database = {
       interaction_channel: "email" | "whatsapp" | "phone" | "note";
       interaction_direction: "inbound" | "outbound" | "internal";
       member_status: "prospect" | "active" | "suspended" | "cancelled";
+      message_origin:
+        "session_cancelled" | "session_moved" | "coach_changed" | "campaign" | "automation";
+      message_status: "queued" | "logged" | "sent" | "failed";
       payment_method: "card" | "sepa_debit" | "cash" | "other";
       payment_status: "pending" | "succeeded" | "failed" | "refunded";
       plan_type: "recurring" | "pack" | "single";
@@ -1722,6 +1788,14 @@ export const Constants = {
       interaction_channel: ["email", "whatsapp", "phone", "note"],
       interaction_direction: ["inbound", "outbound", "internal"],
       member_status: ["prospect", "active", "suspended", "cancelled"],
+      message_origin: [
+        "session_cancelled",
+        "session_moved",
+        "coach_changed",
+        "campaign",
+        "automation",
+      ],
+      message_status: ["queued", "logged", "sent", "failed"],
       payment_method: ["card", "sepa_debit", "cash", "other"],
       payment_status: ["pending", "succeeded", "failed", "refunded"],
       plan_type: ["recurring", "pack", "single"],

@@ -547,3 +547,27 @@ select
 from public.members m_row
 join seed_members m on m.id = m_row.id
 where 'blessure' = any (m_row.tags);
+
+-- File d'envoi : avis d'annulation déjà journalisés pour les séances annulées.
+select private.notify_session_members(
+  s.id, 'session_cancelled',
+  'Séance annulée : ' || private.session_label(s.id),
+  'La séance ' || private.session_label(s.id)
+    || ' est annulée (Coach indisponible). Votre réservation est annulée et, le cas échéant, votre crédit vous est rendu.',
+  array['cancelled']::public.booking_status[]
+)
+from public.class_sessions s
+where s.gym_id = pg_temp.sid('gym') and s.status = 'cancelled'
+order by s.starts_at;
+
+update public.outbound_messages o
+set status = 'logged',
+    created_at = least(now(), s.starts_at - interval '1 day'),
+    processed_at = least(now(), s.starts_at - interval '1 day') + interval '1 minute'
+from public.class_sessions s
+where s.id = o.ref_id;
+
+update public.interactions i
+set occurred_at = o.created_at
+from public.outbound_messages o
+where i.source_ref = 'outbound:' || o.id;

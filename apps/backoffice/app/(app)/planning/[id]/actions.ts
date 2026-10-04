@@ -3,6 +3,9 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { classChangesSchema } from "@salle/shared";
+import type { CellValue } from "@/components/inline/editable-cell";
+import { isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
@@ -147,25 +150,33 @@ export async function markAllAttended(formData: FormData) {
   );
 }
 
-/** Remplacement du coach (gérant) : tracé dans coach_shifts, inscrits prévenus. */
-export async function replaceCoach(formData: FormData) {
-  const sessionId = uuid.parse(formData.get("sessionId"));
-  const coachId = uuid.parse(formData.get("coachId"));
-  const note = z
-    .string()
-    .trim()
-    .max(200)
-    .catch("")
-    .parse(formData.get("note") ?? "");
+/**
+ * Édition en place d'une séance (gérant) : un champ à la fois, pour cette séance ou, si elle
+ * vient d'un cours récurrent, pour elle et les suivantes. update_session tranche.
+ */
+export async function updateSessionField(input: {
+  id: string;
+  field: string;
+  value: CellValue;
+  scope?: "one" | "following" | undefined;
+}): Promise<{ error: MessageKey | null; message?: MessageKey; count?: number }> {
+  await requireRole(isManagerRole);
+  const id = uuid.safeParse(input.id);
+  const changes = classChangesSchema.safeParse({ [input.field]: input.value });
+  if (!id.success || !changes.success || Object.keys(changes.data).length !== 1)
+    return { error: "common.unexpectedError" };
+  const scope = input.scope === "following" ? "following" : "one";
   const supabase = await createClient();
-  await finish(
-    sessionId,
-    () =>
-      supabase.rpc("replace_session_coach", {
-        p_session_id: sessionId,
-        p_coach_id: coachId,
-        ...(note ? { p_note: note } : {}),
-      }),
-    "session.coachReplaced",
-  );
+  const { data, error } = await supabase.rpc("update_session", {
+    p_session_id: id.data,
+    p_changes: changes.data,
+    p_scope: scope,
+  });
+  revalidatePath(`/planning/${id.data}`);
+  revalidatePath("/planning");
+  refresh();
+  if (error) return { error: errorMessageKey(error) };
+  return scope === "following"
+    ? { error: null, message: "session.updatedFollowing", count: data }
+    : { error: null, message: "session.updated" };
 }

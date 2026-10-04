@@ -84,8 +84,10 @@ export default async function CoachPage({
         .order("start_time"),
       supabase
         .from("class_sessions")
-        .select("id, starts_at, ends_at, capacity, booked_count, disciplines(name, color)")
-        .eq("coach_id", id)
+        .select(
+          "id, starts_at, ends_at, capacity, booked_count, disciplines(name, color), session_coaches!inner(coach_id)",
+        )
+        .eq("session_coaches.coach_id", id)
         .eq("status", "scheduled")
         .gte("starts_at", currentTime().toISOString())
         .lt("starts_at", in4Weeks.toISOString())

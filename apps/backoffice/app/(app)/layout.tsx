@@ -95,7 +95,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (manager) {
     groups.push({
       label: t("nav.groupAdmin"),
-      items: [{ href: "/parametres", label: t("nav.settings"), icon: "settings" }],
+      items: [
+        { href: "/catalogue", label: t("nav.catalog"), icon: "catalog" },
+        { href: "/parametres", label: t("nav.settings"), icon: "settings" },
+      ],
     });
   }
 

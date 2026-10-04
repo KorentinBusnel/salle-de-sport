@@ -22,6 +22,9 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { MovePreview } from "@/app/(app)/planning/move-actions";
+import type { CellSave } from "@/components/inline/editable-cell";
+import { Button } from "@/components/ui/button";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +46,8 @@ type SessionDrag = {
   dayKey: string;
   startMinute: number;
   duration: number;
+  /** Issue d'un cours récurrent : demander la portée d'un redimensionnement. */
+  recurring: boolean;
 };
 type Target = { dayKey: string; minutes: number };
 type Actions = {
@@ -52,13 +57,43 @@ type Actions = {
     dayKey: string;
     minutes: number;
   }) => Promise<{ error: MessageKey | null }>;
+  resize: CellSave;
+  create: (input: {
+    dayKey: string;
+    minutes: number;
+    disciplineId: string;
+  }) => Promise<{ error: MessageKey | null }>;
 };
 
-const DragState = createContext<{
+type DragContext = {
   enabled: boolean;
+  pxPerMinute: number;
+  firstMinute: number;
   target: (Target & { sessionId: string }) | null;
   justDropped: () => boolean;
-}>({ enabled: false, target: null, justDropped: () => false });
+  markDropped: () => void;
+  resize: (drag: SessionDrag, duration: number) => void;
+  openCreate: (dayKey: string, minutes: number) => void;
+};
+const DragState = createContext<DragContext>({
+  enabled: false,
+  pxPerMinute: 1,
+  firstMinute: 0,
+  target: null,
+  justDropped: () => false,
+  markDropped: () => {},
+  resize: () => {},
+  openCreate: () => {},
+});
+
+/** « mardi 6 octobre » pour une date civile « AAAA-MM-JJ ». */
+const dayLabel = (dayKey: string) =>
+  new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${dayKey}T12:00:00Z`));
 
 const hhmm = (minutes: number) =>
   `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
@@ -71,13 +106,17 @@ const hhmm = (minutes: number) =>
 export function WeekDnd({
   enabled,
   pxPerMinute,
+  firstMinute,
   timeZone,
+  disciplines,
   actions,
   children,
 }: {
   enabled: boolean;
   pxPerMinute: number;
+  firstMinute: number;
   timeZone: string;
+  disciplines: { value: string; label: string }[];
   actions: Actions;
   children: ReactNode;
 }) {
@@ -90,6 +129,38 @@ export function WeekDnd({
   } | null>(null);
   const [busy, startTransition] = useTransition();
   const droppedAt = useRef(0);
+  const [resizing, setResizing] = useState<{ drag: SessionDrag; duration: number } | null>(null);
+  const [creating, setCreating] = useState<{ dayKey: string; minutes: number } | null>(null);
+  const [disciplineId, setDisciplineId] = useState(disciplines[0]?.value ?? "");
+
+  function saveDuration(drag: SessionDrag, duration: number, scope?: "one" | "following") {
+    startTransition(async () => {
+      const result = await actions.resize({
+        id: drag.sessionId,
+        field: "duration_minutes",
+        value: duration,
+        scope,
+      });
+      if (result.error) toast.error(t(result.error), { closeButton: true });
+      else toast.success(t("planning.resized", { minutes: duration }));
+    });
+  }
+
+  function resize(drag: SessionDrag, duration: number) {
+    if (drag.recurring) setResizing({ drag, duration });
+    else saveDuration(drag, duration);
+  }
+
+  function create() {
+    if (!creating || !disciplineId) return;
+    const slot = creating;
+    setCreating(null);
+    startTransition(async () => {
+      const result = await actions.create({ ...slot, disciplineId });
+      if (result.error) toast.error(t(result.error), { closeButton: true });
+      else toast.success(t("planning.created"));
+    });
+  }
 
   function compute(event: DragMoveEvent | DragEndEvent): Target | null {
     const drag = event.active.data.current as SessionDrag | undefined;
@@ -142,7 +213,18 @@ export function WeekDnd({
 
   return (
     <DragState.Provider
-      value={{ enabled, target, justDropped: () => Date.now() - droppedAt.current < 300 }}
+      value={{
+        enabled,
+        pxPerMinute,
+        firstMinute,
+        target,
+        justDropped: () => Date.now() - droppedAt.current < 300,
+        markDropped: () => {
+          droppedAt.current = Date.now();
+        },
+        resize,
+        openCreate: (dayKey, minutes) => setCreating({ dayKey, minutes }),
+      }}
     >
       <DndContext
         sensors={sensors}
@@ -180,6 +262,71 @@ export function WeekDnd({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={resizing !== null} onOpenChange={(open) => !open && setResizing(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("planning.resizeTitle", {
+                label: resizing?.drag.label ?? "",
+                minutes: resizing?.duration ?? 0,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t("inline.scopeBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (resizing) saveDuration(resizing.drag, resizing.duration, "one");
+                setResizing(null);
+              }}
+            >
+              {t("inline.scopeOne")}
+            </Button>
+            <Button
+              onClick={() => {
+                if (resizing) saveDuration(resizing.drag, resizing.duration, "following");
+                setResizing(null);
+              }}
+            >
+              {t("inline.scopeFollowing")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={creating !== null} onOpenChange={(open) => !open && setCreating(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("planning.createTitle", {
+                when: creating ? `${dayLabel(creating.dayKey)} ${hhmm(creating.minutes)}` : "",
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t("planning.createHint")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">{t("templates.discipline")}</span>
+            <NativeSelect
+              value={disciplineId}
+              onChange={(event) => setDisciplineId(event.target.value)}
+              className="w-full"
+            >
+              {disciplines.map((d) => (
+                <NativeSelectOption key={d.value} value={d.value}>
+                  {d.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={create} disabled={!disciplineId}>
+              {t("planning.createConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DragState.Provider>
   );
 }
@@ -196,14 +343,26 @@ export function DroppableDay({
   style?: CSSProperties | undefined;
   children: ReactNode;
 }) {
-  const { enabled } = useContext(DragState);
+  const { enabled, pxPerMinute, firstMinute, openCreate, justDropped } = useContext(DragState);
   const { setNodeRef, isOver } = useDroppable({
     id: `day-${dayKey}`,
     data: { dayKey },
     disabled: !enabled,
   });
   return (
-    <div ref={setNodeRef} className={cn(className, isOver && "bg-primary/[0.04]")} style={style}>
+    // Gérant : un clic sur un créneau vide propose d'y créer une séance ponctuelle.
+    <div
+      ref={setNodeRef}
+      className={cn(className, isOver && "bg-primary/[0.04]", enabled && "cursor-cell")}
+      style={style}
+      onClick={(event) => {
+        if (!enabled || justDropped()) return;
+        if ((event.target as HTMLElement).closest("[data-session]")) return;
+        const offset = event.clientY - event.currentTarget.getBoundingClientRect().top;
+        const minutes = Math.round((firstMinute + offset / pxPerMinute) / 15) * 15;
+        if (minutes >= 0 && minutes < 24 * 60) openCreate(dayKey, minutes);
+      }}
+    >
       {children}
     </div>
   );
@@ -223,7 +382,11 @@ export function DraggableSession({
   style: CSSProperties;
   children: ReactNode;
 }) {
-  const { enabled, target, justDropped } = useContext(DragState);
+  const { enabled, target, justDropped, markDropped, resize, pxPerMinute } = useContext(DragState);
+  const [extra, setExtra] = useState<number | null>(null);
+  const resizeStart = useRef(0);
+  const snapDuration = (dy: number) =>
+    Math.min(240, Math.max(15, Math.round((drag.duration + dy / pxPerMinute) / 15) * 15));
   const { setNodeRef, listeners, attributes, transform, isDragging } = useDraggable({
     id: drag.sessionId,
     data: drag,
@@ -233,6 +396,7 @@ export function DraggableSession({
   return (
     <div
       ref={setNodeRef}
+      data-session
       {...(enabled && movable ? listeners : {})}
       {...(enabled && movable
         ? { "aria-roledescription": attributes["aria-roledescription"] }
@@ -252,9 +416,42 @@ export function DraggableSession({
       style={{
         ...style,
         ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {}),
+        ...(extra !== null && typeof style.height === "number"
+          ? { height: Math.max(20, style.height + extra), zIndex: 40 }
+          : {}),
       }}
     >
       {children}
+      {enabled && movable ? (
+        // Poignée de redimensionnement : changer la durée (pas de 15 min).
+        <span
+          aria-hidden
+          className="absolute inset-x-1 bottom-0 h-2 cursor-ns-resize rounded-b-md hover:bg-foreground/20"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            resizeStart.current = event.clientY;
+            setExtra(0);
+          }}
+          onPointerMove={(event) => {
+            if (extra === null) return;
+            setExtra(event.clientY - resizeStart.current);
+          }}
+          onPointerUp={(event) => {
+            if (extra === null) return;
+            const duration = snapDuration(event.clientY - resizeStart.current);
+            setExtra(null);
+            markDropped();
+            if (duration !== drag.duration) resize(drag, duration);
+          }}
+        />
+      ) : null}
+      {extra !== null ? (
+        <span className="pointer-events-none absolute -bottom-6 left-0 z-50 rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-background tabular-nums">
+          {snapDuration(extra)} min
+        </span>
+      ) : null}
       {live ? (
         <span className="pointer-events-none absolute -top-6 left-0 z-50 rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-background tabular-nums">
           {hhmm(live.minutes)}

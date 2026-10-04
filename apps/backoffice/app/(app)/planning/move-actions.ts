@@ -99,3 +99,30 @@ export async function moveSessionForm(formData: FormData) {
   revalidatePath(back);
   redirect(withFlash(back, error ? { error: errorMessageKey(error) } : { ok: "session.moved" }));
 }
+
+/** Séance ponctuelle créée depuis un créneau vide de la grille (valeurs de la discipline). */
+export async function createSessionAt(input: {
+  dayKey: string;
+  minutes: number;
+  disciplineId: string;
+}): Promise<{ error: MessageKey | null }> {
+  const context = await requireRole(isManagerRole);
+  const parsed = moveSchema
+    .omit({ sessionId: true })
+    .extend({ disciplineId: z.guid() })
+    .safeParse(input);
+  if (!parsed.success) return { error: "common.unexpectedError" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("create_session", {
+    p_gym_id: context.gym.id,
+    p_discipline_id: parsed.data.disciplineId,
+    p_starts_at: zonedInstant(
+      parsed.data.dayKey,
+      parsed.data.minutes,
+      context.gym.timezone,
+    ).toISOString(),
+  });
+  revalidatePath("/planning");
+  refresh();
+  return { error: error ? errorMessageKey(error) : null };
+}

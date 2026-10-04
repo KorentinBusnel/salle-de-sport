@@ -8,6 +8,7 @@ import {
   DumbbellIcon,
   FilterIcon,
   KanbanIcon,
+  LayersIcon,
   HouseIcon,
   LogOutIcon,
   MailPlusIcon,
@@ -58,6 +59,7 @@ const ICONS = {
   segments: FilterIcon,
   emailing: MailPlusIcon,
   kpis: ChartColumnIcon,
+  catalog: LayersIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

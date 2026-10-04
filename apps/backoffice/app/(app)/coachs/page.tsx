@@ -69,18 +69,19 @@ export default async function CoachesPage({
     supabase.rpc("coach_hours", { p_gym_id: context.gym.id, p_from: range.from, p_to: range.to }),
     supabase
       .from("class_sessions")
-      .select("coach_id")
+      .select("session_coaches(coach_id)")
       .eq("gym_id", context.gym.id)
       .eq("status", "scheduled")
-      .not("coach_id", "is", null)
       .gte("starts_at", zonedStartOfDateKey(range.from, tz).toISOString())
       .lt("starts_at", zonedStartOfDateKey(`${range.next}-01`, tz).toISOString()),
   ]);
   if (error) throw new Error(error.message);
   const minutesBy = new Map((hours ?? []).map((h) => [h.coach_id, h.minutes]));
   const sessionsBy = new Map<string, number>();
+  // Chaque coach assigné compte la séance (plusieurs coachs possibles).
   for (const s of sessions ?? [])
-    if (s.coach_id) sessionsBy.set(s.coach_id, (sessionsBy.get(s.coach_id) ?? 0) + 1);
+    for (const { coach_id } of s.session_coaches)
+      sessionsBy.set(coach_id, (sessionsBy.get(coach_id) ?? 0) + 1);
 
   return (
     <div className="grid gap-6">

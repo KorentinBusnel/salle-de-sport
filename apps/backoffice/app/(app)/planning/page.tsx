@@ -1,4 +1,5 @@
 import {
+  coachesLabel,
   sessionPhase,
   zonedDateKey,
   zonedMinutesOfDay,
@@ -30,7 +31,8 @@ import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { layoutDay } from "@/lib/week-layout";
-import { moveSession, previewMove } from "./move-actions";
+import { updateSessionField } from "./[id]/actions";
+import { createSessionAt, moveSession, previewMove } from "./move-actions";
 
 export const metadata: Metadata = { title: t("planning.title") };
 
@@ -95,7 +97,7 @@ export default async function PlanningPage({
   const { data, error } = await supabase
     .from("class_sessions")
     .select(
-      "id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), coaches(display_name, profile_id)",
+      "id, template_id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), session_coaches(position, coaches(display_name, profile_id))",
     )
     .eq("gym_id", context.gym.id)
     .gte("starts_at", week.start.toISOString())
@@ -105,7 +107,17 @@ export default async function PlanningPage({
   if (error) return <p className="text-destructive">{t("planning.loadError")}</p>;
 
   const sessions = data
-    .filter((s) => !onlyMine || s.coaches?.profile_id === context.userId)
+    .map((session) => {
+      const coaches = [...session.session_coaches]
+        .sort((a, b) => a.position - b.position)
+        .flatMap((sc) => (sc.coaches ? [sc.coaches] : []));
+      return {
+        ...session,
+        coachList: coaches,
+        coachLabel: coachesLabel(coaches.map((c) => c.display_name)),
+      };
+    })
+    .filter((s) => !onlyMine || s.coachList.some((c) => c.profile_id === context.userId))
     .map((session) => {
       const startMinute = zonedMinutesOfDay(new Date(session.starts_at), tz);
       const duration = Math.round(
@@ -141,7 +153,7 @@ export default async function PlanningPage({
   const ariaLabel = (s: PlanningSession) =>
     [
       `${s.disciplines?.name ?? ""} ${format.time(s.starts_at)}–${format.time(s.ends_at)}`,
-      s.coaches?.display_name,
+      s.coachLabel,
       s.status === "cancelled"
         ? t("planning.cancelled")
         : t("planning.placesLong", { booked: s.booked_count, capacity: s.capacity }),
@@ -179,6 +191,18 @@ export default async function PlanningPage({
   const daySessions = sessions.filter((s) => s.dayKey === selectedKey);
   // Glisser-déposer : gérant, séances à venir non annulées.
   const canMove = isManagerRole(context.role);
+  const disciplineOptions = canMove
+    ? (
+        (
+          await supabase
+            .from("disciplines")
+            .select("id, name")
+            .eq("gym_id", context.gym.id)
+            .eq("is_active", true)
+            .order("name")
+        ).data ?? []
+      ).map((d) => ({ value: d.id, label: d.name }))
+    : [];
 
   return (
     <div className="grid min-w-0 gap-6">
@@ -326,7 +350,7 @@ export default async function PlanningPage({
                             color={s.disciplines?.color}
                           />
                           <span className="truncate text-sm text-muted-foreground">
-                            {s.coaches?.display_name}
+                            {s.coachLabel}
                           </span>
                         </span>
                         {s.status === "cancelled" ? (
@@ -377,8 +401,15 @@ export default async function PlanningPage({
             <WeekDnd
               enabled={canMove}
               pxPerMinute={PX_PER_MINUTE}
+              firstMinute={firstHour * 60}
               timeZone={tz}
-              actions={{ preview: previewMove, move: moveSession }}
+              disciplines={disciplineOptions}
+              actions={{
+                preview: previewMove,
+                move: moveSession,
+                resize: updateSessionField,
+                create: createSessionAt,
+              }}
             >
               <div className="max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl bg-card shadow-border">
                 <div className="grid min-w-[56rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
@@ -454,6 +485,7 @@ export default async function PlanningPage({
                                 dayKey: session.dayKey,
                                 startMinute: session.startMinute,
                                 duration: session.endMinute - session.startMinute,
+                                recurring: session.template_id !== null,
                               }}
                               className="absolute hover:z-20 focus-within:z-20"
                               style={{
@@ -491,9 +523,7 @@ export default async function PlanningPage({
                                   {session.disciplines?.name}
                                 </span>
                                 <span className="block truncate text-foreground/70">
-                                  {cancelled
-                                    ? t("planning.cancelled")
-                                    : session.coaches?.display_name}
+                                  {cancelled ? t("planning.cancelled") : session.coachLabel}
                                 </span>
                                 {!cancelled ? (
                                   <span className="block truncate tabular-nums">

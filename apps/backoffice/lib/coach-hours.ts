@@ -39,9 +39,9 @@ export async function loadCoachHours(context: TeamContext, month: string, coachI
     const now = currentTime().toISOString();
     const { data } = await supabase
       .from("class_sessions")
-      .select("id, starts_at, ends_at, disciplines(name)")
+      .select("id, starts_at, ends_at, disciplines(name), session_coaches!inner(coach_id)")
       .eq("gym_id", context.gym.id)
-      .eq("coach_id", line.coach_id)
+      .eq("session_coaches.coach_id", line.coach_id)
       .eq("status", "scheduled")
       .lte("ends_at", now)
       .gte("starts_at", zonedStartOfDateKey(range.from, tz).toISOString())

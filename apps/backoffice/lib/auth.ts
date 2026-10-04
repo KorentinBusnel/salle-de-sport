@@ -1,6 +1,6 @@
 import "server-only";
-import { type GymRole, primaryTeamRole } from "@salle/shared";
-import { redirect } from "next/navigation";
+import { canSeeFinancials, type GymRole, primaryTeamRole } from "@salle/shared";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
@@ -58,4 +58,21 @@ export async function requireTeamContext(): Promise<TeamContext> {
   const result = await getTeamContext();
   if (result.status !== "team") redirect("/login");
   return result.context;
+}
+
+/** Gérant ou admin : planning, cours récurrents, paramètres, finances. */
+export function isManagerRole(role: GymRole): boolean {
+  return canSeeFinancials(role);
+}
+
+/** Accueil et au-dessus : réservations et fiches adhérents. */
+export function isFrontDeskRole(role: GymRole): boolean {
+  return role === "staff" || isManagerRole(role);
+}
+
+/** Contexte d'équipe avec un rôle suffisant : page introuvable sinon. */
+export async function requireRole(allowed: (role: GymRole) => boolean): Promise<TeamContext> {
+  const context = await requireTeamContext();
+  if (!allowed(context.role)) notFound();
+  return context;
 }

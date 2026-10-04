@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getTeamContext } from "@/lib/auth";
+import { AppNav, type NavItem } from "@/components/app-nav";
+import { getTeamContext, isFrontDeskRole, isManagerRole } from "@/lib/auth";
 import { t } from "@/lib/i18n";
 import { signOut } from "./actions";
 
@@ -22,6 +23,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const { context } = result;
+  const navItems: NavItem[] = [
+    { href: "/", label: t("nav.today") },
+    { href: "/planning", label: t("nav.planning") },
+    ...(isManagerRole(context.role)
+      ? [{ href: "/planning/modeles", label: t("nav.templates") }]
+      : []),
+    ...(isFrontDeskRole(context.role) ? [{ href: "/adherents", label: t("nav.members") }] : []),
+    ...(isManagerRole(context.role) ? [{ href: "/parametres", label: t("nav.settings") }] : []),
+  ];
   return (
     <div className="min-h-dvh">
       <header className="border-b bg-card">
@@ -37,6 +47,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </Button>
             </form>
           </div>
+        </div>
+        <div className="mx-auto max-w-6xl px-4 pb-2">
+          <AppNav items={navItems} />
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>

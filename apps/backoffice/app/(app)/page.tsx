@@ -2,6 +2,7 @@ import { canSeeFinancials, isStaffRole, zonedDayRange } from "@salle/shared";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireTeamContext } from "@/lib/auth";
+import { currentTime } from "@/lib/clock";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,7 +12,7 @@ const SEATED = new Set(["confirmed", "attended", "no_show"]);
 export default async function DashboardPage() {
   const context = await requireTeamContext();
   const supabase = await createClient();
-  const now = new Date();
+  const now = currentTime();
   const { start, end } = zonedDayRange(now, context.gym.timezone);
   const since30Days = new Date(now.getTime() - 30 * 86_400_000);
   const isCoachOnly = context.role === "coach";

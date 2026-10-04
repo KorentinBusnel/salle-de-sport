@@ -13,6 +13,16 @@ if ! command -v dockerd >/dev/null 2>&1; then
   exit 1
 fi
 
+# Après un redémarrage du conteneur, docker.pid peut pointer vers un PID réattribué
+# à un autre processus : dockerd refuse alors de démarrer. On nettoie ce cas.
+pid_file=/var/run/docker.pid
+if [ -f "$pid_file" ]; then
+  old_pid="$(cat "$pid_file")"
+  if [ "$(ps -o comm= -p "$old_pid" 2>/dev/null)" != "dockerd" ]; then
+    rm -f "$pid_file" /var/run/docker.sock
+  fi
+fi
+
 log_file="${TMPDIR:-/tmp}/dockerd.log"
 nohup dockerd >"$log_file" 2>&1 &
 

@@ -1,6 +1,6 @@
 -- Coachs : options de remplacement, remplacement tracé et notifié, heures réalisées, RLS.
 begin;
-select plan(20);
+select plan(21);
 
 insert into auth.users (id, email) values
   ('40000000-0000-0000-0000-000000000001', 'k-coach-a@test.local'),
@@ -75,24 +75,24 @@ select ok((select is_current and not available from public.session_coach_options
   'options : coach A actuel, sans disponibilité déclarée');
 
 -- Remplacement
-select throws_ok($$select public.replace_session_coach('f6000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-00000000000b')$$,
+select throws_ok($$select public.update_session('f6000000-0000-0000-0000-000000000001', jsonb_build_object('coach_ids', jsonb_build_array('f5000000-0000-0000-0000-00000000000b')))$$,
   'P0001', 'forbidden', 'remplacement : pas par l''accueil');
 select pg_temp.login_as('40000000-0000-0000-0000-000000000003');
-select throws_ok($$select public.replace_session_coach('f6000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-00000000000a')$$,
-  'P0001', 'same_coach', 'remplacement : même coach refusé');
-select throws_ok($$select public.replace_session_coach('f6000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-00000000000c')$$,
+select is(public.update_session('f6000000-0000-0000-0000-000000000001', jsonb_build_object('coach_ids', jsonb_build_array('f5000000-0000-0000-0000-00000000000a'))), 1, 'remplacement : même coach sans effet');
+select throws_ok($$select public.update_session('f6000000-0000-0000-0000-000000000001', jsonb_build_object('coach_ids', jsonb_build_array('f5000000-0000-0000-0000-00000000000c')))$$,
   'P0001', 'coach_not_found', 'remplacement : coach d''une autre salle refusé');
-select throws_ok($$select public.replace_session_coach('f6000000-0000-0000-0000-000000000002', 'f5000000-0000-0000-0000-00000000000b')$$,
+select throws_ok($$select public.update_session('f6000000-0000-0000-0000-000000000002', jsonb_build_object('coach_ids', jsonb_build_array('f5000000-0000-0000-0000-00000000000b')))$$,
   'P0001', 'session_ended', 'remplacement : séance terminée refusée');
-select is((public.replace_session_coach('f6000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-00000000000b', 'Blessure')).coach_id,
+select is(public.update_session('f6000000-0000-0000-0000-000000000001', jsonb_build_object('coach_ids', jsonb_build_array('f5000000-0000-0000-0000-00000000000b'))), 1, 'remplacement : séance modifiée');
+select is((select coach_id from public.class_sessions where id = 'f6000000-0000-0000-0000-000000000001'),
   'f5000000-0000-0000-0000-00000000000b'::uuid, 'remplacement : coach B anime la séance');
 select pg_temp.logout();
 select is((select status from public.coach_shifts where session_id = 'f6000000-0000-0000-0000-000000000001' and coach_id = 'f5000000-0000-0000-0000-00000000000a'),
   'cancelled'::public.shift_status, 'remplacement : créneau du coach A annulé');
 select is((select replaced_coach_id from public.coach_shifts where session_id = 'f6000000-0000-0000-0000-000000000001' and coach_id = 'f5000000-0000-0000-0000-00000000000b'),
   'f5000000-0000-0000-0000-00000000000a'::uuid, 'remplacement : tracé avec le coach remplacé');
-select is((select subject from public.outbound_messages where member_id = 'f1000000-0000-0000-0000-000000000001' and origin = 'coach_changed'),
-  'Changement de coach : Run du 12/03 à 18h30', 'remplacement : inscrit prévenu');
+select is((select subject from public.outbound_messages where member_id = 'f1000000-0000-0000-0000-000000000001' and origin = 'session_moved'),
+  'Séance modifiée : Run du 12/03 à 18h30', 'remplacement : inscrit prévenu (une seule fois)');
 
 -- Heures réalisées
 select pg_temp.login_as('40000000-0000-0000-0000-000000000003');

@@ -592,3 +592,28 @@ insert into public.automations (gym_id, kind, enabled, template_id, params) valu
   (pg_temp.sid('gym'), 'welcome', false, pg_temp.sid('tpl:welcome'), '{}'),
   (pg_temp.sid('gym'), 'inactive', false, pg_temp.sid('tpl:inactive'), '{"days": 14}'),
   (pg_temp.sid('gym'), 'birthday', false, pg_temp.sid('tpl:birthday'), '{}');
+
+-- ---------------------------------------------------------------------------
+-- Cours souples : valeurs par défaut des disciplines, un cours à deux coachs
+-- ---------------------------------------------------------------------------
+
+update public.disciplines d set default_duration_minutes = v.duration, default_capacity = v.capacity
+from (values ('d:crossfit', 60, 16), ('d:hyrox', 75, 12), ('d:renfo', 45, 14), ('d:run', 60, 25))
+  as v(key, duration, capacity)
+where d.id = pg_temp.sid(v.key);
+
+-- Hyrox du samedi : Julien et Maxime (chacun payé la durée complète).
+insert into public.template_coaches (gym_id, template_id, coach_id, position)
+values (pg_temp.sid('gym'), pg_temp.sid('t:hy-sat:6'), pg_temp.sid('c:c3'), 1)
+on conflict do nothing;
+insert into public.session_coaches (gym_id, session_id, coach_id, position)
+select s.gym_id, s.id, pg_temp.sid('c:c3'), 1
+from public.class_sessions s
+where s.template_id = pg_temp.sid('t:hy-sat:6') and s.coach_id <> pg_temp.sid('c:c3')
+on conflict do nothing;
+insert into public.coach_shifts (gym_id, coach_id, session_id, starts_at, ends_at, status)
+select s.gym_id, pg_temp.sid('c:c3'), s.id, s.starts_at, s.ends_at,
+  case when s.starts_at < now() then 'done' else 'planned' end::public.shift_status
+from public.class_sessions s
+where s.template_id = pg_temp.sid('t:hy-sat:6') and s.status = 'scheduled'
+  and s.coach_id <> pg_temp.sid('c:c3');

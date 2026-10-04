@@ -164,5 +164,8 @@ export const fr = {
     segment_not_found: "Segment introuvable.",
     account_not_found: "Compte introuvable.",
     cannot_remove_self: "Action impossible sur votre propre rôle.",
+    capacity_below_booked: "Trop d'inscrits pour ce nombre de places.",
+    room_capacity_exceeded: "Capacité de la salle dépassée.",
+    invalid_duration: "Durée invalide.",
   },
 } as const;

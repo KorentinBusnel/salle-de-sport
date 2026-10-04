@@ -76,6 +76,9 @@ export const BOOKING_ERROR_CODES = [
   "segment_not_found",
   "account_not_found",
   "cannot_remove_self",
+  "capacity_below_booked",
+  "room_capacity_exceeded",
+  "invalid_duration",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

@@ -283,6 +283,7 @@ export type Database = {
           ends_at: string;
           gym_id: string;
           id: string;
+          is_customized: boolean;
           room_id: string | null;
           starts_at: string;
           status: Database["public"]["Enums"]["session_status"];
@@ -300,6 +301,7 @@ export type Database = {
           ends_at: string;
           gym_id: string;
           id?: string;
+          is_customized?: boolean;
           room_id?: string | null;
           starts_at: string;
           status?: Database["public"]["Enums"]["session_status"];
@@ -317,6 +319,7 @@ export type Database = {
           ends_at?: string;
           gym_id?: string;
           id?: string;
+          is_customized?: boolean;
           room_id?: string | null;
           starts_at?: string;
           status?: Database["public"]["Enums"]["session_status"];
@@ -744,6 +747,8 @@ export type Database = {
         Row: {
           color: string;
           created_at: string;
+          default_capacity: number;
+          default_duration_minutes: number;
           description: string | null;
           gym_id: string;
           id: string;
@@ -754,6 +759,8 @@ export type Database = {
         Insert: {
           color: string;
           created_at?: string;
+          default_capacity?: number;
+          default_duration_minutes?: number;
           description?: string | null;
           gym_id: string;
           id?: string;
@@ -764,6 +771,8 @@ export type Database = {
         Update: {
           color?: string;
           created_at?: string;
+          default_capacity?: number;
+          default_duration_minutes?: number;
           description?: string | null;
           gym_id?: string;
           id?: string;
@@ -1429,6 +1438,42 @@ export type Database = {
           },
         ];
       };
+      session_coaches: {
+        Row: {
+          coach_id: string;
+          gym_id: string;
+          position: number;
+          session_id: string;
+        };
+        Insert: {
+          coach_id: string;
+          gym_id: string;
+          position?: number;
+          session_id: string;
+        };
+        Update: {
+          coach_id?: string;
+          gym_id?: string;
+          position?: number;
+          session_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "session_coaches_coach_id_gym_id_fkey";
+            columns: ["coach_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "coaches";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "session_coaches_session_id_gym_id_fkey";
+            columns: ["session_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sessions";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
       stripe_events: {
         Row: {
           id: string;
@@ -1513,6 +1558,42 @@ export type Database = {
           },
         ];
       };
+      template_coaches: {
+        Row: {
+          coach_id: string;
+          gym_id: string;
+          position: number;
+          template_id: string;
+        };
+        Insert: {
+          coach_id: string;
+          gym_id: string;
+          position?: number;
+          template_id: string;
+        };
+        Update: {
+          coach_id?: string;
+          gym_id?: string;
+          position?: number;
+          template_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "template_coaches_coach_id_gym_id_fkey";
+            columns: ["coach_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "coaches";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "template_coaches_template_id_gym_id_fkey";
+            columns: ["template_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "class_templates";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1586,6 +1667,7 @@ export type Database = {
           ends_at: string;
           gym_id: string;
           id: string;
+          is_customized: boolean;
           room_id: string | null;
           starts_at: string;
           status: Database["public"]["Enums"]["session_status"];
@@ -1641,6 +1723,41 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "members";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_session: {
+        Args: {
+          p_capacity?: number;
+          p_coach_ids?: string[];
+          p_discipline_id: string;
+          p_duration_minutes?: number;
+          p_gym_id: string;
+          p_room_id?: string;
+          p_starts_at: string;
+        };
+        Returns: {
+          booked_count: number;
+          cancellation_reason: string | null;
+          capacity: number;
+          coach_id: string | null;
+          created_at: string;
+          discipline_id: string;
+          ends_at: string;
+          gym_id: string;
+          id: string;
+          is_customized: boolean;
+          room_id: string | null;
+          starts_at: string;
+          status: Database["public"]["Enums"]["session_status"];
+          template_id: string | null;
+          updated_at: string;
+          waitlist_count: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "class_sessions";
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -1754,6 +1871,7 @@ export type Database = {
           ends_at: string;
           gym_id: string;
           id: string;
+          is_customized: boolean;
           room_id: string | null;
           starts_at: string;
           status: Database["public"]["Enums"]["session_status"];
@@ -1783,32 +1901,6 @@ export type Database = {
           p_role: Database["public"]["Enums"]["gym_role"];
         };
         Returns: undefined;
-      };
-      replace_session_coach: {
-        Args: { p_coach_id: string; p_note?: string; p_session_id: string };
-        Returns: {
-          booked_count: number;
-          cancellation_reason: string | null;
-          capacity: number;
-          coach_id: string | null;
-          created_at: string;
-          discipline_id: string;
-          ends_at: string;
-          gym_id: string;
-          id: string;
-          room_id: string | null;
-          starts_at: string;
-          status: Database["public"]["Enums"]["session_status"];
-          template_id: string | null;
-          updated_at: string;
-          waitlist_count: number;
-        };
-        SetofOptions: {
-          from: "*";
-          to: "class_sessions";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
       };
       reset_attendance: {
         Args: { p_booking_id: string };
@@ -1986,6 +2078,11 @@ export type Database = {
           roles: Database["public"]["Enums"]["gym_role"][];
         }[];
       };
+      update_session: {
+        Args: { p_changes: Json; p_scope?: string; p_session_id: string };
+        Returns: number;
+      };
+      update_template: { Args: { p_changes: Json; p_template_id: string }; Returns: Json };
     };
     Enums: {
       automation_kind: "welcome" | "inactive" | "birthday";

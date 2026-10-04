@@ -771,6 +771,9 @@ export const fr = {
     segment_not_found: "Le segment de la campagne n'existe plus.",
     account_not_found: "Aucun compte avec cet email : la personne doit d'abord créer son compte.",
     cannot_remove_self: "Vous ne pouvez pas retirer votre propre rôle de gérant.",
+    capacity_below_booked: "Impossible : il y a déjà plus d'inscrits que ce nombre de places.",
+    room_capacity_exceeded: "La salle ne peut pas accueillir autant de participants.",
+    invalid_duration: "Durée invalide : de 15 à 240 minutes, par pas de 5.",
   },
   roles: {
     member: "Adhérent",

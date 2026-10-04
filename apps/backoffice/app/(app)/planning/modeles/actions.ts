@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
+import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import type { TemplateField, TemplateFormState } from "@/components/templates/template-form";
 
 const PATH = "/planning/modeles";
 const optionalUuid = z.preprocess((v) => (v === "" ? null : v), z.guid().nullable());
@@ -23,21 +25,55 @@ const templateSchema = z
     starts_on: z.iso.date(),
     ends_on: optionalDate,
   })
-  .refine((v) => !v.ends_on || v.ends_on >= v.starts_on);
+  .refine((v) => !v.ends_on || v.ends_on >= v.starts_on, {
+    path: ["ends_on"],
+    message: "templates.errors.endsBeforeStart",
+  });
 
-export async function createTemplate(formData: FormData) {
+/** Message par champ (clés templates.errors.*). */
+const FIELD_ERRORS: Record<TemplateField, MessageKey> = {
+  discipline_id: "templates.errors.discipline",
+  default_coach_id: "templates.errors.coach",
+  room_id: "templates.errors.room",
+  weekday: "templates.errors.weekday",
+  start_time: "templates.errors.startTime",
+  duration_minutes: "templates.errors.duration",
+  capacity: "templates.errors.capacity",
+  starts_on: "templates.errors.startsOn",
+  ends_on: "templates.errors.endsOn",
+};
+
+/** Création via useActionState : erreurs par champ et saisie conservée. */
+export async function createTemplate(
+  _previous: TemplateFormState,
+  formData: FormData,
+): Promise<TemplateFormState> {
   const context = await requireRole(isManagerRole);
-  const parsed = templateSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) redirect(withFlash(PATH, { error: "templates.invalid" }));
+  const raw = Object.fromEntries(formData);
+  const values = Object.fromEntries(
+    Object.keys(FIELD_ERRORS).map((field) => [field, String(raw[field] ?? "")]),
+  ) as TemplateFormState["values"];
+  const parsed = templateSchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors: TemplateFormState["fieldErrors"] = {};
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0] as TemplateField;
+      if (!(field in FIELD_ERRORS) || fieldErrors[field]) continue;
+      fieldErrors[field] =
+        issue.message === "templates.errors.endsBeforeStart"
+          ? "templates.errors.endsBeforeStart"
+          : FIELD_ERRORS[field];
+    }
+    return { fieldErrors, values };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("class_templates")
     .insert({ ...parsed.data, gym_id: context.gym.id });
+  if (error) return { fieldErrors: {}, values, error: "common.unexpectedError" };
   revalidatePath(PATH);
-  redirect(
-    withFlash(PATH, error ? { error: "common.unexpectedError" } : { ok: "templates.created" }),
-  );
+  redirect(withFlash(PATH, { ok: "templates.created" }));
 }
 
 export async function toggleTemplate(formData: FormData) {
@@ -72,5 +108,5 @@ export async function generateSessions(formData: FormData) {
   revalidatePath(PATH);
   revalidatePath("/planning");
   if (error) redirect(withFlash(PATH, { error: errorMessageKey(error) }));
-  redirect(`${PATH}?genere=${data ?? 0}`);
+  redirect(withFlash(PATH, { ok: "templates.generated", count: data ?? 0 }));
 }

@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { asMessageKey } from "@/lib/flash";
+import { asMessageKey, flashParams } from "@/lib/flash";
 import { t } from "@/lib/i18n";
 
 /**
@@ -24,12 +24,14 @@ export function FlashToast() {
     if (shown.current === signature) return;
     shown.current = signature;
 
-    if (error) toast.error(t(error), { closeButton: true, duration: 8000 });
-    else if (ok) toast.success(t(ok));
+    const values = flashParams(params.get("n"));
+    if (error) toast.error(t(error, values), { closeButton: true, duration: 8000 });
+    else if (ok) toast.success(t(ok, values));
 
     const next = new URLSearchParams(params.toString());
     next.delete("ok");
     next.delete("erreur");
+    next.delete("n");
     const query = next.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [params, pathname, router]);

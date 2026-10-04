@@ -8,12 +8,12 @@ import { Chip, EmptyState, ErrorState, Loading, Skeleton } from "@/components/ui
 import { t } from "@/lib/i18n";
 import { useMember } from "@/lib/member";
 import { planningDays } from "@/lib/planning";
+import { SESSION_COACHES_SELECT, sessionCoaches } from "@/lib/coaches";
 import { supabase } from "@/lib/supabase";
 
-type PlanningSession = CardSession & { discipline_id: string; coach_id: string | null };
+type PlanningSession = CardSession & { discipline_id: string };
 
-const SELECT =
-  "id, starts_at, ends_at, capacity, booked_count, waitlist_count, discipline_id, coach_id, disciplines(name, color), coaches(display_name)";
+const SELECT = `id, starts_at, ends_at, capacity, booked_count, waitlist_count, discipline_id, disciplines(name, color), ${SESSION_COACHES_SELECT}`;
 
 export default function PlanningScreen() {
   const { state, refresh: refreshMember } = useMember();
@@ -126,7 +126,7 @@ export default function PlanningScreen() {
   const disciplines = [...new Map(sessions.map((s) => [s.discipline_id, s.disciplines])).entries()];
   const coaches = [
     ...new Map(
-      sessions.filter((s) => s.coach_id).map((s) => [s.coach_id as string, s.coaches]),
+      sessions.flatMap((s) => sessionCoaches(s.session_coaches)).map((c) => [c.id, c.name]),
     ).entries(),
   ];
   const visible = sessions.filter(
@@ -135,7 +135,7 @@ export default function PlanningScreen() {
       Date.parse(s.starts_at) >= selectedDay.start.getTime() &&
       Date.parse(s.starts_at) < selectedDay.end.getTime() &&
       (!discipline || s.discipline_id === discipline) &&
-      (!coach || s.coach_id === coach),
+      (!coach || s.session_coaches.some((c) => c.coach_id === coach)),
   );
 
   return (
@@ -194,7 +194,7 @@ export default function PlanningScreen() {
             {coaches.map(([id, c]) => (
               <Chip
                 key={id}
-                label={c?.display_name ?? ""}
+                label={c}
                 selected={coach === id}
                 onPress={() => setCoach(coach === id ? null : id)}
               />

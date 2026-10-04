@@ -1,6 +1,7 @@
-import { BOOKING_STATUS_TONE } from "@salle/shared";
+import { BOOKING_STATUS_TONE, coachesLabel } from "@salle/shared";
 import { colors, shadows } from "@salle/ui";
 import { Pressable, Text, View } from "react-native";
+import { type SessionCoachRow, sessionCoaches } from "@/lib/coaches";
 import { Gauge, StatusPill } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import { spotsText } from "@/lib/planning";
@@ -13,7 +14,7 @@ export type CardSession = {
   booked_count: number;
   waitlist_count: number;
   disciplines: { name: string; color: string } | null;
-  coaches: { display_name: string } | null;
+  session_coaches: SessionCoachRow[];
 };
 
 export function SessionCard({
@@ -28,6 +29,7 @@ export function SessionCard({
   onPress: () => void;
 }) {
   const time = new Intl.DateTimeFormat("fr-FR", { timeZone, hour: "2-digit", minute: "2-digit" });
+  const coachLabel = coachesLabel(sessionCoaches(session.session_coaches).map((c) => c.name));
   const startsAt = new Date(session.starts_at);
   const minutes = Math.round((Date.parse(session.ends_at) - startsAt.getTime()) / 60_000);
   const spots = spotsText(session.capacity, session.booked_count, session.waitlist_count);
@@ -35,7 +37,7 @@ export function SessionCard({
   const label = [
     time.format(startsAt),
     session.disciplines?.name,
-    session.coaches?.display_name,
+    coachLabel,
     spots.text,
     myStatus
       ? myStatus.status === "waitlisted"
@@ -70,7 +72,7 @@ export function SessionCard({
               <Text className="text-base font-semibold text-foreground">
                 {session.disciplines?.name}
               </Text>
-              <Text className="text-sm text-muted-foreground">{session.coaches?.display_name}</Text>
+              <Text className="text-sm text-muted-foreground">{coachLabel}</Text>
             </View>
             {myStatus ? (
               <StatusPill

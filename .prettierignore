@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+node_modules
+dist
+.next
+.expo
+.turbo
+coverage
+
+# Documents rédigés à la main
+BRIEF.md

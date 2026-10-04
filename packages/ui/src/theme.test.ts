@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { colors, disciplineColors, radius } from "./tokens.ts";
+import { colors, disciplineColors, radius, semantic, shadows } from "./tokens.ts";
 
 const css = readFileSync(new URL("./theme.css", import.meta.url), "utf8");
 
 function cssVars(): Map<string, string> {
   const vars = new Map<string, string>();
   for (const match of css.matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
-    vars.set(match[1] ?? "", (match[2] ?? "").trim());
+    vars.set(match[1] ?? "", (match[2] ?? "").replace(/\s+/g, " ").trim());
   }
   return vars;
 }
@@ -22,11 +22,17 @@ function expectedVars(): Map<string, string> {
         expected.set(`--color-${name}-${shade}`, hex);
     }
   }
+  for (const [name, hex] of Object.entries(semantic)) {
+    expected.set(`--color-${name}`, hex);
+  }
   for (const [name, hex] of Object.entries(disciplineColors)) {
     expected.set(`--color-discipline-${name}`, hex);
   }
   for (const [name, px] of Object.entries(radius)) {
     if (name !== "full") expected.set(`--radius-${name}`, `${px}px`);
+  }
+  for (const [name, value] of Object.entries(shadows)) {
+    expected.set(`--shadow-${name}`, value);
   }
   return expected;
 }

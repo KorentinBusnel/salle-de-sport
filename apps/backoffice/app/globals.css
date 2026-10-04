@@ -21,50 +21,32 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Variables shadcn/ui branchées sur les tokens de packages/ui (theme.css). */
+/*
+ * Les rôles (--color-primary, --color-muted-foreground…) et les rayons viennent de
+ * @salle/ui/theme.css (tokens.ts). Ces alias servent aux composants shadcn qui lisent
+ * directement var(--primary), var(--radius)…
+ */
 :root {
-  --background: var(--color-neutral-50);
-  --foreground: var(--color-neutral-900);
-  --card: var(--color-neutral-0);
-  --card-foreground: var(--color-neutral-900);
-  --popover: var(--color-neutral-0);
-  --popover-foreground: var(--color-neutral-900);
-  --primary: var(--color-brand-600);
-  --primary-foreground: var(--color-neutral-0);
-  --secondary: var(--color-neutral-100);
-  --secondary-foreground: var(--color-neutral-900);
-  --muted: var(--color-neutral-100);
-  --muted-foreground: var(--color-neutral-500);
-  --accent: var(--color-brand-50);
-  --accent-foreground: var(--color-brand-700);
-  --destructive: var(--color-danger);
-  --border: var(--color-neutral-100);
-  --input: var(--color-neutral-300);
-  --ring: var(--color-brand-500);
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --destructive: var(--color-destructive);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
   --chart-1: var(--color-brand-600);
   --chart-2: var(--color-neutral-500);
   --chart-3: var(--color-success);
@@ -73,12 +55,12 @@
   --radius: var(--radius-lg);
   --sidebar: var(--color-neutral-0);
   --sidebar-foreground: var(--color-neutral-900);
-  --sidebar-primary: var(--color-brand-600);
-  --sidebar-primary-foreground: var(--color-neutral-0);
-  --sidebar-accent: var(--color-brand-50);
-  --sidebar-accent-foreground: var(--color-brand-700);
-  --sidebar-border: var(--color-neutral-100);
-  --sidebar-ring: var(--color-brand-500);
+  --sidebar-primary: var(--color-primary);
+  --sidebar-primary-foreground: var(--color-primary-foreground);
+  --sidebar-accent: var(--color-accent);
+  --sidebar-accent-foreground: var(--color-accent-foreground);
+  --sidebar-border: var(--color-border);
+  --sidebar-ring: var(--color-ring);
 }
 
 @layer base {
@@ -89,6 +71,14 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 }

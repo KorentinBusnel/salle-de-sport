@@ -27,3 +27,6 @@ next-env.d.ts
 
 # Expo
 expo-env.d.ts
+
+# Réglages locaux de Claude Code
+.claude/settings.local.json

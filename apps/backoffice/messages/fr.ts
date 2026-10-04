@@ -3,6 +3,22 @@ export const fr = {
   app: {
     title: "Back office",
   },
+  ui: {
+    close: "Fermer",
+    more: "Plus",
+    pagination: "Pagination",
+    previous: "Précédent",
+    next: "Suivant",
+    previousPage: "Page précédente",
+    nextPage: "Page suivante",
+    morePages: "Autres pages",
+    navigation: "Navigation",
+    navigationDescription: "Pages de l'espace équipe.",
+    toggleSidebar: "Afficher ou masquer la navigation",
+    loading: "Chargement",
+    commandTitle: "Recherche",
+    commandDescription: "Tapez pour rechercher.",
+  },
   login: {
     title: "Connexion",
     subtitle: "Espace de l'équipe : gérants, coachs et accueil.",

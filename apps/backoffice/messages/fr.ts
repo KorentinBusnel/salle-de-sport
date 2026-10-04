@@ -42,9 +42,19 @@ export const fr = {
     invalidInput: "Saisissez une adresse email et un mot de passe.",
     invalidCredentials: "Adresse email ou mot de passe incorrect.",
     serviceError:
-      "Connexion au service d'authentification impossible : vérifiez l'URL et la clé Supabase de cet environnement.",
+      "Le service de connexion ne répond pas correctement. Réessayez ; si le problème continue, prévenez le gérant (configuration du serveur).",
     sessionRejected:
-      "Connexion réussie mais session refusée par le serveur : vérifiez la clé Supabase de cet environnement.",
+      "Votre session n'a pas été acceptée par le serveur. Reconnectez-vous ; si le problème continue, prévenez le gérant (configuration du serveur).",
+    errorTitle: "Connexion impossible",
+    technicalDetail: "Détail technique",
+    showPassword: "Afficher le mot de passe",
+    hidePassword: "Masquer le mot de passe",
+    forgotPassword: "Mot de passe oublié ? Demandez au gérant de la salle de le réinitialiser.",
+    tagline: "Planning, présences et adhérents de la salle, au même endroit.",
+    highlightPlanning: "Planning de la semaine et places en temps réel",
+    highlightAttendance: "Pointage des présences en un geste",
+    highlightMembers: "Adhérents, inscriptions et crédits",
+    footer: "Accès réservé à l'équipe de la salle.",
     noTeamRole:
       "Ce compte n'a pas de rôle d'équipe (coach, accueil, gérant) dans la salle : demandez-le au gérant.",
   },
@@ -274,13 +284,19 @@ export const fr = {
     cancelled: "Résilié",
   },
   settings: {
-    title: "Paramètres de réservation",
-    maxUpcoming: "Réservations à venir au plus par adhérent",
-    maxUpcomingHint: "Confirmées et en liste d'attente.",
+    title: "Paramètres",
+    bookingRules: "Règles de réservation",
+    bookingRulesHint: "Appliquées immédiatement dans l'app des adhérents.",
+    maxUpcoming: "Nombre maximum de réservations à venir par adhérent",
+    maxUpcomingHint: "Réservations confirmées et en liste d'attente, de 1 à 50.",
     recommendedHours: "Délai d'annulation recommandé (heures)",
     recommendedHoursHint:
-      "Indicatif : l'annulation reste libre jusqu'au début du cours, le crédit est toujours rendu.",
+      "Indicatif, de 0 à 72 h : l'annulation reste libre jusqu'au début du cours et le crédit est toujours rendu.",
     invalid: "Valeurs invalides : 1 à 50 réservations, 0 à 72 heures.",
+    errors: {
+      maxUpcoming: "Saisissez un nombre entier entre 1 et 50.",
+      recommendedHours: "Saisissez un nombre entier d'heures entre 0 et 72.",
+    },
   },
   bookingErrors: {
     session_not_found: "Séance introuvable.",

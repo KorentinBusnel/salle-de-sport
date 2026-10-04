@@ -49,5 +49,17 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Déjà connecté : la page de connexion renvoie à l'accueil (sauf motif à afficher).
+  if (
+    data?.claims &&
+    request.nextUrl.pathname === "/login" &&
+    !request.nextUrl.searchParams.has("motif")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }

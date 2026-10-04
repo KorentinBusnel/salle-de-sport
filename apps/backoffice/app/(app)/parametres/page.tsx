@@ -1,13 +1,15 @@
 import { parseGymSettings } from "@salle/shared";
+import type { Metadata } from "next";
 import { Flash } from "@/components/flash";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
+import { SettingsForm } from "@/components/settings/settings-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { saveSettings } from "./actions";
+
+export const metadata: Metadata = { title: t("settings.title") };
 
 export default async function SettingsPage({
   searchParams,
@@ -25,47 +27,22 @@ export default async function SettingsPage({
   const settings = parseGymSettings(gym?.settings);
 
   return (
-    <div className="grid max-w-xl gap-6">
-      <h1 className="text-2xl font-semibold">{t("settings.title")}</h1>
+    <div className="grid max-w-2xl gap-6">
+      <PageHeader title={t("settings.title")} description={context.gym.name} />
       <Flash ok={params.ok} error={params.erreur} />
       <Card>
         <CardHeader>
-          <CardTitle>{context.gym.name}</CardTitle>
+          <CardTitle>{t("settings.bookingRules")}</CardTitle>
+          <CardDescription>{t("settings.bookingRulesHint")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={saveSettings} className="grid gap-5">
-            <div className="grid gap-1.5">
-              <Label htmlFor="max_upcoming_bookings">{t("settings.maxUpcoming")}</Label>
-              <Input
-                id="max_upcoming_bookings"
-                name="max_upcoming_bookings"
-                type="number"
-                min={1}
-                max={50}
-                defaultValue={settings.max_upcoming_bookings}
-                className="w-28"
-                required
-              />
-              <p className="text-sm text-muted-foreground">{t("settings.maxUpcomingHint")}</p>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cancellation_recommended_hours">
-                {t("settings.recommendedHours")}
-              </Label>
-              <Input
-                id="cancellation_recommended_hours"
-                name="cancellation_recommended_hours"
-                type="number"
-                min={0}
-                max={72}
-                defaultValue={settings.cancellation_recommended_hours}
-                className="w-28"
-                required
-              />
-              <p className="text-sm text-muted-foreground">{t("settings.recommendedHoursHint")}</p>
-            </div>
-            <Button className="w-fit">{t("common.save")}</Button>
-          </form>
+          <SettingsForm
+            action={saveSettings}
+            initial={{
+              max_upcoming_bookings: String(settings.max_upcoming_bookings),
+              cancellation_recommended_hours: String(settings.cancellation_recommended_hours),
+            }}
+          />
         </CardContent>
       </Card>
     </div>

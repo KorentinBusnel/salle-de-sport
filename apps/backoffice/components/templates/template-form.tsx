@@ -85,7 +85,7 @@ export function TemplateForm({
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <form key={formKey} action={formAction} className="flex min-h-full flex-col">
+        <form key={formKey} action={formAction} noValidate className="flex min-h-full flex-col">
           <SheetHeader>
             <SheetTitle>{t("templates.create")}</SheetTitle>
             <SheetDescription>{t("templates.createHint")}</SheetDescription>

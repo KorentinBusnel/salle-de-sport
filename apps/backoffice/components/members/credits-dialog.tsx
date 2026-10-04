@@ -31,6 +31,7 @@ export function CreditsDialog({
   memberName,
   balance,
   returnQuery,
+  returnTo,
   canRemove,
   action,
 }: {
@@ -38,6 +39,8 @@ export function CreditsDialog({
   memberName: string;
   balance: number;
   returnQuery: string;
+  /** Fiche adhérent : y revenir après l'action plutôt que sur la liste. */
+  returnTo?: string | undefined;
   canRemove: boolean;
   action: (formData: FormData) => void | Promise<void>;
 }) {
@@ -74,6 +77,7 @@ export function CreditsDialog({
         <form action={action} onSubmit={() => setOpen(false)} className="grid gap-5">
           <input type="hidden" name="memberId" value={memberId} />
           <input type="hidden" name="returnQuery" value={returnQuery} />
+          {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
           <input type="hidden" name="mode" value={mode} />
           <DialogHeader>
             <DialogTitle>

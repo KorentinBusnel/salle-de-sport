@@ -46,6 +46,7 @@ export default async function MembersPage({
   searchParams: Promise<{
     q?: string;
     statut?: string;
+    tag?: string;
     page?: string;
     ok?: string;
     erreur?: string;
@@ -62,6 +63,7 @@ export default async function MembersPage({
 
   const search = (params.q ?? "").trim().slice(0, 80);
   const status = STATUSES.find((s) => s === params.statut);
+  const tag = (params.tag ?? "").trim().toLowerCase().slice(0, 40);
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   const countFor = (s: MemberStatus) =>
@@ -75,6 +77,7 @@ export default async function MembersPage({
       p_gym_id: context.gym.id,
       ...(search ? { p_query: search } : {}),
       ...(status ? { p_statuses: [status] } : {}),
+      ...(tag ? { p_tag: tag } : {}),
       p_limit: PAGE_SIZE,
       p_offset: (page - 1) * PAGE_SIZE,
     }),
@@ -106,6 +109,7 @@ export default async function MembersPage({
     const pg = overrides.page ?? 1;
     if (q) query.set("q", q);
     if (st) query.set("statut", st);
+    if (tag) query.set("tag", tag);
     if (pg > 1) query.set("page", String(pg));
     const text = query.toString();
     return `/adherents${text ? `?${text}` : ""}`;
@@ -194,6 +198,18 @@ export default async function MembersPage({
         </form>
       </div>
 
+      {tag ? (
+        <p className="flex items-center gap-2 text-sm">
+          {t("members.taggedWith")}
+          <span className="rounded-full bg-muted px-3 py-0.5">{tag}</span>
+          <Link
+            href={`/adherents${status ? `?statut=${status}` : ""}`}
+            className="text-muted-foreground underline hover:text-foreground"
+          >
+            {t("members.clearTag")}
+          </Link>
+        </p>
+      ) : null}
       <Flash ok={params.ok} error={params.erreur} />
 
       {result.error ? (
@@ -237,9 +253,19 @@ export default async function MembersPage({
                         <Avatar className="size-8">
                           <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">
-                          {member.last_name}{" "}
-                          <span className="font-normal">{member.first_name}</span>
+                        <span className="grid">
+                          <Link
+                            href={`/adherents/${member.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {member.last_name}{" "}
+                            <span className="font-normal">{member.first_name}</span>
+                          </Link>
+                          {member.tags.length ? (
+                            <span className="truncate text-xs text-muted-foreground">
+                              {member.tags.join(" · ")}
+                            </span>
+                          ) : null}
                         </span>
                       </span>
                     </TableCell>

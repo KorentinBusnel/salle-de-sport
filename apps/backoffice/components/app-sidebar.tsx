@@ -5,6 +5,8 @@ import {
   ChevronsUpDownIcon,
   ClockIcon,
   DumbbellIcon,
+  FilterIcon,
+  KanbanIcon,
   HouseIcon,
   LogOutIcon,
   MailIcon,
@@ -50,6 +52,8 @@ const ICONS = {
   messages: MailIcon,
   coaches: DumbbellIcon,
   hours: ClockIcon,
+  crm: KanbanIcon,
+  segments: FilterIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

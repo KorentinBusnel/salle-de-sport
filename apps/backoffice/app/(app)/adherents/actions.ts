@@ -10,8 +10,13 @@ import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
-/** Revient sur la liste en conservant la recherche en cours. */
+/** Revient sur la fiche (returnTo) ou sur la liste en conservant la recherche en cours. */
 function back(formData: FormData) {
+  const returnTo = z
+    .string()
+    .regex(/^(\/adherents\/[0-9a-f-]{36}(\?[\w=&%-]*)?|\/crm)$/)
+    .safeParse(formData.get("returnTo"));
+  if (returnTo.success) return returnTo.data;
   const query = z.string().max(500).catch("").parse(formData.get("returnQuery"));
   return `/adherents${query ? `?${query}` : ""}`;
 }
@@ -29,7 +34,8 @@ export async function setMemberStatus(formData: FormData) {
   const status = z.enum(["active", "suspended", "cancelled"]).parse(formData.get("status"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_member_status", { p_member_id: id, p_status: status });
-  revalidatePath("/adherents");
+  revalidatePath("/adherents", "layout");
+  revalidatePath("/crm");
   redirect(
     withFlash(
       back(formData),
@@ -58,7 +64,7 @@ export async function adjustCredits(formData: FormData) {
     p_delta: remove ? -amount.data : amount.data,
     ...(note ? { p_note: note } : {}),
   });
-  revalidatePath("/adherents");
+  revalidatePath("/adherents", "layout");
   redirect(
     withFlash(
       back(formData),

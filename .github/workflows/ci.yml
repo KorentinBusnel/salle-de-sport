@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Valeurs factices : le build et le bundle n'appellent pas Supabase,
+  # mais les schémas d'environnement (lib/env.ts) exigent ces variables.
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+  EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  checks:
+    name: Format, lint, types, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  database:
+    name: Base de données (migrations, RLS, types)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Postgres, Auth (ses migrations créent auth.identities, utilisée par le seed),
+      # API et postgres-meta (génération des types). Le reste n'est pas utile ici.
+      - name: Démarrer Supabase local (migrations + seed)
+        run: pnpm exec supabase start -x studio,imgproxy,logflare,vector,supavisor,mailpit,edge-runtime,storage-api,realtime
+      - name: Tests RLS (pgTAP)
+        run: pnpm db:test
+      - name: Lint et advisors Supabase
+        run: pnpm db:lint
+      - name: Types générés à jour
+        run: |
+          pnpm db:types
+          git diff --exit-code -- packages/supabase/src/database.types.ts \
+            || { echo "::error::database.types.ts n'est pas à jour : lancez pnpm db:types et commitez."; exit 1; }
+
+  backoffice:
+    name: Build du back office
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @salle/backoffice build
+
+  mobile:
+    name: Bundle de l'app mobile (iOS et Android)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Vérifie la résolution Metro (monorepo pnpm, NativeWind) sans outillage natif.
+      - name: Export iOS
+        working-directory: apps/mobile
+        run: npx expo export --platform ios --output-dir dist/ios
+      - name: Export Android
+        working-directory: apps/mobile
+        run: npx expo export --platform android --output-dir dist/android

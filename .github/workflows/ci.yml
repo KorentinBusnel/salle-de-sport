@@ -54,7 +54,7 @@ jobs:
       # API et postgres-meta (génération des types). Le reste n'est pas utile ici.
       - name: Démarrer Supabase local (migrations + seed)
         run: pnpm exec supabase start -x studio,imgproxy,logflare,vector,supavisor,mailpit,edge-runtime,storage-api,realtime
-      - name: Tests RLS (pgTAP)
+      - name: Tests pgTAP (RLS, réservations) et concurrence
         run: pnpm db:test
       - name: Lint et advisors Supabase
         run: pnpm db:lint

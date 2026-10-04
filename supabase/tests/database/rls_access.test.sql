@@ -4,7 +4,7 @@
 -- Salle A : adhérents m1, m2 et un prospect sans compte ; coachs c1, c2 ;
 -- accueil, gérant, admin. Salle B : adhérent m3 et son gérant.
 begin;
-select plan(48);
+select plan(49);
 
 -- ---------------------------------------------------------------------------
 -- Données de test (en tant que postgres : la RLS ne s'applique pas)
@@ -155,13 +155,17 @@ select results_eq(
   $$values ('a2000000-0000-0000-0000-000000000001'::uuid)$$,
   'coach : voit sa seule rémunération'
 );
-select isnt_empty(
-  $$update public.bookings set status = 'attended' where id = 'a4000000-0000-0000-0000-000000000001' returning id$$,
+select lives_ok(
+  $$select public.set_attendance('a4000000-0000-0000-0000-000000000001', 'attended')$$,
   'coach : pointe une présence dans sa séance'
 );
-select is_empty(
-  $$update public.bookings set status = 'attended' where id = 'a4000000-0000-0000-0000-000000000002' returning id$$,
-  'coach : ne pointe pas dans la séance d''un autre coach'
+select throws_ok(
+  $$select public.set_attendance('a4000000-0000-0000-0000-000000000002', 'attended')$$,
+  'P0001', 'forbidden', 'coach : ne pointe pas dans la séance d''un autre coach'
+);
+select throws_ok(
+  $$update public.bookings set status = 'attended' where id = 'a4000000-0000-0000-0000-000000000001'$$,
+  '42501', null, 'coach : aucune écriture directe sur les réservations'
 );
 select is_empty(
   $$update public.members set first_name = 'X' where id = 'a0000000-0000-0000-0000-00000000000a' returning id$$,

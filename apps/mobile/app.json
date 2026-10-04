@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Salle de sport",
+    "slug": "salle-de-sport",
+    "scheme": "salledesport",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.korentinb.salledesport"
+    },
+    "android": {
+      "package": "com.korentinb.salledesport"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router", "expo-status-bar"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "988f49db-e539-432d-87df-5e81a5e6770e"
+      }
+    },
+    "owner": "korentinb",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/988f49db-e539-432d-87df-5e81a5e6770e"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+# Dépendances
+node_modules/
+
+# Builds et caches
+dist/
+.next/
+.expo/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Environnement — ne jamais commiter de secrets (voir .env.example)
+.env
+.env.*
+!.env.example
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Divers
+.DS_Store
+*.log
+
+# Next.js
+next-env.d.ts
+
+# Expo
+expo-env.d.ts

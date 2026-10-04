@@ -78,6 +78,7 @@ export const BOOKING_ERROR_CODES = [
   "cannot_remove_self",
   "capacity_below_booked",
   "room_capacity_exceeded",
+  "not_team_member",
   "invalid_duration",
 ] as const;
 

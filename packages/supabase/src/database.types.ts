@@ -820,6 +820,103 @@ export type Database = {
           },
         ];
       };
+      daily_digests: {
+        Row: {
+          content: NonNullable<Json>;
+          day: string;
+          generated_at: string;
+          generated_by: string | null;
+          gym_id: string;
+        };
+        Insert: {
+          content: NonNullable<Json>;
+          day: string;
+          generated_at?: string;
+          generated_by?: string | null;
+          gym_id: string;
+        };
+        Update: {
+          content?: NonNullable<Json>;
+          day?: string;
+          generated_at?: string;
+          generated_by?: string | null;
+          gym_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "daily_digests_generated_by_fkey";
+            columns: ["generated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "daily_digests_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      desk_shifts: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          ends_at: string;
+          gym_id: string;
+          id: string;
+          note: string | null;
+          profile_id: string;
+          starts_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          ends_at: string;
+          gym_id: string;
+          id?: string;
+          note?: string | null;
+          profile_id: string;
+          starts_at: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          ends_at?: string;
+          gym_id?: string;
+          id?: string;
+          note?: string | null;
+          profile_id?: string;
+          starts_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "desk_shifts_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "desk_shifts_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "desk_shifts_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       disciplines: {
         Row: {
           color: string;
@@ -1101,6 +1198,45 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "members";
             referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
+      member_care_notes: {
+        Row: {
+          gym_id: string;
+          member_id: string;
+          note: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          gym_id: string;
+          member_id: string;
+          note: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          gym_id?: string;
+          member_id?: string;
+          note?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "member_care_notes_member_id_gym_id_fkey";
+            columns: ["member_id", "gym_id"];
+            isOneToOne: true;
+            referencedRelation: "members";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "member_care_notes_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -1671,45 +1807,6 @@ export type Database = {
           },
         ];
       };
-      weekly_briefs: {
-        Row: {
-          content: string;
-          generated_at: string;
-          generated_by: string | null;
-          gym_id: string;
-          week_start: string;
-        };
-        Insert: {
-          content: string;
-          generated_at?: string;
-          generated_by?: string | null;
-          gym_id: string;
-          week_start: string;
-        };
-        Update: {
-          content?: string;
-          generated_at?: string;
-          generated_by?: string | null;
-          gym_id?: string;
-          week_start?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "weekly_briefs_generated_by_fkey";
-            columns: ["generated_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "weekly_briefs_gym_id_fkey";
-            columns: ["gym_id"];
-            isOneToOne: false;
-            referencedRelation: "gyms";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
     };
     Views: {
       [_ in never]: never;
@@ -1890,6 +1987,14 @@ export type Database = {
           phone: string;
           stage: string;
           status: Database["public"]["Enums"]["member_status"];
+        }[];
+      };
+      crm_todo: {
+        Args: { p_gym_id: string };
+        Returns: {
+          kind: string;
+          member_ids: string[];
+          total: number;
         }[];
       };
       filter_members: {
@@ -2228,6 +2333,34 @@ export type Database = {
           last_name: string;
           profile_id: string;
           roles: Database["public"]["Enums"]["gym_role"][];
+        }[];
+      };
+      today_trials: {
+        Args: { p_day: string; p_gym_id: string };
+        Returns: {
+          coaches: string;
+          color: string;
+          discipline: string;
+          first_name: string;
+          is_trial: boolean;
+          last_name: string;
+          member_id: string;
+          note: string;
+          session_id: string;
+          starts_at: string;
+          visit_number: number;
+        }[];
+      };
+      unpaid_members: {
+        Args: { p_gym_id: string };
+        Returns: {
+          amount_cents: number;
+          failures: number;
+          first_failed_at: string;
+          first_name: string;
+          last_name: string;
+          member_id: string;
+          plan: string;
         }[];
       };
       update_session: {

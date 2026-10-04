@@ -941,6 +941,7 @@ export const fr = {
     session_full: "La séance est complète.",
     attendance_not_open: "Le pointage n'est pas encore ouvert pour cette séance.",
     strategy_disabled: "Cette action est désactivée dans les stratégies de la salle.",
+    not_team_member: "Cette personne ne fait pas partie de l'équipe de la salle.",
     invalid_amount: "Nombre de crédits invalide (1 à 50).",
     reason_required: "Indiquez le motif du retrait.",
     insufficient_credits: "Le solde de crédits est insuffisant pour ce retrait.",

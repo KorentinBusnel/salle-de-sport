@@ -12,15 +12,35 @@ describe("parseGymSettings", () => {
     expect(parseGymSettings({})).toEqual({
       max_upcoming_bookings: 5,
       cancellation_recommended_hours: 2,
+      late_booking_minutes: 0,
+      attendance_opens_minutes_before: null,
+      allow_attendance_reset: false,
+      manager_can_remove_credits: false,
+      staff_can_suspend_members: false,
+      staff_can_create_members: false,
     });
     expect(parseGymSettings(null).max_upcoming_bookings).toBe(5);
   });
 
   it("garde les valeurs valides et remplace les invalides", () => {
-    expect(
-      parseGymSettings({ max_upcoming_bookings: 3, cancellation_recommended_hours: "x" }),
-    ).toEqual({ max_upcoming_bookings: 3, cancellation_recommended_hours: 2 });
+    const settings = parseGymSettings({
+      max_upcoming_bookings: 3,
+      cancellation_recommended_hours: "x",
+      late_booking_minutes: 10,
+      attendance_opens_minutes_before: 30,
+      allow_attendance_reset: "oui",
+      staff_can_create_members: true,
+    });
+    expect(settings).toMatchObject({
+      max_upcoming_bookings: 3,
+      cancellation_recommended_hours: 2,
+      late_booking_minutes: 10,
+      attendance_opens_minutes_before: 30,
+      allow_attendance_reset: false,
+      staff_can_create_members: true,
+    });
     expect(parseGymSettings({ max_upcoming_bookings: 0 }).max_upcoming_bookings).toBe(5);
+    expect(parseGymSettings({ late_booking_minutes: 500 }).late_booking_minutes).toBe(0);
   });
 });
 

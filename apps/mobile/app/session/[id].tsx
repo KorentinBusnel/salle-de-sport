@@ -12,6 +12,7 @@ import { confirmAsync } from "@/lib/confirm";
 import { errorText } from "@/lib/errors";
 import { t } from "@/lib/i18n";
 import { useMember } from "@/lib/member";
+import { SESSION_COACHES_SELECT, type SessionCoachRow, sessionCoaches } from "@/lib/coaches";
 import { supabase } from "@/lib/supabase";
 
 type SessionDetail = {
@@ -24,7 +25,7 @@ type SessionDetail = {
   status: "scheduled" | "cancelled";
   cancellation_reason: string | null;
   disciplines: { name: string; color: string } | null;
-  coaches: { display_name: string } | null;
+  session_coaches: SessionCoachRow[];
   rooms: { name: string } | null;
 };
 
@@ -41,7 +42,7 @@ export default function SessionScreen() {
     const { data } = await supabase
       .from("class_sessions")
       .select(
-        "id, starts_at, ends_at, capacity, booked_count, waitlist_count, status, cancellation_reason, disciplines(name, color), coaches(display_name), rooms(name)",
+        `id, starts_at, ends_at, capacity, booked_count, waitlist_count, status, cancellation_reason, disciplines(name, color), ${SESSION_COACHES_SELECT}, rooms(name)`,
       )
       .eq("id", id)
       .maybeSingle();
@@ -82,6 +83,7 @@ export default function SessionScreen() {
     (b) => b.session_id === session.id && b.status !== "cancelled",
   );
   const startsAt = new Date(session.starts_at);
+  const coachNames = sessionCoaches(session.session_coaches).map((c) => c.name);
   const started = !canCancel(startsAt, now);
   const cancelled = session.status === "cancelled";
   const full = spotsLeft(session.capacity, session.booked_count) === 0;
@@ -186,10 +188,10 @@ export default function SessionScreen() {
       icon: "time-outline" as const,
       text: `${time.format(startsAt)} – ${time.format(new Date(session.ends_at))}`,
     },
-    session.coaches
+    coachNames.length
       ? {
           icon: "person-outline" as const,
-          text: t("session.with", { coach: session.coaches.display_name }),
+          text: t("session.with", { coach: coachNames.join(", ") }),
         }
       : null,
     session.rooms

@@ -3,6 +3,9 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { classChangesSchema } from "@salle/shared";
+import type { CellValue } from "@/components/inline/editable-cell";
+import { isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
@@ -101,6 +104,23 @@ export async function markAttendance(
   return { error: error ? errorMessageKey(error) : null };
 }
 
+const resetSchema = attendanceSchema.pick({ bookingId: true, sessionId: true });
+
+/** Remise à « confirmé » d'un pointage (stratégie allow_attendance_reset). */
+export async function resetAttendance(
+  input: z.input<typeof resetSchema>,
+): Promise<{ error: MessageKey | null }> {
+  const parsed = resetSchema.safeParse(input);
+  if (!parsed.success) return { error: "common.unexpectedError" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reset_attendance", {
+    p_booking_id: parsed.data.bookingId,
+  });
+  revalidatePath(`/planning/${parsed.data.sessionId}`);
+  refresh();
+  return { error: error ? errorMessageKey(error) : null };
+}
+
 /** « Tous présents » : pointe présents les inscrits encore confirmés (même fonction SQL). */
 export async function markAllAttended(formData: FormData) {
   const sessionId = uuid.parse(formData.get("sessionId"));
@@ -128,4 +148,35 @@ export async function markAllAttended(formData: FormData) {
       failed ? { error: errorMessageKey(failed) } : { ok: "session.allAttendedSaved" },
     ),
   );
+}
+
+/**
+ * Édition en place d'une séance (gérant) : un champ à la fois, pour cette séance ou, si elle
+ * vient d'un cours récurrent, pour elle et les suivantes. update_session tranche.
+ */
+export async function updateSessionField(input: {
+  id: string;
+  field: string;
+  value: CellValue;
+  scope?: "one" | "following" | undefined;
+}): Promise<{ error: MessageKey | null; message?: MessageKey; count?: number }> {
+  await requireRole(isManagerRole);
+  const id = uuid.safeParse(input.id);
+  const changes = classChangesSchema.safeParse({ [input.field]: input.value });
+  if (!id.success || !changes.success || Object.keys(changes.data).length !== 1)
+    return { error: "common.unexpectedError" };
+  const scope = input.scope === "following" ? "following" : "one";
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("update_session", {
+    p_session_id: id.data,
+    p_changes: changes.data,
+    p_scope: scope,
+  });
+  revalidatePath(`/planning/${id.data}`);
+  revalidatePath("/planning");
+  refresh();
+  if (error) return { error: errorMessageKey(error) };
+  return scope === "following"
+    ? { error: null, message: "session.updatedFollowing", count: data }
+    : { error: null, message: "session.updated" };
 }

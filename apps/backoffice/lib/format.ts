@@ -36,3 +36,18 @@ export function initials(name: string): string {
       .join("") || "?"
   );
 }
+
+const euroFormat = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+
+/** Montant en centimes → « 1 234,50 € ». */
+export function euros(cents: number): string {
+  return euroFormat.format(cents / 100);
+}
+
+/** Durée en minutes → « 12 h 30 » (ou « 45 min »). */
+export function hoursLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, "0")}`;
+}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  monthRange,
+  zonedInstant,
   zonedDateKey,
   zonedDayRange,
   zonedMinutesOfDay,
@@ -86,5 +88,42 @@ describe("zonedDateKey et zonedMinutesOfDay", () => {
 
   it("zonedStartOfDateKey renvoie minuit local", () => {
     expect(zonedStartOfDateKey("2026-10-25", PARIS).toISOString()).toBe("2026-10-24T22:00:00.000Z");
+  });
+});
+
+describe("monthRange", () => {
+  it("donne les bornes du mois et les mois voisins", () => {
+    expect(monthRange("2026-02")).toEqual({
+      from: "2026-02-01",
+      to: "2026-02-28",
+      previous: "2026-01",
+      next: "2026-03",
+    });
+    expect(monthRange("2028-02")?.to).toBe("2028-02-29");
+    expect(monthRange("2026-12")?.next).toBe("2027-01");
+    expect(monthRange("2026-01")?.previous).toBe("2025-12");
+  });
+
+  it("refuse un mois invalide", () => {
+    expect(monthRange("2026-13")).toBeNull();
+    expect(monthRange("oct")).toBeNull();
+  });
+});
+
+describe("zonedInstant", () => {
+  it("convertit une heure locale en instant", () => {
+    expect(zonedInstant("2026-10-06", 18 * 60 + 30, PARIS).toISOString()).toBe(
+      "2026-10-06T16:30:00.000Z",
+    );
+  });
+
+  it("garde l'heure murale les jours de changement d'heure", () => {
+    // 25 octobre 2026 : 3 h → 2 h. 29 mars 2026 : 2 h → 3 h.
+    expect(zonedInstant("2026-10-25", 18 * 60, PARIS).toISOString()).toBe(
+      "2026-10-25T17:00:00.000Z",
+    );
+    expect(zonedInstant("2026-03-29", 9 * 60, PARIS).toISOString()).toBe(
+      "2026-03-29T07:00:00.000Z",
+    );
   });
 });

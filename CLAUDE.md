@@ -105,8 +105,33 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `cancel_booking`, `set_attendance`, `cancel_session` (verrou `for update` sur la séance). Aucune
   écriture directe sur `bookings` pour `authenticated`. `supabase/tests/concurrency.sh` (lancé par
   `pnpm db:test` et en CI) vérifie l'absence de surréservation.
+- De même, créer une fiche, changer son statut, ajouter ou retirer des crédits : **uniquement via**
+  `create_member`, `set_member_status`, `adjust_credits` (pas d'insert sur `members` ni
+  `credit_ledger`, `update` limité aux colonnes de coordonnées).
+- **Stratégies** de la salle (`gyms.settings`, miroir `gymSettingsSchema`) : lues en SQL par
+  `private.gym_setting_int` / `gym_setting_bool`, désactivées par défaut. Le back office masque
+  une action désactivée (`getGymSettings`, `lib/settings.ts`), la base la refuse
+  (`strategy_disabled`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
+- **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
+  `private.enqueue_message` (clé `dedupe_key` pour l'idempotence), qui l'ajoute aussi aux
+  `interactions`. Pas d'envoi réel : un job `pg_cron` passe les messages `queued` → `logged`.
+  Avis aux inscrits d'une séance : `private.notify_session_members`.
+- **Coachs d'une séance** : `session_coaches` / `template_coaches` font foi (plusieurs coachs,
+  `position` 0 = principal). `class_sessions.coach_id` et `class_templates.default_coach_id` ne
+  sont qu'un miroir tenu par trigger, pour les apps déjà publiées : ne jamais les écrire ni filtrer
+  dessus (utiliser `session_coaches!inner(coach_id)`). Modifier une séance ou un cours :
+  `update_session(id, changes, 'one' | 'following')`, `update_template`, `create_session` ;
+  schémas `classChangesSchema` / `templateChangesSchema` dans `packages/shared`.
+- Autres écritures métier **par fonctions** : `move_session` (déplacement, inscrits prévenus),
+  `send_campaign`, `add_team_role` /
+  `remove_team_role`. Lectures agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`,
+  `filter_members` (filtres JSON = `segmentFiltersSchema` de `packages/shared`, droits de
+  l'appelant), `session_coach_options`.
+- Emailing : variables `{prenom}`, `{nom}`, `{salle}` rendues en SQL (`private.render_template`) ;
+  campagnes et automatisations marketing **exigent le consentement email** ; idempotence par
+  `dedupe_key`. Jobs `pg_cron` : séances, file d'envoi, campagnes programmées, automatisations.
 - Compteurs `class_sessions.booked_count` / `waitlist_count` : tenus par trigger, ne jamais les
   écrire à la main ; ils sont publiés en Realtime (places en direct dans l'app).
 - `supabase/seed.sql` est **déterministe** (`pg_temp.rnd`, UUID dérivés de clés) et relatif à la
@@ -150,6 +175,15 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Tailles tactiles : `pointer-coarse:` dans les variantes (bouton, champ, select) ; le rendu bureau
   ne change pas. Lectures au fil de la frappe : Route Handler (`app/api/…`), pas de Server Action. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
   du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).
+- Réglages de la salle : `getGymSettings` (`lib/settings.ts`). Fiche coach de l'utilisateur :
+  `getOwnCoachId` (`lib/coaches.ts`). Heure locale → instant : `zonedInstant` (shared), jamais
+  « minuit + minutes » (jours de changement d'heure).
+- **Édition en place** (« à la Notion ») : `components/inline/editable-cell.tsx` (texte, nombre,
+  heure, date, couleur, liste, multi-sélection, interrupteur ; `askScope` pour « cette séance /
+  et les suivantes ») et `add-row.tsx`. L'action serveur reçoit `{ id, field, value, scope }`,
+  valide par Zod et renvoie `{ error, message?, count? }`.
+- Planning en glisser-déposer : `components/planning/week-dnd.tsx` (@dnd-kit) enveloppe la grille
+  rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant `move_session`.
 - Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
   du React Compiler refuse `Date.now()` dans le rendu.
 
@@ -188,5 +222,8 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Docker en session cloud : `pnpm docker:start` gère le `docker.pid` périmé laissé par un
   redémarrage du conteneur. Après un redémarrage, certains conteneurs Supabase (Realtime) peuvent
   manquer : `supabase stop` puis `supabase start`.
+- `expo export` en local : la session cloud définit `EXPO_PUBLIC_SUPABASE_URL` (projet en ligne),
+  qui l'emporte sur `.env.local`. Charger `.env.local` dans le shell et ajouter `--clear` (le
+  cache Metro garde les valeurs inlinées).
 - Ne pas utiliser `pkill -f <motif>` dans une commande qui contient ce motif : il tue son propre
   shell. Viser le nom exact du processus (`pgrep -x next-server`).

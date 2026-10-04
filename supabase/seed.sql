@@ -143,12 +143,12 @@ create temp table seed_coaches (
   employment public.employment_type, rate_cents int, bio text
 );
 insert into seed_coaches values
-  ('c1', 'coach1@demo.local', 'Julien', 'Morel', array['crossfit','hyrox'], 'employee', 2400, 'CrossFit L2, ancien rugbyman.'),
-  ('c2', 'coach2@demo.local', 'Sarah', 'Benali', array['crossfit','renfo'], 'employee', 2400, 'Spécialiste haltérophilie et mobilité.'),
+  ('c1', 'coach1@demo.local', 'Julien', 'Morel', array['crossfit','hyrox'], 'freelance', 3200, 'CrossFit L2, ancien rugbyman.'),
+  ('c2', 'coach2@demo.local', 'Sarah', 'Benali', array['crossfit','renfo'], 'freelance', 3200, 'Spécialiste haltérophilie et mobilité.'),
   ('c3', 'coach3@demo.local', 'Maxime', 'Roux', array['hyrox','run'], 'freelance', 3800, 'Finisher Hyrox Elite 15, coach running.'),
   ('c4', 'coach4@demo.local', 'Inès', 'Garnier', array['renfo','run'], 'freelance', 3500, 'Préparatrice physique, marathonienne.'),
   ('c5', 'coach5@demo.local', 'Thomas', 'Faure', array['crossfit'], 'freelance', 3500, 'Coach CrossFit, créneaux du matin.'),
-  ('c6', 'coach6@demo.local', 'Clara', 'Duval', array['renfo','crossfit'], 'employee', 2200, 'Renforcement, prévention des blessures.');
+  ('c6', 'coach6@demo.local', 'Clara', 'Duval', array['renfo','crossfit'], 'freelance', 3000, 'Renforcement, prévention des blessures.');
 
 -- Comptes d'authentification (mot de passe : demo1234), hachage calculé une seule fois.
 create temp table seed_users as
@@ -547,3 +547,73 @@ select
 from public.members m_row
 join seed_members m on m.id = m_row.id
 where 'blessure' = any (m_row.tags);
+
+-- File d'envoi : avis d'annulation déjà journalisés pour les séances annulées.
+select private.notify_session_members(
+  s.id, 'session_cancelled',
+  'Séance annulée : ' || private.session_label(s.id),
+  'La séance ' || private.session_label(s.id)
+    || ' est annulée (Coach indisponible). Votre réservation est annulée et, le cas échéant, votre crédit vous est rendu.',
+  array['cancelled']::public.booking_status[]
+)
+from public.class_sessions s
+where s.gym_id = pg_temp.sid('gym') and s.status = 'cancelled'
+order by s.starts_at;
+
+update public.outbound_messages o
+set status = 'logged',
+    created_at = least(now(), s.starts_at - interval '1 day'),
+    processed_at = least(now(), s.starts_at - interval '1 day') + interval '1 minute'
+from public.class_sessions s
+where s.id = o.ref_id;
+
+update public.interactions i
+set occurred_at = o.created_at
+from public.outbound_messages o
+where i.source_ref = 'outbound:' || o.id;
+
+-- ---------------------------------------------------------------------------
+-- Emailing : modèles, segment et automatisations (désactivées) de démonstration
+-- ---------------------------------------------------------------------------
+
+insert into public.email_templates (id, gym_id, name, subject, body) values
+  (pg_temp.sid('tpl:welcome'), pg_temp.sid('gym'), 'Bienvenue', 'Bienvenue chez {salle}, {prenom} !',
+   E'Bonjour {prenom},\n\nVotre fiche est active : réservez vos premiers cours depuis l''app.\n\nÀ très vite,\nL''équipe {salle}'),
+  (pg_temp.sid('tpl:inactive'), pg_temp.sid('gym'), 'On vous attend', '{prenom}, on vous garde une place ?',
+   E'Bonjour {prenom},\n\nCela fait quelque temps que nous ne vous avons pas vu. Les créneaux de la semaine sont ouverts dans l''app.\n\nL''équipe {salle}'),
+  (pg_temp.sid('tpl:birthday'), pg_temp.sid('gym'), 'Anniversaire', 'Joyeux anniversaire {prenom} !',
+   E'Toute l''équipe {salle} vous souhaite un excellent anniversaire.');
+
+insert into public.segments (id, gym_id, name, filters) values
+  (pg_temp.sid('seg:inactive'), pg_temp.sid('gym'), 'Actifs inactifs depuis 14 jours',
+   '{"statuses": ["active"], "inactive_days": 14}');
+
+insert into public.automations (gym_id, kind, enabled, template_id, params) values
+  (pg_temp.sid('gym'), 'welcome', false, pg_temp.sid('tpl:welcome'), '{}'),
+  (pg_temp.sid('gym'), 'inactive', false, pg_temp.sid('tpl:inactive'), '{"days": 14}'),
+  (pg_temp.sid('gym'), 'birthday', false, pg_temp.sid('tpl:birthday'), '{}');
+
+-- ---------------------------------------------------------------------------
+-- Cours souples : valeurs par défaut des disciplines, un cours à deux coachs
+-- ---------------------------------------------------------------------------
+
+update public.disciplines d set default_duration_minutes = v.duration, default_capacity = v.capacity
+from (values ('d:crossfit', 60, 16), ('d:hyrox', 75, 12), ('d:renfo', 45, 14), ('d:run', 60, 25))
+  as v(key, duration, capacity)
+where d.id = pg_temp.sid(v.key);
+
+-- Hyrox du samedi : Julien et Maxime (chacun payé la durée complète).
+insert into public.template_coaches (gym_id, template_id, coach_id, position)
+values (pg_temp.sid('gym'), pg_temp.sid('t:hy-sat:6'), pg_temp.sid('c:c3'), 1)
+on conflict do nothing;
+insert into public.session_coaches (gym_id, session_id, coach_id, position)
+select s.gym_id, s.id, pg_temp.sid('c:c3'), 1
+from public.class_sessions s
+where s.template_id = pg_temp.sid('t:hy-sat:6') and s.coach_id <> pg_temp.sid('c:c3')
+on conflict do nothing;
+insert into public.coach_shifts (gym_id, coach_id, session_id, starts_at, ends_at, status)
+select s.gym_id, pg_temp.sid('c:c3'), s.id, s.starts_at, s.ends_at,
+  case when s.starts_at < now() then 'done' else 'planned' end::public.shift_status
+from public.class_sessions s
+where s.template_id = pg_temp.sid('t:hy-sat:6') and s.status = 'scheduled'
+  and s.coach_id <> pg_temp.sid('c:c3');

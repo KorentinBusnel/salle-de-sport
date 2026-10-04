@@ -2,9 +2,17 @@
 
 import {
   CalendarDaysIcon,
+  ChartColumnIcon,
   ChevronsUpDownIcon,
+  ClockIcon,
+  DumbbellIcon,
+  FilterIcon,
+  KanbanIcon,
+  LayersIcon,
   HouseIcon,
   LogOutIcon,
+  MailPlusIcon,
+  MailIcon,
   RepeatIcon,
   SettingsIcon,
   UsersIcon,
@@ -44,6 +52,14 @@ const ICONS = {
   planning: CalendarDaysIcon,
   templates: RepeatIcon,
   members: UsersIcon,
+  messages: MailIcon,
+  coaches: DumbbellIcon,
+  hours: ClockIcon,
+  crm: KanbanIcon,
+  segments: FilterIcon,
+  emailing: MailPlusIcon,
+  kpis: ChartColumnIcon,
+  catalog: LayersIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

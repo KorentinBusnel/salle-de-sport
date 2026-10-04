@@ -17,6 +17,16 @@ export const BOOKING_STATUS_TONE: Record<BookingStatus, Tone> = {
   no_show: "danger",
 };
 
+export type MessageStatus = "queued" | "logged" | "sent" | "failed";
+
+/** File d'envoi : « journalisé » = pas d'envoi réel (aucun service d'emails branché). */
+export const MESSAGE_STATUS_TONE: Record<MessageStatus, Tone> = {
+  queued: "warning",
+  logged: "neutral",
+  sent: "success",
+  failed: "danger",
+};
+
 export const MEMBER_STATUS_TONE: Record<MemberStatus, Tone> = {
   prospect: "brand",
   active: "success",

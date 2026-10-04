@@ -1,4 +1,10 @@
-import { canSeeFinancials, isStaffRole, sessionPhase, zonedDayRange } from "@salle/shared";
+import {
+  canSeeFinancials,
+  coachesLabel,
+  isStaffRole,
+  sessionPhase,
+  zonedDayRange,
+} from "@salle/shared";
 import {
   CalendarCheckIcon,
   ClipboardCheckIcon,
@@ -13,6 +19,7 @@ import Link from "next/link";
 import { KpiCard } from "@/components/kpi-card";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { CalendarXIcon } from "lucide-react";
 import {
@@ -46,7 +53,7 @@ export default async function DashboardPage() {
     supabase
       .from("class_sessions")
       .select(
-        "id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), coaches(display_name, profile_id), bookings(status)",
+        "id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), session_coaches(position, coaches(display_name, profile_id)), bookings(status)",
       )
       .eq("gym_id", context.gym.id)
       .gte("starts_at", start.toISOString())
@@ -87,7 +94,7 @@ export default async function DashboardPage() {
       session.status === "scheduled" && phase !== "upcoming"
         ? session.bookings.filter((b) => b.status === "confirmed").length
         : 0;
-    const mine = session.coaches?.profile_id === context.userId;
+    const mine = session.session_coaches.some((sc) => sc.coaches?.profile_id === context.userId);
     return { ...session, phase, toCheck, mine };
   });
 
@@ -195,7 +202,11 @@ export default async function DashboardPage() {
                     color={session.disciplines?.color}
                   />
                   <span className="truncate text-sm text-muted-foreground">
-                    {session.coaches?.display_name}
+                    {coachesLabel(
+                      [...session.session_coaches]
+                        .sort((a, b) => a.position - b.position)
+                        .flatMap((sc) => (sc.coaches ? [sc.coaches.display_name] : [])),
+                    )}
                   </span>
                 </span>
                 <span className="flex items-center justify-end gap-2">
@@ -247,7 +258,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="grid gap-8">
-      <PageHeader title={t("nav.today")} description={format.longDay(now)} />
+      <PageHeader
+        title={t("nav.today")}
+        description={format.longDay(now)}
+        actions={
+          canSeeFinancials(context.role) ? (
+            <Button asChild variant="outline">
+              <Link href="/indicateurs">{t("kpis.seeAll")}</Link>
+            </Button>
+          ) : undefined
+        }
+      />
       {/* L'accueil et les coachs travaillent dans la liste : elle passe avant les indicateurs. */}
       {canSeeFinancials(context.role) ? (
         <>

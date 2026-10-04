@@ -1,5 +1,20 @@
-import { BOOKING_STATUS_TONE, sessionPhase, zonedDateKey, zonedWeek } from "@salle/shared";
-import { CheckCheckIcon, ClockIcon, DoorOpenIcon, UserIcon, UsersIcon, XIcon } from "lucide-react";
+import {
+  BOOKING_STATUS_TONE,
+  CAPACITY,
+  DURATION,
+  sessionPhase,
+  zonedDateKey,
+  zonedWeek,
+} from "@salle/shared";
+import {
+  CheckCheckIcon,
+  ClockIcon,
+  DoorOpenIcon,
+  TagIcon,
+  UserIcon,
+  UsersIcon,
+  XIcon,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +22,7 @@ import { cache } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Flash } from "@/components/flash";
 import { OccupancyMeter } from "@/components/occupancy-meter";
+import { EditableCell } from "@/components/inline/editable-cell";
 import { PageHeader } from "@/components/page-header";
 import { AttendanceToggle } from "@/components/session/attendance-toggle";
 import { MemberCombobox } from "@/components/session/member-combobox";
@@ -29,6 +45,7 @@ import { isFrontDeskRole, isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters, initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { getGymSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import {
   bookMember,
@@ -36,8 +53,11 @@ import {
   cancelSession,
   markAllAttended,
   markAttendance,
+  resetAttendance,
   setAttendance,
+  updateSessionField,
 } from "./actions";
+import { moveSessionForm } from "../move-actions";
 
 const SEATED = ["confirmed", "attended", "no_show"] as const;
 type Seated = (typeof SEATED)[number];
@@ -47,7 +67,7 @@ const loadSession = cache(async (id: string, gymId: string) => {
   const { data, error } = await supabase
     .from("class_sessions")
     .select(
-      "id, gym_id, starts_at, ends_at, capacity, status, cancellation_reason, booked_count, waitlist_count, disciplines(name, color), coaches(display_name, profile_id), rooms(name), bookings(id, status, waitlist_position, booked_at, members(id, first_name, last_name, email, phone))",
+      "id, gym_id, starts_at, ends_at, capacity, status, cancellation_reason, booked_count, waitlist_count, disciplines(name, color), template_id, discipline_id, room_id, session_coaches(position, coaches(id, display_name, profile_id)), rooms(name), bookings(id, status, waitlist_position, booked_at, members(id, first_name, last_name, email, phone))",
     )
     .eq("id", id)
     .eq("gym_id", gymId)
@@ -88,11 +108,74 @@ export default async function SessionPage({
   const now = currentTime();
   const frontDesk = isFrontDeskRole(context.role);
   const manager = isManagerRole(context.role);
-  const ownCoach = session.coaches?.profile_id === context.userId;
+  const sessionCoaches = [...session.session_coaches]
+    .sort((a, b) => a.position - b.position)
+    .flatMap((sc) => (sc.coaches ? [sc.coaches] : []));
+  const ownCoach = sessionCoaches.some((c) => c.profile_id === context.userId);
   const canSeeBookings = frontDesk || ownCoach;
   const scheduled = session.status === "scheduled";
   const phase = sessionPhase(new Date(session.starts_at), new Date(session.ends_at), now);
   const full = session.booked_count >= session.capacity;
+  const settings = await getGymSettings(context.gym.id);
+  const startsAt = new Date(session.starts_at).getTime();
+  // Stratégies : retardataires inscrits par l'accueil, fenêtre d'ouverture du pointage.
+  const lateUntil = Math.min(
+    startsAt + settings.late_booking_minutes * 60_000,
+    new Date(session.ends_at).getTime(),
+  );
+  const canAddMember =
+    frontDesk && scheduled && (phase === "upcoming" || now.getTime() < lateUntil);
+  const attendanceOpensAt =
+    settings.attendance_opens_minutes_before === null
+      ? null
+      : startsAt - settings.attendance_opens_minutes_before * 60_000;
+  const attendanceOpen = attendanceOpensAt === null || now.getTime() >= attendanceOpensAt;
+
+  // Édition en place (gérant, séance pas encore terminée) : coachs, durée, places, salle.
+  const canEdit = manager && scheduled && phase !== "past";
+  const supabaseEdit = canEdit ? await createClient() : null;
+  const [coachOptions, roomOptions, disciplineOptions] = supabaseEdit
+    ? await Promise.all([
+        supabaseEdit.rpc("session_coach_options", { p_session_id: session.id }).then(({ data }) =>
+          (data ?? []).map((c) => ({
+            value: c.coach_id,
+            label: c.display_name,
+            hint: c.is_current
+              ? undefined
+              : c.has_conflict
+                ? t("session.coachBusy")
+                : c.available
+                  ? t("session.coachAvailable")
+                  : c.teaches_discipline
+                    ? t("session.coachUnavailable")
+                    : t("session.coachOtherDiscipline"),
+          })),
+        ),
+        supabaseEdit
+          .from("rooms")
+          .select("id, name, capacity")
+          .eq("gym_id", context.gym.id)
+          .order("name")
+          .then(({ data }) =>
+            (data ?? []).map((r) => ({
+              value: r.id,
+              label: r.name,
+              hint: t("catalog.placesCount", { count: r.capacity }),
+            })),
+          ),
+        supabaseEdit
+          .from("disciplines")
+          .select("id, name")
+          .eq("gym_id", context.gym.id)
+          .eq("is_active", true)
+          .order("name")
+          .then(({ data }) => (data ?? []).map((d) => ({ value: d.id, label: d.name }))),
+      ])
+    : [[], [], []];
+  const durationMinutes = Math.round(
+    (Date.parse(session.ends_at) - Date.parse(session.starts_at)) / 60_000,
+  );
+  const recurring = session.template_id !== null;
 
   const memberName = (m: { first_name: string; last_name: string } | null) =>
     m ? `${m.first_name} ${m.last_name}` : t("common.none");
@@ -226,13 +309,24 @@ export default async function SessionPage({
                             </span>
                             {scheduled ? (
                               <>
-                                <AttendanceToggle
-                                  bookingId={booking.id}
-                                  sessionId={session.id}
-                                  status={booking.status}
-                                  memberName={name}
-                                  mark={markAttendance}
-                                />
+                                {attendanceOpen ? (
+                                  <AttendanceToggle
+                                    bookingId={booking.id}
+                                    sessionId={session.id}
+                                    status={booking.status}
+                                    memberName={name}
+                                    mark={markAttendance}
+                                    reset={
+                                      settings.allow_attendance_reset ? resetAttendance : undefined
+                                    }
+                                  />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {t("session.attendanceOpensAt", {
+                                      time: format.time(new Date(attendanceOpensAt ?? startsAt)),
+                                    })}
+                                  </span>
+                                )}
                                 <noscript>
                                   {(["attended", "no_show"] as const).map((status) => (
                                     <form key={status} action={setAttendance} className="inline">
@@ -369,39 +463,130 @@ export default async function SessionPage({
                 <div className="flex items-center gap-2">
                   <ClockIcon className="size-4 text-muted-foreground" aria-hidden />
                   <dt className="sr-only">{t("session.timeLabel")}</dt>
-                  <dd className="tabular-nums">
-                    {t("session.time", {
-                      start: format.time(session.starts_at),
-                      end: format.time(session.ends_at),
-                    })}
+                  <dd className="flex min-w-0 flex-1 items-center gap-1 tabular-nums">
+                    <span className="shrink-0">
+                      {t("session.time", {
+                        start: format.time(session.starts_at),
+                        end: format.time(session.ends_at),
+                      })}
+                    </span>
+                    {canEdit ? (
+                      <EditableCell
+                        kind="number"
+                        id={session.id}
+                        field="duration_minutes"
+                        label={t("session.durationLabel")}
+                        value={durationMinutes}
+                        unit={t("catalog.minutes")}
+                        min={DURATION.min}
+                        max={DURATION.max}
+                        step={DURATION.step}
+                        askScope={recurring}
+                        action={updateSessionField}
+                      />
+                    ) : null}
                   </dd>
                 </div>
                 <div className="flex items-center gap-2">
                   <UserIcon className="size-4 text-muted-foreground" aria-hidden />
                   <dt className="sr-only">{t("session.coachLabel")}</dt>
-                  <dd>{session.coaches?.display_name ?? t("session.noCoach")}</dd>
+                  <dd className="min-w-0 flex-1">
+                    {canEdit ? (
+                      <EditableCell
+                        kind="multi"
+                        id={session.id}
+                        field="coach_ids"
+                        label={t("session.coachLabel")}
+                        value={sessionCoaches.map((c) => c.id)}
+                        options={coachOptions}
+                        askScope={recurring}
+                        action={updateSessionField}
+                      />
+                    ) : sessionCoaches.length ? (
+                      sessionCoaches.map((c) => c.display_name).join(", ")
+                    ) : (
+                      t("session.noCoach")
+                    )}
+                  </dd>
                 </div>
-                {session.rooms ? (
+                {session.rooms || canEdit ? (
                   <div className="flex items-center gap-2">
                     <DoorOpenIcon className="size-4 text-muted-foreground" aria-hidden />
                     <dt className="sr-only">{t("session.roomLabel")}</dt>
-                    <dd>{session.rooms.name}</dd>
+                    <dd className="min-w-0 flex-1">
+                      {canEdit ? (
+                        <EditableCell
+                          kind="select"
+                          id={session.id}
+                          field="room_id"
+                          label={t("session.roomLabel")}
+                          value={session.room_id}
+                          options={roomOptions}
+                          clearable
+                          askScope={recurring}
+                          action={updateSessionField}
+                        />
+                      ) : (
+                        session.rooms?.name
+                      )}
+                    </dd>
                   </div>
                 ) : null}
                 <div className="flex items-center gap-2">
                   <UsersIcon className="size-4 text-muted-foreground" aria-hidden />
                   <dt className="sr-only">{t("session.capacityLabel")}</dt>
-                  <dd>{t("session.capacity", { count: session.capacity })}</dd>
+                  <dd className="min-w-0 flex-1">
+                    {canEdit ? (
+                      <EditableCell
+                        kind="number"
+                        id={session.id}
+                        field="capacity"
+                        label={t("session.capacityLabel")}
+                        value={session.capacity}
+                        unit={t("catalog.places")}
+                        min={CAPACITY.min}
+                        max={CAPACITY.max}
+                        askScope={recurring}
+                        action={updateSessionField}
+                      />
+                    ) : (
+                      t("session.capacity", { count: session.capacity })
+                    )}
+                  </dd>
                 </div>
+                {canEdit ? (
+                  <div className="flex items-center gap-2">
+                    <TagIcon className="size-4 text-muted-foreground" aria-hidden />
+                    <dt className="sr-only">{t("session.disciplineLabel")}</dt>
+                    <dd className="min-w-0 flex-1">
+                      <EditableCell
+                        kind="select"
+                        id={session.id}
+                        field="discipline_id"
+                        label={t("session.disciplineLabel")}
+                        value={session.discipline_id}
+                        options={disciplineOptions}
+                        askScope={recurring}
+                        action={updateSessionField}
+                      />
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </CardContent>
           </Card>
 
-          {frontDesk && scheduled && phase === "upcoming" ? (
+          {canAddMember ? (
             <Card>
               <CardHeader>
-                <CardTitle>{t("session.addMember")}</CardTitle>
-                <CardDescription>{t("session.addMemberHint")}</CardDescription>
+                <CardTitle>
+                  {phase === "upcoming" ? t("session.addMember") : t("session.addLateMember")}
+                </CardTitle>
+                <CardDescription>
+                  {phase === "upcoming"
+                    ? t("session.addMemberHint")
+                    : t("session.addLateMemberHint", { time: format.time(new Date(lateUntil)) })}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <MemberCombobox
@@ -410,6 +595,40 @@ export default async function SessionPage({
                   action={bookMember}
                   full={full}
                 />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {manager && scheduled && phase === "upcoming" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("session.moveSession")}</CardTitle>
+                <CardDescription>{t("session.moveSessionHint")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form action={moveSessionForm} className="flex flex-wrap items-end gap-3">
+                  <input type="hidden" name="sessionId" value={session.id} />
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-muted-foreground">{t("session.moveDate")}</span>
+                    <Input
+                      type="date"
+                      name="date"
+                      required
+                      defaultValue={zonedDateKey(new Date(session.starts_at), tz)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-muted-foreground">{t("session.moveTime")}</span>
+                    <Input
+                      type="time"
+                      name="time"
+                      required
+                      step={900}
+                      defaultValue={format.time(session.starts_at)}
+                    />
+                  </label>
+                  <SubmitButton variant="outline">{t("session.moveSubmit")}</SubmitButton>
+                </form>
               </CardContent>
             </Card>
           ) : null}

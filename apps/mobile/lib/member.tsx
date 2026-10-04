@@ -2,6 +2,7 @@ import { type GymSettings, parseGymSettings } from "@salle/shared";
 import type { Tables } from "@salle/supabase";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { SESSION_COACHES_SELECT, type SessionCoachRow } from "@/lib/coaches";
 import { supabase } from "@/lib/supabase";
 
 export type Gym = { id: string; name: string; timezone: string; settings: GymSettings };
@@ -20,7 +21,7 @@ export type MyBooking = Pick<
     ends_at: string;
     status: Tables<"class_sessions">["status"];
     disciplines: { name: string; color: string } | null;
-    coaches: { display_name: string } | null;
+    session_coaches: SessionCoachRow[];
   } | null;
 };
 
@@ -66,7 +67,7 @@ async function loadMember(userId: string): Promise<MemberState> {
     supabase
       .from("bookings")
       .select(
-        "id, session_id, status, waitlist_position, class_sessions(id, starts_at, ends_at, status, disciplines(name, color), coaches(display_name))",
+        `id, session_id, status, waitlist_position, class_sessions(id, starts_at, ends_at, status, disciplines(name, color), ${SESSION_COACHES_SELECT})`,
       )
       .eq("member_id", member.id)
       .order("booked_at", { ascending: false })

@@ -81,6 +81,17 @@ export function zonedStartOfDateKey(dateKey: string, timeZone: string): Date {
 }
 
 /**
+ * Instant d'une heure locale (minutes depuis minuit) un jour « AAAA-MM-JJ » donné. Les jours de
+ * changement d'heure sont corrigés : 18 h 30 reste 18 h 30 à l'horloge de la salle.
+ */
+export function zonedInstant(dateKey: string, minutes: number, timeZone: string): Date {
+  const guess = new Date(zonedStartOfDateKey(dateKey, timeZone).getTime() + minutes * 60_000);
+  const drift = zonedMinutesOfDay(guess, timeZone) - minutes;
+  // Écart d'un changement d'heure survenu dans la journée (± 60 min), hors passage à minuit.
+  return Math.abs(drift) <= 120 ? new Date(guess.getTime() - drift * 60_000) : guess;
+}
+
+/**
  * Semaine locale (lundi → lundi suivant) contenant l'instant, avec ses 7 jours.
  * Gère les semaines de changement d'heure (167 h ou 169 h).
  */
@@ -105,4 +116,25 @@ export function zonedWeek(
   const last = days[6];
   if (!first || !last) throw new Error("semaine invalide");
   return { start: first.start, end: last.end, days };
+}
+
+/** Mois « AAAA-MM » : premier et dernier jour civils (« AAAA-MM-JJ »), mois précédent et suivant. */
+export function monthRange(monthKey: string): {
+  from: string;
+  to: string;
+  previous: string;
+  next: string;
+} | null {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthKey);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const key = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
+  return {
+    from: `${key(year, month)}-01`,
+    to: `${key(year, month)}-${String(lastDay).padStart(2, "0")}`,
+    previous: month === 1 ? key(year - 1, 12) : key(year, month - 1),
+    next: month === 12 ? key(year + 1, 1) : key(year, month + 1),
+  };
 }

@@ -1,48 +1,87 @@
+import { MEMBER_STATUS_TONE, type MemberStatus } from "@salle/shared";
+import { SearchIcon, UsersIcon } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Flash } from "@/components/flash";
-import { Badge } from "@/components/ui/badge";
+import { CreditsDialog } from "@/components/members/credits-dialog";
+import { PageHeader } from "@/components/page-header";
+import { StatusPill } from "@/components/status-pill";
+import { SubmitButton } from "@/components/submit-button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
+import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { activateMember, addCredits } from "./actions";
 
+export const metadata: Metadata = { title: t("members.title") };
+
 const STATUSES = ["prospect", "active", "suspended", "cancelled"] as const;
-const LIMIT = 50;
+const PAGE_SIZE = 25;
 
 export default async function MembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; statut?: string; ok?: string; erreur?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    statut?: string;
+    page?: string;
+    ok?: string;
+    erreur?: string;
+  }>;
 }) {
   const params = await searchParams;
   const context = await requireRole(isFrontDeskRole);
   const manager = isManagerRole(context.role);
   const supabase = await createClient();
 
-  const search = (params.q ?? "").trim().replace(/[%,()]/g, "");
+  const search = (params.q ?? "").trim().slice(0, 80);
   const status = STATUSES.find((s) => s === params.statut);
+  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
-  let query = supabase
-    .from("members")
-    .select("id, first_name, last_name, email, phone, status")
-    .eq("gym_id", context.gym.id)
-    .order("last_name")
-    .order("first_name")
-    .limit(LIMIT);
-  if (status) query = query.eq("status", status);
-  if (search) {
-    query = query.or(
-      `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`,
-    );
-  }
-  const { data: members } = await query;
+  const countFor = (s: MemberStatus) =>
+    supabase
+      .from("members")
+      .select("id", { count: "exact", head: true })
+      .eq("gym_id", context.gym.id)
+      .eq("status", s);
+  const [result, ...counts] = await Promise.all([
+    supabase.rpc("search_members", {
+      p_gym_id: context.gym.id,
+      ...(search ? { p_query: search } : {}),
+      ...(status ? { p_statuses: [status] } : {}),
+      p_limit: PAGE_SIZE,
+      p_offset: (page - 1) * PAGE_SIZE,
+    }),
+    ...STATUSES.map(countFor),
+  ]);
+  const statusCount = new Map(STATUSES.map((s, i) => [s, counts[i]?.count ?? 0]));
+  const members = result.data ?? [];
+  const total = members[0]?.total_count ?? 0;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // Solde de crédits (gérant uniquement : la RLS réserve le registre aux finances).
   const balances = new Map<string, number>();
-  if (manager && members?.length) {
+  if (manager && members.length) {
     const { data: ledger } = await supabase
       .from("credit_ledger")
       .select("member_id, delta")
@@ -54,120 +93,247 @@ export default async function MembersPage({
       balances.set(row.member_id, (balances.get(row.member_id) ?? 0) + row.delta);
   }
 
-  const returnQuery = new URLSearchParams(
-    Object.entries({ q: params.q ?? "", statut: status ?? "" }).filter(([, v]) => v),
-  ).toString();
+  const href = (overrides: { q?: string; statut?: string; page?: number }) => {
+    const query = new URLSearchParams();
+    const q = overrides.q ?? search;
+    const st = "statut" in overrides ? overrides.statut : status;
+    const pg = overrides.page ?? 1;
+    if (q) query.set("q", q);
+    if (st) query.set("statut", st);
+    if (pg > 1) query.set("page", String(pg));
+    const text = query.toString();
+    return `/adherents${text ? `?${text}` : ""}`;
+  };
+  const returnQuery = href({ page }).split("?")[1] ?? "";
+
+  const filters: { value: MemberStatus | undefined; label: string; count?: number }[] = [
+    {
+      value: "prospect",
+      label: t("members.filterProspects"),
+      count: statusCount.get("prospect") ?? 0,
+    },
+    { value: "active", label: t("members.filterActive"), count: statusCount.get("active") ?? 0 },
+    {
+      value: "suspended",
+      label: t("members.filterSuspended"),
+      count: statusCount.get("suspended") ?? 0,
+    },
+    {
+      value: "cancelled",
+      label: t("members.filterCancelled"),
+      count: statusCount.get("cancelled") ?? 0,
+    },
+    { value: undefined, label: t("members.allStatuses") },
+  ];
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold">{t("members.title")}</h1>
+      <PageHeader title={t("members.title")} description={t("members.count", { count: total })} />
 
-      <form className="flex flex-wrap gap-2" role="search">
-        <Input
-          name="q"
-          defaultValue={params.q ?? ""}
-          placeholder={t("members.searchPlaceholder")}
-          aria-label={t("members.searchPlaceholder")}
-          className="max-w-sm"
-        />
-        <NativeSelect
-          name="statut"
-          defaultValue={status ?? ""}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <nav
           aria-label={t("members.status")}
-          className="w-48"
+          className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1"
         >
-          <option value="">{t("members.allStatuses")}</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {t(`memberStatus.${s}`)}
-            </option>
-          ))}
-        </NativeSelect>
-        <Button type="submit" variant="outline">
-          {t("common.search")}
-        </Button>
-      </form>
+          {filters.map((filter) => {
+            const active = filter.value === status;
+            return (
+              <Link
+                key={filter.label}
+                href={href({ statut: filter.value ?? "" })}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors pointer-coarse:py-2.5",
+                  active
+                    ? "bg-card font-medium text-foreground shadow-border"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {filter.label}
+                {filter.count !== undefined ? (
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-xs tabular-nums",
+                      filter.value === "prospect" && filter.count > 0
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background",
+                    )}
+                  >
+                    {filter.count}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <form role="search" className="w-full lg:max-w-sm">
+          {status ? <input type="hidden" name="statut" value={status} /> : null}
+          <InputGroup className="bg-card">
+            <InputGroupAddon>
+              <SearchIcon aria-hidden />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              name="q"
+              defaultValue={search}
+              placeholder={t("members.searchPlaceholder")}
+              aria-label={t("members.searchPlaceholder")}
+            />
+          </InputGroup>
+        </form>
+      </div>
 
       <Flash ok={params.ok} error={params.erreur} />
 
-      <Card>
-        <CardContent className="overflow-x-auto pt-2">
-          {(members ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("members.empty")}</p>
-          ) : (
-            <table className="w-full min-w-[40rem] text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="py-2 font-medium">{t("members.name")}</th>
-                  <th className="py-2 font-medium">{t("members.contact")}</th>
-                  <th className="py-2 font-medium">{t("members.status")}</th>
-                  {manager ? (
-                    <th className="py-2 text-right font-medium">{t("members.credits")}</th>
-                  ) : null}
-                  <th className="py-2 text-right font-medium">{t("members.actions")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {(members ?? []).map((member) => (
-                  <tr key={member.id}>
-                    <td className="py-2 font-medium">
-                      {member.first_name} {member.last_name}
-                    </td>
-                    <td className="py-2 text-muted-foreground">
-                      <span className="block">{member.email ?? t("common.none")}</span>
-                      <span className="block tabular-nums">{member.phone ?? ""}</span>
-                    </td>
-                    <td className="py-2">
-                      <Badge variant={member.status === "active" ? "secondary" : "outline"}>
+      {result.error ? (
+        <p className="text-destructive">{t("members.loadError")}</p>
+      ) : members.length === 0 ? (
+        <Empty className="rounded-xl border border-dashed">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <UsersIcon />
+            </EmptyMedia>
+            <EmptyTitle>{t("members.empty")}</EmptyTitle>
+            <EmptyDescription>
+              {search ? t("members.emptySearch", { query: search }) : t("members.emptyFilter")}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="overflow-hidden rounded-xl bg-card shadow-border">
+          <Table className="min-w-[42rem]">
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="pl-4">{t("members.name")}</TableHead>
+                <TableHead>{t("members.contact")}</TableHead>
+                <TableHead>{t("members.status")}</TableHead>
+                {manager ? (
+                  <TableHead className="text-right">{t("members.credits")}</TableHead>
+                ) : null}
+                <TableHead className="pr-4 text-right">
+                  <span className="sr-only">{t("members.actions")}</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((member) => {
+                const name = `${member.first_name} ${member.last_name}`;
+                const balance = balances.get(member.id) ?? 0;
+                return (
+                  <TableRow key={member.id}>
+                    <TableCell className="pl-4">
+                      <span className="flex items-center gap-3">
+                        <Avatar className="size-8">
+                          <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">
+                          {member.last_name}{" "}
+                          <span className="font-normal">{member.first_name}</span>
+                        </span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {member.email ? (
+                        <a
+                          href={`mailto:${member.email}`}
+                          className="block hover:text-foreground hover:underline"
+                        >
+                          {member.email}
+                        </a>
+                      ) : null}
+                      {member.phone ? (
+                        <a
+                          href={`tel:${member.phone.replace(/[^\d+]/g, "")}`}
+                          className="block tabular-nums hover:text-foreground hover:underline"
+                        >
+                          {member.phone}
+                        </a>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill tone={MEMBER_STATUS_TONE[member.status]}>
                         {t(`memberStatus.${member.status}`)}
-                      </Badge>
-                    </td>
+                      </StatusPill>
+                    </TableCell>
                     {manager ? (
-                      <td className="py-2 text-right tabular-nums">
-                        {balances.get(member.id) ?? 0}
-                      </td>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {balance}
+                      </TableCell>
                     ) : null}
-                    <td className="py-2">
+                    <TableCell className="pr-4">
                       <div className="flex justify-end gap-2">
-                        {member.status === "prospect" || member.status === "suspended" ? (
+                        {member.status === "prospect" ? (
                           <form action={activateMember}>
                             <input type="hidden" name="memberId" value={member.id} />
                             <input type="hidden" name="returnQuery" value={returnQuery} />
-                            <Button size="sm">{t("members.activate")}</Button>
+                            <SubmitButton
+                              size="sm"
+                              aria-label={t("members.activateName", { name })}
+                            >
+                              {t("members.activate")}
+                            </SubmitButton>
                           </form>
+                        ) : member.status === "suspended" ? (
+                          <ConfirmDialog
+                            trigger={
+                              <Button size="sm" variant="outline">
+                                {t("members.reactivate")}
+                              </Button>
+                            }
+                            title={t("members.reactivateTitle")}
+                            description={t("members.reactivateBody", { name })}
+                            confirmLabel={t("members.reactivate")}
+                            action={activateMember}
+                            fields={{ memberId: member.id, returnQuery }}
+                          />
                         ) : null}
                         {manager ? (
-                          <form action={addCredits} className="flex gap-1">
-                            <input type="hidden" name="memberId" value={member.id} />
-                            <input type="hidden" name="returnQuery" value={returnQuery} />
-                            <Input
-                              name="amount"
-                              type="number"
-                              min={1}
-                              max={50}
-                              defaultValue={10}
-                              className="w-16"
-                              aria-label={t("members.credits")}
-                            />
-                            <Button size="sm" variant="outline">
-                              {t("members.addCredits")}
-                            </Button>
-                          </form>
+                          <CreditsDialog
+                            memberId={member.id}
+                            memberName={name}
+                            balance={balance}
+                            returnQuery={returnQuery}
+                            action={addCredits}
+                          />
                         ) : null}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {(members ?? []).length === LIMIT ? (
-            <p className="pt-3 text-xs text-muted-foreground">
-              {t("members.limited", { count: LIMIT })}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {pages > 1 ? (
+        <nav className="flex items-center justify-between gap-3" aria-label={t("ui.pagination")}>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={cn(page <= 1 && "pointer-events-none opacity-50")}
+          >
+            <Link href={href({ page: page - 1 })} aria-disabled={page <= 1}>
+              {t("ui.previous")}
+            </Link>
+          </Button>
+          <span className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
+            {t("members.page", { page, pages })}
+          </span>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={cn(page >= pages && "pointer-events-none opacity-50")}
+          >
+            <Link href={href({ page: page + 1 })} aria-disabled={page >= pages}>
+              {t("ui.next")}
+            </Link>
+          </Button>
+        </nav>
+      ) : null}
     </div>
   );
 }

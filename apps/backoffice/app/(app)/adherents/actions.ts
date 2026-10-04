@@ -38,13 +38,19 @@ export async function addCredits(formData: FormData) {
   const amount = z.coerce.number().int().min(1).max(50).safeParse(formData.get("amount"));
   if (!amount.success) redirect(withFlash(back(formData), { error: "members.creditsInvalid" }));
 
+  const note = z
+    .string()
+    .trim()
+    .max(200)
+    .catch("")
+    .parse(formData.get("note") ?? "");
   const supabase = await createClient();
   const { error } = await supabase.from("credit_ledger").insert({
     gym_id: context.gym.id,
     member_id: id,
     delta: amount.data,
     reason: "manual_adjustment",
-    note: "Ajout manuel (back office)",
+    note: note || "Ajout manuel (back office)",
     created_by: context.userId,
   });
   revalidatePath("/adherents");

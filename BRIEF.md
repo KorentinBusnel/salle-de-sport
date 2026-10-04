@@ -246,6 +246,7 @@ Aucune ne bloque la phase 0 (le schéma reste générique : règles de réservat
 |---|---|
 | 2026-10-04 | **Environnement de dev** : sessions Claude Code dans le cloud (claude.ai/code) sur un dépôt GitHub. Le poste local n'a ni Node, ni Git, ni Docker, ni droits admin. |
 | 2026-10-04 | **Supabase** : vérifier en début de phase 0 si Docker est disponible dans l'environnement cloud (Supabase local). À défaut, utiliser un projet Supabase en ligne dédié au développement, distinct de la production. |
+| 2026-10-04 | **Docker (vérifié, phase 0)** : disponible dans la session cloud, mais le daemon ne démarre pas seul — `dockerd` doit être lancé à chaque session (`scripts/dev-docker.sh`). Les images Supabase (`public.ecr.aws`) sont téléchargeables. → **Supabase local** retenu pour le développement ; pas de projet en ligne nécessaire en phase 0. |
 | 2026-10-04 | **UI mobile** : NativeWind. |
 | 2026-10-04 | **Comptes** : GitHub existe. Supabase, Vercel et Expo (EAS) sont à créer pendant la phase 0. Les clés sont saisies dans la configuration de l'environnement cloud, jamais dans le dépôt. |
 | 2026-10-04 | **Modèle de données** : rôles portés par salle (profil × salle × rôle), ajout du rôle `staff` (accueil), `members` utilisable sans compte (prospects), `plans.type` (récurrent / carnet / séance), registre `credit_ledger`, réservations via fonctions Postgres transactionnelles. |

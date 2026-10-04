@@ -1977,7 +1977,7 @@ export type Database = {
       };
       log_ai_call: {
         Args: {
-          p_conversation_id: string;
+          p_conversation_id?: string;
           p_gym_id: string;
           p_input_tokens: number;
           p_model: string;

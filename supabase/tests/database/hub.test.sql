@@ -91,12 +91,12 @@ select is((select subject from public.outbound_messages where member_id = 'c1000
 
 -- Journal IA
 select pg_temp.login_as('c0000001-0000-0000-0000-000000000001');
-select lives_ok($$select public.log_ai_call('ca000001-0000-0000-0000-000000000000', 'c7000001-0000-0000-0000-000000000001',
-  array['get_kpis'], 1200, 300, 'claude-sonnet-5-5')$$, 'appel journalisé');
+select lives_ok($$select public.log_ai_call('ca000001-0000-0000-0000-000000000000',
+  array['get_kpis'], 1200, 300, 'claude-sonnet-5-5', 'c7000001-0000-0000-0000-000000000001')$$, 'appel journalisé');
 select is((select details ->> 'model' from public.audit_log where action = 'ai.query' and gym_id = 'ca000001-0000-0000-0000-000000000000'),
   'claude-sonnet-5-5', 'journal : modèle et jetons, sans contenu');
 select pg_temp.login_as('c0000001-0000-0000-0000-000000000003');
-select throws_ok($$select public.log_ai_call('ca000001-0000-0000-0000-000000000000', null, '{}', 0, 0, 'x')$$,
+select throws_ok($$select public.log_ai_call('ca000001-0000-0000-0000-000000000000', '{}', 0, 0, 'x')$$,
   'P0001', 'forbidden', 'journal : réservé au gérant');
 select pg_temp.logout();
 

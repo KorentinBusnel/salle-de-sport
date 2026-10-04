@@ -215,11 +215,11 @@ $$;
 
 create function public.log_ai_call(
   p_gym_id uuid,
-  p_conversation_id uuid,
   p_tools text[],
   p_input_tokens integer,
   p_output_tokens integer,
-  p_model text
+  p_model text,
+  p_conversation_id uuid default null
 )
 returns void
 language plpgsql
@@ -240,10 +240,10 @@ $$;
 revoke all on function
   public.session_stats(uuid, date, date, uuid, time),
   public.send_direct_message(uuid, uuid[], text, text),
-  public.log_ai_call(uuid, uuid, text[], integer, integer, text)
+  public.log_ai_call(uuid, text[], integer, integer, text, uuid)
 from public, anon;
 grant execute on function
   public.session_stats(uuid, date, date, uuid, time),
   public.send_direct_message(uuid, uuid[], text, text),
-  public.log_ai_call(uuid, uuid, text[], integer, integer, text)
+  public.log_ai_call(uuid, text[], integer, integer, text, uuid)
 to authenticated;

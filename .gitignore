@@ -21,3 +21,6 @@ supabase/.temp/
 # Divers
 .DS_Store
 *.log
+
+# Next.js
+next-env.d.ts

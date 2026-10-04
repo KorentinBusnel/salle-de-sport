@@ -2,6 +2,7 @@
 
 import {
   CalendarDaysIcon,
+  ChartColumnIcon,
   ChevronsUpDownIcon,
   ClockIcon,
   DumbbellIcon,
@@ -56,6 +57,7 @@ const ICONS = {
   crm: KanbanIcon,
   segments: FilterIcon,
   emailing: MailPlusIcon,
+  kpis: ChartColumnIcon,
   settings: SettingsIcon,
 } satisfies Record<string, LucideIcon>;
 

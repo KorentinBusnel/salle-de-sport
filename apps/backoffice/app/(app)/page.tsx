@@ -13,6 +13,7 @@ import Link from "next/link";
 import { KpiCard } from "@/components/kpi-card";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { CalendarXIcon } from "lucide-react";
 import {
@@ -247,7 +248,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="grid gap-8">
-      <PageHeader title={t("nav.today")} description={format.longDay(now)} />
+      <PageHeader
+        title={t("nav.today")}
+        description={format.longDay(now)}
+        actions={
+          canSeeFinancials(context.role) ? (
+            <Button asChild variant="outline">
+              <Link href="/indicateurs">{t("kpis.seeAll")}</Link>
+            </Button>
+          ) : undefined
+        }
+      />
       {/* L'accueil et les coachs travaillent dans la liste : elle passe avant les indicateurs. */}
       {canSeeFinancials(context.role) ? (
         <>

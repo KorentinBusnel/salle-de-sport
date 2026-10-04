@@ -51,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       items: [
         { href: "/", label: t("nav.today"), icon: "today" },
         { href: "/planning", label: t("nav.planning"), icon: "planning" },
+        ...(manager ? [{ href: "/indicateurs", label: t("nav.kpis"), icon: "kpis" as const }] : []),
         ...(ownCoachId
           ? [
               {

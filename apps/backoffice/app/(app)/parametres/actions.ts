@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { SettingsState } from "@/components/settings/settings-form";
 import type { StrategiesState } from "@/components/settings/strategies-form";
 import { isManagerRole, requireRole } from "@/lib/auth";
-import { withFlash } from "@/lib/flash";
+import { errorMessageKey, withFlash } from "@/lib/flash";
 import { createClient } from "@/lib/supabase/server";
 
 const formSchema = z.object({
@@ -107,4 +107,41 @@ export async function saveStrategies(
     staff_can_suspend_members: values.staff_can_suspend_members,
     staff_can_create_members: values.staff_can_create_members,
   });
+}
+
+const teamRole = z.enum(["coach", "staff", "manager", "admin"]);
+
+/** Ajoute un rôle d'équipe à un compte existant (email). Seul un admin attribue admin. */
+export async function addTeamRole(formData: FormData) {
+  const context = await requireRole(isManagerRole);
+  const email = z.email().safeParse(String(formData.get("email") ?? "").trim());
+  const role = teamRole.safeParse(formData.get("role"));
+  if (!email.success || !role.success)
+    redirect(withFlash("/parametres", { error: "team.errors.invalid" }));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_team_role", {
+    p_gym_id: context.gym.id,
+    p_email: email.data,
+    p_role: role.data,
+  });
+  revalidatePath("/parametres");
+  redirect(
+    withFlash("/parametres", error ? { error: errorMessageKey(error) } : { ok: "team.added" }),
+  );
+}
+
+export async function removeTeamRole(formData: FormData) {
+  const context = await requireRole(isManagerRole);
+  const profileId = z.guid().parse(formData.get("profileId"));
+  const role = teamRole.parse(formData.get("role"));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_team_role", {
+    p_gym_id: context.gym.id,
+    p_profile_id: profileId,
+    p_role: role,
+  });
+  revalidatePath("/parametres");
+  redirect(
+    withFlash("/parametres", error ? { error: errorMessageKey(error) } : { ok: "team.removed" }),
+  );
 }

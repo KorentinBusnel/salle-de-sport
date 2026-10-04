@@ -34,12 +34,30 @@ export async function updateSession(request: NextRequest) {
 
   // Ne rien exécuter entre la création du client et getClaims() : c'est cet appel
   // qui vérifie le jeton et le renouvelle si besoin.
-  const { data } = await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
   const isPublic = PUBLIC_PATHS.some((path) => request.nextUrl.pathname.startsWith(path));
 
   if (!data?.claims && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    // Cookie de session présent mais refusé : on l'indique au lieu d'un retour muet à /login.
+    if (request.cookies.getAll().some(({ name }) => name.startsWith("sb-"))) {
+      console.error("Session Supabase refusée", error?.name, error?.message);
+      url.searchParams.set("motif", "session");
+    }
+    return NextResponse.redirect(url);
+  }
+
+  // Déjà connecté : la page de connexion renvoie à l'accueil (sauf motif à afficher).
+  if (
+    data?.claims &&
+    request.nextUrl.pathname === "/login" &&
+    !request.nextUrl.searchParams.has("motif")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

@@ -223,6 +223,7 @@ export type Database = {
       };
       class_sessions: {
         Row: {
+          booked_count: number;
           cancellation_reason: string | null;
           capacity: number;
           coach_id: string | null;
@@ -236,8 +237,10 @@ export type Database = {
           status: Database["public"]["Enums"]["session_status"];
           template_id: string | null;
           updated_at: string;
+          waitlist_count: number;
         };
         Insert: {
+          booked_count?: number;
           cancellation_reason?: string | null;
           capacity: number;
           coach_id?: string | null;
@@ -251,8 +254,10 @@ export type Database = {
           status?: Database["public"]["Enums"]["session_status"];
           template_id?: string | null;
           updated_at?: string;
+          waitlist_count?: number;
         };
         Update: {
+          booked_count?: number;
           cancellation_reason?: string | null;
           capacity?: number;
           coach_id?: string | null;
@@ -266,6 +271,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["session_status"];
           template_id?: string | null;
           updated_at?: string;
+          waitlist_count?: number;
         };
         Relationships: [
           {
@@ -1147,7 +1153,9 @@ export type Database = {
           id: string;
           last_name: string | null;
           phone: string | null;
+          terms_accepted_at: string | null;
           updated_at: string;
+          waiver_accepted_at: string | null;
         };
         Insert: {
           avatar_url?: string | null;
@@ -1159,7 +1167,9 @@ export type Database = {
           id: string;
           last_name?: string | null;
           phone?: string | null;
+          terms_accepted_at?: string | null;
           updated_at?: string;
+          waiver_accepted_at?: string | null;
         };
         Update: {
           avatar_url?: string | null;
@@ -1171,7 +1181,9 @@ export type Database = {
           id?: string;
           last_name?: string | null;
           phone?: string | null;
+          terms_accepted_at?: string | null;
           updated_at?: string;
+          waiver_accepted_at?: string | null;
         };
         Relationships: [];
       };
@@ -1299,7 +1311,146 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      book_session: {
+        Args: { p_member_id?: string; p_session_id: string };
+        Returns: {
+          booked_at: string;
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          session_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          updated_at: string;
+          waitlist_position: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      cancel_booking: {
+        Args: { p_booking_id: string };
+        Returns: {
+          booked_at: string;
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          session_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          updated_at: string;
+          waitlist_position: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      cancel_session: {
+        Args: { p_reason?: string; p_session_id: string };
+        Returns: {
+          booked_count: number;
+          cancellation_reason: string | null;
+          capacity: number;
+          coach_id: string | null;
+          created_at: string;
+          discipline_id: string;
+          ends_at: string;
+          gym_id: string;
+          id: string;
+          room_id: string | null;
+          starts_at: string;
+          status: Database["public"]["Enums"]["session_status"];
+          template_id: string | null;
+          updated_at: string;
+          waitlist_count: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "class_sessions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      generate_sessions: {
+        Args: { p_from: string; p_gym_id: string; p_to: string };
+        Returns: number;
+      };
+      join_gym: {
+        Args: { p_terms_accepted: boolean; p_waiver_accepted: boolean };
+        Returns: {
+          acquisition_source: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string;
+          gym_id: string;
+          id: string;
+          last_name: string;
+          marketing_email_consent_at: string | null;
+          marketing_whatsapp_consent_at: string | null;
+          phone: string | null;
+          profile_id: string | null;
+          status: Database["public"]["Enums"]["member_status"];
+          stripe_customer_id: string | null;
+          tags: string[];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "members";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      search_members: {
+        Args: {
+          p_gym_id: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_statuses?: Database["public"]["Enums"]["member_status"][];
+        };
+        Returns: {
+          email: string;
+          first_name: string;
+          id: string;
+          last_name: string;
+          phone: string;
+          status: Database["public"]["Enums"]["member_status"];
+          total_count: number;
+        }[];
+      };
+      set_attendance: {
+        Args: { p_booking_id: string; p_status: Database["public"]["Enums"]["booking_status"] };
+        Returns: {
+          booked_at: string;
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          session_id: string;
+          status: Database["public"]["Enums"]["booking_status"];
+          updated_at: string;
+          waitlist_position: number | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "bookings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       billing_interval: "month" | "year";

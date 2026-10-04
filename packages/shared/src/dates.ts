@@ -61,3 +61,48 @@ export function zonedDayRange(instant: Date, timeZone: string): { start: Date; e
     end: localMidnight(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate(), timeZone),
   };
 }
+
+/** Date locale « AAAA-MM-JJ » de l'instant dans le fuseau donné. */
+export function zonedDateKey(instant: Date, timeZone: string): string {
+  const { year, month, day } = wallClockParts(instant, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Minutes écoulées depuis minuit (heure locale du fuseau). */
+export function zonedMinutesOfDay(instant: Date, timeZone: string): number {
+  const { hour, minute } = wallClockParts(instant, timeZone);
+  return hour * 60 + minute;
+}
+
+/** Instant correspondant à minuit local d'une date « AAAA-MM-JJ » dans le fuseau donné. */
+export function zonedStartOfDateKey(dateKey: string, timeZone: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return localMidnight(year ?? 1970, month ?? 1, day ?? 1, timeZone);
+}
+
+/**
+ * Semaine locale (lundi → lundi suivant) contenant l'instant, avec ses 7 jours.
+ * Gère les semaines de changement d'heure (167 h ou 169 h).
+ */
+export function zonedWeek(
+  instant: Date,
+  timeZone: string,
+): { start: Date; end: Date; days: { key: string; start: Date; end: Date }[] } {
+  const { year, month, day } = wallClockParts(instant, timeZone);
+  // Jour ISO de la semaine (1 = lundi) calculé sur la date civile, indépendante du fuseau.
+  const isoWeekday = ((new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7) + 1;
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const civil = new Date(Date.UTC(year, month - 1, day - (isoWeekday - 1) + index));
+    const key = civil.toISOString().slice(0, 10);
+    const next = new Date(civil.getTime() + 86_400_000).toISOString().slice(0, 10);
+    return {
+      key,
+      start: zonedStartOfDateKey(key, timeZone),
+      end: zonedStartOfDateKey(next, timeZone),
+    };
+  });
+  const first = days[0];
+  const last = days[6];
+  if (!first || !last) throw new Error("semaine invalide");
+  return { start: first.start, end: last.end, days };
+}

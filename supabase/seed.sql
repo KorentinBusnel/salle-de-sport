@@ -355,12 +355,39 @@ from eligible
 where rank <= least(demand, capacity)
    or (rank <= least(demand, capacity + 3) and starts_at > now() and not cancelled);
 
+-- Règle de la salle : au plus 5 réservations à venir par adhérent (confirmées + attente).
+-- Le compte de démo n'en garde que 2, pour pouvoir réserver dans l'app.
+delete from seed_bookings
+where id in (
+  select id from (
+    select b.id, b.n,
+      row_number() over (partition by b.member_id order by b.starts_at, b.session_id) as upcoming_rank
+    from seed_bookings b
+    where b.starts_at > now() and b.status in ('confirmed', 'waitlisted')
+  ) as upcoming
+  where upcoming_rank > case when n = 1 then 2 else 5 end
+);
+
+-- Après ce retrait, les places libérées reviennent aux suivants : statut et position
+-- d'attente recalculés séance par séance, dans l'ordre du tirage.
+alter table seed_bookings add column slot integer;
+update seed_bookings b
+set slot = ranked.slot,
+    status = case when ranked.slot <= ranked.capacity then 'confirmed' else 'waitlisted' end::public.booking_status
+from (
+  select sb.id, s.capacity, row_number() over (partition by sb.session_id order by sb.rank) as slot
+  from seed_bookings sb
+  join seed_sessions s on s.id = sb.session_id
+  where sb.starts_at > now() and sb.status in ('confirmed', 'waitlisted')
+) as ranked
+where b.id = ranked.id;
+
 insert into public.bookings (
   id, gym_id, session_id, member_id, status, waitlist_position, booked_at, cancelled_at, checked_in_at, created_at
 )
 select
   b.id, pg_temp.sid('gym'), b.session_id, b.member_id, b.status,
-  case when b.status = 'waitlisted' then (b.rank - s.capacity)::int end,
+  case when b.status = 'waitlisted' then (b.slot - s.capacity)::int end,
   b.booked_at,
   case when b.status = 'cancelled' then least(now() - interval '1 minute', b.starts_at - interval '3 hours') end,
   case when b.status = 'attended' then b.starts_at - interval '5 minutes' end,

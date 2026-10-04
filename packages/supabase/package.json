@@ -15,6 +15,7 @@
     "@supabase/supabase-js": "^2.117.2"
   },
   "devDependencies": {
-    "@salle/shared": "workspace:*"
+    "@salle/shared": "workspace:*",
+    "@types/node": "^22"
   }
 }

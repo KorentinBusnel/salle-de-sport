@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { zonedDayRange } from "./dates.ts";
+import {
+  zonedDateKey,
+  zonedDayRange,
+  zonedMinutesOfDay,
+  zonedStartOfDateKey,
+  zonedWeek,
+} from "./dates.ts";
 
 const PARIS = "Europe/Paris";
 const hours = (r: { start: Date; end: Date }) => (r.end.getTime() - r.start.getTime()) / 3_600_000;
@@ -39,5 +45,46 @@ describe("zonedDayRange", () => {
     // 2026-07-15 00:30 à Paris = 2026-07-14 22:30 UTC.
     const range = zonedDayRange(new Date("2026-07-14T22:30:00Z"), PARIS);
     expect(range.start.toISOString()).toBe("2026-07-14T22:00:00.000Z");
+  });
+});
+
+describe("zonedWeek", () => {
+  it("commence le lundi à minuit heure locale", () => {
+    // Mercredi 7 octobre 2026.
+    const week = zonedWeek(new Date("2026-10-07T12:00:00Z"), PARIS);
+    expect(week.days.map((d) => d.key)).toEqual([
+      "2026-10-05",
+      "2026-10-06",
+      "2026-10-07",
+      "2026-10-08",
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11",
+    ]);
+    expect(week.start.toISOString()).toBe("2026-10-04T22:00:00.000Z");
+  });
+
+  it("dure 169 h la semaine du passage à l'heure d'hiver", () => {
+    const week = zonedWeek(new Date("2026-10-22T12:00:00Z"), PARIS);
+    expect((week.end.getTime() - week.start.getTime()) / 3_600_000).toBe(169);
+    expect(week.days[6]?.key).toBe("2026-10-25");
+  });
+
+  it("rattache le dimanche soir à la bonne semaine", () => {
+    // Dimanche 11 octobre, 23 h 30 à Paris.
+    const week = zonedWeek(new Date("2026-10-11T21:30:00Z"), PARIS);
+    expect(week.days[0]?.key).toBe("2026-10-05");
+  });
+});
+
+describe("zonedDateKey et zonedMinutesOfDay", () => {
+  it("donnent la date et l'heure locales", () => {
+    const instant = new Date("2026-10-05T16:30:00Z");
+    expect(zonedDateKey(instant, PARIS)).toBe("2026-10-05");
+    expect(zonedMinutesOfDay(instant, PARIS)).toBe(18 * 60 + 30);
+  });
+
+  it("zonedStartOfDateKey renvoie minuit local", () => {
+    expect(zonedStartOfDateKey("2026-10-25", PARIS).toISOString()).toBe("2026-10-24T22:00:00.000Z");
   });
 });

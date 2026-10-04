@@ -64,10 +64,22 @@ En session cloud, démarrer Supabase sans les services inutiles :
   aucune dépendance Node, imports relatifs **avec l'extension `.ts`** (`./dates.ts`).
 - Dates : toujours dans le fuseau de la salle (`gyms.timezone`), via `zonedDayRange` ; les
   journées de 23 h / 25 h (changement d'heure) sont testées.
-- Design : `packages/ui/src/tokens.ts` est la source. `theme.css` (Tailwind v4, back office) le
-  reflète — un test échoue s'ils divergent. Le mobile injecte les mêmes tokens dans
-  `tailwind.config.ts` (NativeWind 4 = Tailwind v3) sous les mêmes noms : les classes
-  (`bg-brand-600`, `text-neutral-500`…) sont identiques sur les deux apps.
+- Design : `packages/ui/src/tokens.ts` est la source (couleurs en hex : NativeWind refuse
+  oklch). `theme.css` (Tailwind v4, back office) le reflète — un test échoue s'ils divergent, un
+  autre si un couple de couleurs passe sous le contraste WCAG AA. Le mobile injecte les mêmes
+  tokens dans `tailwind.config.ts` (NativeWind 4 = Tailwind v3) sous les mêmes noms. Utiliser les
+  **rôles sémantiques** (`bg-primary`, `text-muted-foreground`, `border-input`, `bg-card`…) plutôt
+  que les teintes brutes ; rayons `rounded-sm` à `rounded-4xl` et ombres `shadow-border` /
+  `shadow-border-hover` définis dans les tokens (le mobile passe les ombres en `style.boxShadow` :
+  NativeWind ignore les ombres multiples).
+- Langage visuel : Watermelon UI (MIT, `THIRD_PARTY_NOTICES.md`) et le skill
+  `.claude/skills/make-interfaces-feel-better` (appui `scale(0.96)`, pas de `transition-all`,
+  `tabular-nums` sur les nombres, cibles de 40 px). Ne pas copier les fichiers Watermelon tels
+  quels (Vite, hugeicons, `next-themes`, pas de `"use client"`) : primitives par le CLI shadcn,
+  compositions recopiées et adaptées.
+- Tons des statuts (`BOOKING_STATUS_TONE`, `MEMBER_STATUS_TONE`, `TONE_CLASSES`) et phase d'une
+  séance : `packages/shared/src/display.ts`, utilisés par les deux apps (Tailwind scanne ce dossier).
+- Pluriels : `{count, plural, =0 {…} one {# …} other {# …}}` dans les catalogues.
 
 ## Base de données (Supabase)
 
@@ -89,9 +101,14 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - **Chaque nouvelle table** a ses tests dans `supabase/tests/database/` : au minimum, un adhérent
   ne voit pas les données d'un autre, et une salle ne voit pas celles d'une autre. Les tests
   créent leurs propres données dans une transaction annulée et ne dépendent pas du seed.
-- Réserver, annuler, promouvoir depuis la liste d'attente : **fonctions Postgres
-  transactionnelles avec verrou sur la séance** (phase 1). Pas d'`insert` direct des adhérents
-  sur `bookings`.
+- Réserver, annuler, pointer, promouvoir : **uniquement via les fonctions** `book_session`,
+  `cancel_booking`, `set_attendance`, `cancel_session` (verrou `for update` sur la séance). Aucune
+  écriture directe sur `bookings` pour `authenticated`. `supabase/tests/concurrency.sh` (lancé par
+  `pnpm db:test` et en CI) vérifie l'absence de surréservation.
+- Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
+  `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
+- Compteurs `class_sessions.booked_count` / `waitlist_count` : tenus par trigger, ne jamais les
+  écrire à la main ; ils sont publiés en Realtime (places en direct dans l'app).
 - `supabase/seed.sql` est **déterministe** (`pg_temp.rnd`, UUID dérivés de clés) et relatif à la
   date du reset. Comptes de démo : mot de passe `demo1234`, données fictives uniquement.
 - Projet Supabase **de dev en ligne** : la connexion Postgres directe est bloquée depuis les
@@ -122,6 +139,19 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `app/globals.css`. Ajouter un composant : `pnpm dlx shadcn@latest add <nom>` dans
   `apps/backoffice`.
 - `typecheck` lance `next typegen` (génère `next-env.d.ts`, ignoré par git) avant `tsc`.
+- Mutations : Server Actions + Zod, appel des fonctions SQL, puis `redirect(withFlash(...))`
+  (`lib/flash.ts`, `count` pour un pluriel) : `FlashToast` l'affiche en toast puis le retire de
+  l'URL (`Flash` ne sert plus que de repli `<noscript>`). Formulaires à erreurs par champ :
+  `useActionState` + `Field`/`FieldError`, `noValidate` pour des messages en français. Boutons
+  d'envoi : `SubmitButton` (état d'envoi). Action irréversible : `ConfirmDialog`. Actions rapides
+  sans rechargement (pointage) : Server Action qui renvoie `{ error }` puis `refresh()`.
+- Coque : `components/app-sidebar.tsx` (entrées filtrées par rôle), `PageHeader`, `metadata` par
+  page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message.
+- Tailles tactiles : `pointer-coarse:` dans les variantes (bouton, champ, select) ; le rendu bureau
+  ne change pas. Lectures au fil de la frappe : Route Handler (`app/api/…`), pas de Server Action. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
+  du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).
+- Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
+  du React Compiler refuse `Date.now()` dans le rendu.
 
 ## App mobile (Expo)
 
@@ -135,13 +165,28 @@ En session cloud, démarrer Supabase sans les services inutiles :
   publication dans le README. N'utiliser que des modules natifs inclus dans Expo Go tant qu'il
   n'y a pas de build installable sur iPhone.
 - Development build iOS : simulateur uniquement (`eas.json`, profil `development`).
+- UI : `components/ui.tsx` (Button, Card, StatusPill, Gauge, RollingNumber, Skeleton,
+  EmptyState) et `components/toast.tsx` (`useToast`, retour haptique) ; `Notice` pour les états
+  durables seulement. Police système (pas d'Inter sur mobile). Les vues `Animated.*` ne reçoivent
+  pas les classes NativeWind : style animé seul, classes sur une vue enfant.
+- Navigation : `Stack.Protected` dans `app/_layout.tsx` (connexion → onboarding → onglets) ;
+  état de l'adhérent partagé par `MemberProvider` (`lib/member.tsx`), à rafraîchir après chaque
+  action. Confirmations : `confirmAsync` (`Alert` ne fait rien sur le web).
+- Tests navigateur de l'export web : les onglets ont le rôle `tab`, et un écran empilé garde le
+  précédent dans le DOM (cibler le dernier champ).
 
 ## Outillage : pièges connus
 
 - `eslint-plugin-react` 7.x (inclus dans les configs Next et Expo) plante sous ESLint 10 en
   détectant la version de React : la version est fixée dans `settings.react.version` de chaque
   `eslint.config.mjs`.
-- `turbo` génère un `AGENTS.md` s'il détecte un agent : désactivé (`agentGuidance: false`).
+- `turbo` génère un `AGENTS.md` s'il détecte un agent : désactivé (`agentGuidance: false`). Next
+  16 fait de même en `next dev` : désactivé par `agentRules: false` dans `next.config.ts`.
+- Vercel : le framework est fixé dans `apps/backoffice/vercel.json` ; les variables
+  `NEXT_PUBLIC_*` ne doivent pas être marquées « Sensitive ».
 - `BRIEF.md` est exclu de Prettier (document rédigé à la main).
 - Docker en session cloud : `pnpm docker:start` gère le `docker.pid` périmé laissé par un
-  redémarrage du conteneur.
+  redémarrage du conteneur. Après un redémarrage, certains conteneurs Supabase (Realtime) peuvent
+  manquer : `supabase stop` puis `supabase start`.
+- Ne pas utiliser `pkill -f <motif>` dans une commande qui contient ce motif : il tue son propre
+  shell. Viser le nom exact du processus (`pgrep -x next-server`).

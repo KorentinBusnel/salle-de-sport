@@ -1,5 +1,5 @@
 import "server-only";
-import { type GymRole, primaryTeamRole } from "@salle/shared";
+import { canSeeFinancials, type GymRole, primaryTeamRole } from "@salle/shared";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
@@ -53,9 +53,27 @@ export const getTeamContext = cache(async (): Promise<ContextResult> => {
   return { status: "no-team" };
 });
 
-/** Contexte d'équipe obligatoire : redirige vers /login sinon. */
+/** Contexte d'équipe obligatoire : redirige vers /login sinon (avec le motif si connecté). */
 export async function requireTeamContext(): Promise<TeamContext> {
   const result = await getTeamContext();
+  if (result.status === "no-team") redirect("/login?motif=sans-role");
   if (result.status !== "team") redirect("/login");
   return result.context;
+}
+
+/** Gérant ou admin : planning, cours récurrents, paramètres, finances. */
+export function isManagerRole(role: GymRole): boolean {
+  return canSeeFinancials(role);
+}
+
+/** Accueil et au-dessus : réservations et fiches adhérents. */
+export function isFrontDeskRole(role: GymRole): boolean {
+  return role === "staff" || isManagerRole(role);
+}
+
+/** Contexte d'équipe avec un rôle suffisant : retour à l'accueil avec un message sinon. */
+export async function requireRole(allowed: (role: GymRole) => boolean): Promise<TeamContext> {
+  const context = await requireTeamContext();
+  if (!allowed(context.role)) redirect("/?erreur=errors.forbiddenRole");
+  return context;
 }

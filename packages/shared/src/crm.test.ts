@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeTags, parseSegmentFilters, segmentFiltersSchema } from "./crm.ts";
+import { normalizeTags, parseSegmentFilters, pipelineMove, segmentFiltersSchema } from "./crm.ts";
 
 describe("segmentFiltersSchema", () => {
   it("accepte des filtres valides et refuse une clé inconnue", () => {
@@ -25,5 +25,32 @@ describe("normalizeTags", () => {
       "hyrox",
       "course à pied",
     ]);
+  });
+});
+
+describe("pipelineMove", () => {
+  it("prospect ⇄ essai par le tag", () => {
+    expect(pipelineMove("lead", "trial")).toEqual({ kind: "add_trial_tag" });
+    expect(pipelineMove("trial", "lead")).toEqual({ kind: "remove_trial_tag" });
+  });
+
+  it("changements de statut, résiliation confirmée", () => {
+    expect(pipelineMove("trial", "active")).toMatchObject({ status: "active", confirm: false });
+    expect(pipelineMove("suspended", "active")).toMatchObject({ status: "active" });
+    expect(pipelineMove("cancelled", "active")).toMatchObject({ status: "active" });
+    expect(pipelineMove("active", "suspended")).toMatchObject({ status: "suspended" });
+    expect(pipelineMove("active", "cancelled")).toMatchObject({
+      status: "cancelled",
+      confirm: true,
+    });
+    expect(pipelineMove("lead", "cancelled")).toMatchObject({ status: "cancelled", confirm: true });
+  });
+
+  it("refuse les retours en arrière et les sauts incohérents", () => {
+    expect(pipelineMove("active", "lead")).toBeNull();
+    expect(pipelineMove("active", "trial")).toBeNull();
+    expect(pipelineMove("lead", "suspended")).toBeNull();
+    expect(pipelineMove("cancelled", "suspended")).toBeNull();
+    expect(pipelineMove("active", "active")).toBeNull();
   });
 });

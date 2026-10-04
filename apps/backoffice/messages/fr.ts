@@ -560,7 +560,7 @@ export const fr = {
   },
   crm: {
     title: "Pipeline",
-    hint: "Étapes déduites des fiches : statut, réservations et tag « essai ».",
+    hint: "Glissez une carte vers une autre étape (ou « Déplacer vers… ») : statut et tag « essai » suivent.",
     stage: {
       lead: "Prospects",
       trial: "Essai",
@@ -572,6 +572,21 @@ export const fr = {
     today: "aujourd'hui",
     startTrial: "Démarrer l'essai",
     trialStarted: "Prospect passé à l'essai.",
+    moved: "{name} → {stage}.",
+    dropHere: "Déposez une carte ici",
+    dragCard: "Déplacer {name} (glisser)",
+    moveTo: "Déplacer {name} vers une autre étape",
+    moveToLabel: "Déplacer vers…",
+    dragInstructions:
+      "Pour déplacer une carte : Espace pour la saisir, flèches pour changer d'étape, Espace pour la déposer, Échap pour annuler.",
+    cancelTitle: "Passer {name} en « Résilié » ?",
+    cancelMemberBody: "L'adhésion est arrêtée : l'adhérent ne pourra plus réserver.",
+    cancelLeadBody: "Le prospect est marqué comme perdu.",
+    cancelConfirm: "Résilier",
+    errors: {
+      notAllowed: "Ce changement d'étape n'est pas possible depuis le pipeline.",
+      alreadyBooked: "Ce prospect a déjà réservé : il reste en essai.",
+    },
     more: "{count, plural, one {# autre} other {# autres}} : voir la liste",
   },
   segments: {

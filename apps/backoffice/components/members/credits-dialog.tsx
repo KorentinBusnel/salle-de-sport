@@ -16,35 +16,48 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { t } from "@/lib/i18n";
 
 const MIN = 1;
 const MAX = 50;
 
-/** Ajout de crédits : quantité au stepper, motif, solde avant → après, puis Server Action. */
+/**
+ * Ajout de crédits (ou retrait, si la stratégie de la salle l'autorise) : quantité au stepper,
+ * motif (obligatoire pour un retrait), solde avant → après, puis Server Action.
+ */
 export function CreditsDialog({
   memberId,
   memberName,
   balance,
   returnQuery,
+  canRemove,
   action,
 }: {
   memberId: string;
   memberName: string;
   balance: number;
   returnQuery: string;
+  canRemove: boolean;
   action: (formData: FormData) => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(1);
-  const clamp = (value: number) => Math.min(MAX, Math.max(MIN, Math.round(value) || MIN));
+  const [mode, setMode] = useState<"add" | "remove">("add");
+  const remove = mode === "remove";
+  // Un retrait ne fait pas passer le solde sous zéro (règle vérifiée aussi en SQL).
+  const max = remove ? Math.max(MIN, Math.min(MAX, balance)) : MAX;
+  const clamp = (value: number) => Math.min(max, Math.max(MIN, Math.round(value) || MIN));
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) setAmount(1);
+        if (next) {
+          setAmount(1);
+          setMode("add");
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -61,10 +74,35 @@ export function CreditsDialog({
         <form action={action} onSubmit={() => setOpen(false)} className="grid gap-5">
           <input type="hidden" name="memberId" value={memberId} />
           <input type="hidden" name="returnQuery" value={returnQuery} />
+          <input type="hidden" name="mode" value={mode} />
           <DialogHeader>
-            <DialogTitle>{t("members.creditsTitle")}</DialogTitle>
+            <DialogTitle>
+              {remove ? t("members.creditsRemoveTitle") : t("members.creditsTitle")}
+            </DialogTitle>
             <DialogDescription>{memberName}</DialogDescription>
           </DialogHeader>
+
+          {canRemove ? (
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={mode}
+              onValueChange={(value) => {
+                if (value !== "add" && value !== "remove") return;
+                setMode(value);
+                setAmount(1);
+              }}
+              aria-label={t("members.creditsMode")}
+              className="w-full"
+            >
+              <ToggleGroupItem value="add" className="flex-1">
+                {t("members.creditsModeAdd")}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="remove" className="flex-1" disabled={balance <= 0}>
+                {t("members.creditsModeRemove")}
+              </ToggleGroupItem>
+            </ToggleGroup>
+          ) : null}
 
           <div className="grid gap-2">
             <Label htmlFor={`amount-${memberId}`}>{t("members.creditsAmount")}</Label>
@@ -85,7 +123,7 @@ export function CreditsDialog({
                 type="number"
                 inputMode="numeric"
                 min={MIN}
-                max={MAX}
+                max={max}
                 required
                 value={amount}
                 onChange={(event) => setAmount(clamp(Number(event.target.value)))}
@@ -96,7 +134,7 @@ export function CreditsDialog({
                 variant="outline"
                 size="icon"
                 onClick={() => setAmount((a) => clamp(a + 1))}
-                disabled={amount >= MAX}
+                disabled={amount >= max}
                 aria-label={t("members.creditsMore")}
               >
                 <PlusIcon />
@@ -105,12 +143,17 @@ export function CreditsDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor={`note-${memberId}`}>{t("members.creditsNote")}</Label>
+            <Label htmlFor={`note-${memberId}`}>
+              {remove ? t("members.creditsReason") : t("members.creditsNote")}
+            </Label>
             <Input
               id={`note-${memberId}`}
               name="note"
               maxLength={200}
-              placeholder={t("members.creditsNotePlaceholder")}
+              required={remove}
+              placeholder={
+                remove ? t("members.creditsReasonPlaceholder") : t("members.creditsNotePlaceholder")
+              }
             />
           </div>
 
@@ -120,7 +163,7 @@ export function CreditsDialog({
           >
             <span className="text-muted-foreground">{t("members.creditsBalance")}</span>
             <span className="font-medium tabular-nums">
-              {balance} → {balance + amount}
+              {balance} → {remove ? balance - amount : balance + amount}
             </span>
           </p>
 
@@ -130,7 +173,11 @@ export function CreditsDialog({
                 {t("common.cancel")}
               </Button>
             </DialogClose>
-            <SubmitButton>{t("members.creditsConfirm", { count: amount })}</SubmitButton>
+            <SubmitButton variant={remove ? "destructive" : "default"}>
+              {remove
+                ? t("members.creditsRemoveConfirm", { count: amount })
+                : t("members.creditsConfirm", { count: amount })}
+            </SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

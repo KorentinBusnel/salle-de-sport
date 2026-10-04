@@ -101,6 +101,23 @@ export async function markAttendance(
   return { error: error ? errorMessageKey(error) : null };
 }
 
+const resetSchema = attendanceSchema.pick({ bookingId: true, sessionId: true });
+
+/** Remise à « confirmé » d'un pointage (stratégie allow_attendance_reset). */
+export async function resetAttendance(
+  input: z.input<typeof resetSchema>,
+): Promise<{ error: MessageKey | null }> {
+  const parsed = resetSchema.safeParse(input);
+  if (!parsed.success) return { error: "common.unexpectedError" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reset_attendance", {
+    p_booking_id: parsed.data.bookingId,
+  });
+  revalidatePath(`/planning/${parsed.data.sessionId}`);
+  refresh();
+  return { error: error ? errorMessageKey(error) : null };
+}
+
 /** « Tous présents » : pointe présents les inscrits encore confirmés (même fonction SQL). */
 export async function markAllAttended(formData: FormData) {
   const sessionId = uuid.parse(formData.get("sessionId"));

@@ -29,6 +29,7 @@ import { isFrontDeskRole, isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters, initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { getGymSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import {
   bookMember,
@@ -36,6 +37,7 @@ import {
   cancelSession,
   markAllAttended,
   markAttendance,
+  resetAttendance,
   setAttendance,
 } from "./actions";
 
@@ -93,6 +95,20 @@ export default async function SessionPage({
   const scheduled = session.status === "scheduled";
   const phase = sessionPhase(new Date(session.starts_at), new Date(session.ends_at), now);
   const full = session.booked_count >= session.capacity;
+  const settings = await getGymSettings(context.gym.id);
+  const startsAt = new Date(session.starts_at).getTime();
+  // Stratégies : retardataires inscrits par l'accueil, fenêtre d'ouverture du pointage.
+  const lateUntil = Math.min(
+    startsAt + settings.late_booking_minutes * 60_000,
+    new Date(session.ends_at).getTime(),
+  );
+  const canAddMember =
+    frontDesk && scheduled && (phase === "upcoming" || now.getTime() < lateUntil);
+  const attendanceOpensAt =
+    settings.attendance_opens_minutes_before === null
+      ? null
+      : startsAt - settings.attendance_opens_minutes_before * 60_000;
+  const attendanceOpen = attendanceOpensAt === null || now.getTime() >= attendanceOpensAt;
 
   const memberName = (m: { first_name: string; last_name: string } | null) =>
     m ? `${m.first_name} ${m.last_name}` : t("common.none");
@@ -226,13 +242,24 @@ export default async function SessionPage({
                             </span>
                             {scheduled ? (
                               <>
-                                <AttendanceToggle
-                                  bookingId={booking.id}
-                                  sessionId={session.id}
-                                  status={booking.status}
-                                  memberName={name}
-                                  mark={markAttendance}
-                                />
+                                {attendanceOpen ? (
+                                  <AttendanceToggle
+                                    bookingId={booking.id}
+                                    sessionId={session.id}
+                                    status={booking.status}
+                                    memberName={name}
+                                    mark={markAttendance}
+                                    reset={
+                                      settings.allow_attendance_reset ? resetAttendance : undefined
+                                    }
+                                  />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {t("session.attendanceOpensAt", {
+                                      time: format.time(new Date(attendanceOpensAt ?? startsAt)),
+                                    })}
+                                  </span>
+                                )}
                                 <noscript>
                                   {(["attended", "no_show"] as const).map((status) => (
                                     <form key={status} action={setAttendance} className="inline">
@@ -397,11 +424,17 @@ export default async function SessionPage({
             </CardContent>
           </Card>
 
-          {frontDesk && scheduled && phase === "upcoming" ? (
+          {canAddMember ? (
             <Card>
               <CardHeader>
-                <CardTitle>{t("session.addMember")}</CardTitle>
-                <CardDescription>{t("session.addMemberHint")}</CardDescription>
+                <CardTitle>
+                  {phase === "upcoming" ? t("session.addMember") : t("session.addLateMember")}
+                </CardTitle>
+                <CardDescription>
+                  {phase === "upcoming"
+                    ? t("session.addMemberHint")
+                    : t("session.addLateMemberHint", { time: format.time(new Date(lateUntil)) })}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <MemberCombobox

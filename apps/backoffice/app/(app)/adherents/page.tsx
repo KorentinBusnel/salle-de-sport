@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Flash } from "@/components/flash";
 import { CreditsDialog } from "@/components/members/credits-dialog";
+import { NewMemberSheet } from "@/components/members/new-member-sheet";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
@@ -29,9 +30,10 @@ import {
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { getGymSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { activateMember, addCredits } from "./actions";
+import { adjustCredits, createMember, setMemberStatus } from "./actions";
 
 export const metadata: Metadata = { title: t("members.title") };
 
@@ -52,6 +54,10 @@ export default async function MembersPage({
   const params = await searchParams;
   const context = await requireRole(isFrontDeskRole);
   const manager = isManagerRole(context.role);
+  const settings = await getGymSettings(context.gym.id);
+  // Stratégies de la salle : les actions désactivées ne sont pas proposées (la base refuse aussi).
+  const canCreate = manager || settings.staff_can_create_members;
+  const canSuspend = manager || settings.staff_can_suspend_members;
   const supabase = await createClient();
 
   const search = (params.q ?? "").trim().slice(0, 80);
@@ -128,7 +134,11 @@ export default async function MembersPage({
 
   return (
     <div className="grid gap-6">
-      <PageHeader title={t("members.title")} description={t("members.count", { count: total })} />
+      <PageHeader
+        title={t("members.title")}
+        description={t("members.count", { count: total })}
+        actions={canCreate ? <NewMemberSheet action={createMember} /> : undefined}
+      />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <nav
@@ -264,8 +274,9 @@ export default async function MembersPage({
                     <TableCell className="pr-4">
                       <div className="flex justify-end gap-2">
                         {member.status === "prospect" ? (
-                          <form action={activateMember}>
+                          <form action={setMemberStatus}>
                             <input type="hidden" name="memberId" value={member.id} />
+                            <input type="hidden" name="status" value="active" />
                             <input type="hidden" name="returnQuery" value={returnQuery} />
                             <SubmitButton
                               size="sm"
@@ -274,7 +285,20 @@ export default async function MembersPage({
                               {t("members.activate")}
                             </SubmitButton>
                           </form>
-                        ) : member.status === "suspended" ? (
+                        ) : member.status === "active" && canSuspend ? (
+                          <ConfirmDialog
+                            trigger={
+                              <Button size="sm" variant="ghost">
+                                {t("members.suspend")}
+                              </Button>
+                            }
+                            title={t("members.suspendTitle")}
+                            description={t("members.suspendBody", { name })}
+                            confirmLabel={t("members.suspend")}
+                            action={setMemberStatus}
+                            fields={{ memberId: member.id, status: "suspended", returnQuery }}
+                          />
+                        ) : member.status === "suspended" && canSuspend ? (
                           <ConfirmDialog
                             trigger={
                               <Button size="sm" variant="outline">
@@ -284,8 +308,8 @@ export default async function MembersPage({
                             title={t("members.reactivateTitle")}
                             description={t("members.reactivateBody", { name })}
                             confirmLabel={t("members.reactivate")}
-                            action={activateMember}
-                            fields={{ memberId: member.id, returnQuery }}
+                            action={setMemberStatus}
+                            fields={{ memberId: member.id, status: "active", returnQuery }}
                           />
                         ) : null}
                         {manager ? (
@@ -294,7 +318,8 @@ export default async function MembersPage({
                             memberName={name}
                             balance={balance}
                             returnQuery={returnQuery}
-                            action={addCredits}
+                            canRemove={settings.manager_can_remove_credits}
+                            action={adjustCredits}
                           />
                         ) : null}
                       </div>

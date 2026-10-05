@@ -265,6 +265,7 @@ export default async function PlanningPage({
             .select("id, name")
             .eq("gym_id", context.gym.id)
             .eq("is_active", true)
+            .order("position")
             .order("name")
         ).data ?? []
       ).map((d) => ({ value: d.id, label: d.name }))

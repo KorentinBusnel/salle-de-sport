@@ -928,6 +928,7 @@ export type Database = {
           id: string;
           is_active: boolean;
           name: string;
+          position: number;
           updated_at: string;
         };
         Insert: {
@@ -940,6 +941,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name: string;
+          position?: number;
           updated_at?: string;
         };
         Update: {
@@ -952,6 +954,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name?: string;
+          position?: number;
           updated_at?: string;
         };
         Relationships: [
@@ -2213,6 +2216,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      reorder_disciplines: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
       reset_attendance: {
         Args: { p_booking_id: string };
         Returns: {

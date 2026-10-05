@@ -1,6 +1,7 @@
 import { CAPACITY, DURATION } from "@salle/shared";
 import { AddRow } from "@/components/inline/add-row";
 import { EditableCell } from "@/components/inline/editable-cell";
+import { DisciplineOrder } from "@/components/settings/discipline-order";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -17,7 +18,7 @@ import {
   createRoom,
   updateDiscipline,
   updateRoom,
-} from "@/app/(app)/catalogue/actions";
+} from "@/app/(app)/parametres/catalogue-actions";
 
 /** Catalogue « à la Notion » : disciplines et salles éditables cellule par cellule. */
 export async function CatalogSection({ gymId }: { gymId: string }) {
@@ -27,6 +28,7 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
       .from("disciplines")
       .select("id, name, color, description, default_duration_minutes, default_capacity, is_active")
       .eq("gym_id", gymId)
+      .order("position")
       .order("name"),
     supabase.from("rooms").select("id, name, capacity").eq("gym_id", gymId).order("name"),
   ]);
@@ -40,9 +42,12 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
           <CardTitle>{t("catalog.disciplines")}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto px-2">
-          <Table className="min-w-[48rem]">
+          <Table className="min-w-[52rem]">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-20">
+                  <span className="sr-only">{t("catalog.order")}</span>
+                </TableHead>
                 <TableHead className="w-48">{t("catalog.name")}</TableHead>
                 <TableHead className="w-36">{t("catalog.color")}</TableHead>
                 <TableHead>{t("catalog.description")}</TableHead>
@@ -52,8 +57,11 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(disciplines ?? []).map((d) => (
+              {(disciplines ?? []).map((d, index, all) => (
                 <TableRow key={d.id} className="hover:bg-transparent">
+                  <TableCell className="p-1">
+                    <DisciplineOrder ids={all.map((x) => x.id)} index={index} name={d.name} />
+                  </TableCell>
                   <TableCell className="p-1">
                     <EditableCell
                       kind="text"
@@ -84,6 +92,7 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
                       label={t("catalog.description")}
                       value={d.description ?? ""}
                       maxLength={300}
+                      multiline
                       action={updateDiscipline}
                       className="text-muted-foreground"
                     />
@@ -127,7 +136,7 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
                   </TableCell>
                 </TableRow>
               ))}
-              <AddRow label={t("catalog.newDiscipline")} action={createDiscipline} colSpan={6} />
+              <AddRow label={t("catalog.newDiscipline")} action={createDiscipline} colSpan={7} />
             </TableBody>
           </Table>
         </CardContent>

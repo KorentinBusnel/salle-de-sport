@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { gymSettingsSchema } from "./booking.ts";
 import { zonedInstant } from "./dates.ts";
+import { clockToMinutes } from "./desk.ts";
 import type { GymRole } from "./roles.ts";
 
 /*
@@ -10,12 +11,6 @@ import type { GymRole } from "./roles.ts";
  */
 
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
-
-/** « HH:MM » → minutes depuis minuit. */
-export function minutesOfClock(value: string): number {
-  const [hours, minutes] = value.split(":").map(Number);
-  return (hours ?? 0) * 60 + (minutes ?? 0);
-}
 
 /** Blocs de l'accueil, et ceux qu'un rôle peut afficher (dans l'ordre par défaut). */
 export const HOME_BLOCKS = ["brief", "operations", "clients", "finance"] as const;
@@ -129,7 +124,7 @@ export type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 
 const slotSchema = z
   .object({ start: clock, end: clock })
-  .refine((slot) => minutesOfClock(slot.end) > minutesOfClock(slot.start), {
+  .refine((slot) => clockToMinutes(slot.end) > clockToMinutes(slot.start), {
     message: "end_before_start",
     path: ["end"],
   });
@@ -144,7 +139,7 @@ export const openingHoursSchema = z
       for (let i = 1; i < slots.length; i++) {
         const previous = slots[i - 1];
         const slot = slots[i];
-        if (previous && slot && minutesOfClock(slot.start) < minutesOfClock(previous.end)) {
+        if (previous && slot && clockToMinutes(slot.start) < clockToMinutes(previous.end)) {
           ctx.addIssue({ code: "custom", message: "overlap", path: [day, i, "start"] });
         }
       }
@@ -177,8 +172,8 @@ export function openingIntervals(
   timeZone: string,
 ): { start: Date; end: Date }[] {
   return (hours[weekdayOfDateKey(dateKey)] ?? []).map((slot) => ({
-    start: zonedInstant(dateKey, minutesOfClock(slot.start), timeZone),
-    end: zonedInstant(dateKey, minutesOfClock(slot.end), timeZone),
+    start: zonedInstant(dateKey, clockToMinutes(slot.start), timeZone),
+    end: zonedInstant(dateKey, clockToMinutes(slot.end), timeZone),
   }));
 }
 
@@ -187,8 +182,8 @@ export function openingSpan(hours: OpeningHours): { first: number; last: number 
   const slots = WEEKDAY_KEYS.flatMap((day) => hours[day] ?? []);
   if (!slots.length) return null;
   return {
-    first: Math.min(...slots.map((slot) => minutesOfClock(slot.start))),
-    last: Math.max(...slots.map((slot) => minutesOfClock(slot.end))),
+    first: Math.min(...slots.map((slot) => clockToMinutes(slot.start))),
+    last: Math.max(...slots.map((slot) => clockToMinutes(slot.end))),
   };
 }
 

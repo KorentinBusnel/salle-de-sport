@@ -27,12 +27,14 @@ describe("toastUndo", () => {
 
   it("différé : rien ne part avant la fin du délai, Annuler abandonne", async () => {
     const run = vi.fn(async () => ({}));
-    toastUndo({ message: "Tag retiré", mode: "deferred", run });
+    const onUndo = vi.fn();
+    toastUndo({ message: "Tag retiré", mode: "deferred", run, onUndo });
     expect(run).not.toHaveBeenCalled();
     calls[0]?.options.action?.onClick();
     calls[0]?.options.onAutoClose?.();
     await flush();
     expect(run).not.toHaveBeenCalled();
+    expect(onUndo).toHaveBeenCalledOnce();
   });
 
   it("différé : part à la fermeture, une seule fois", async () => {

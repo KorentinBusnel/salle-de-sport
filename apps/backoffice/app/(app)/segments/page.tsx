@@ -41,7 +41,12 @@ export default async function SegmentsPage({
       .select("id, name, filters")
       .eq("gym_id", context.gym.id)
       .order("name"),
-    supabase.from("disciplines").select("id, name").eq("gym_id", context.gym.id).order("name"),
+    supabase
+      .from("disciplines")
+      .select("id, name")
+      .eq("gym_id", context.gym.id)
+      .order("position")
+      .order("name"),
   ]);
   const current = segments?.find((s) => s.id === segmentId);
   // Un segment ouvert sans filtres dans l'URL : ses filtres enregistrés.

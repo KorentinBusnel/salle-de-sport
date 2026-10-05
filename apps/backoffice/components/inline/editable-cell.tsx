@@ -70,7 +70,14 @@ type Common = {
 
 type Props = Common &
   (
-    | { kind: "text"; value: string; placeholder?: string | undefined; maxLength?: number }
+    | {
+        kind: "text";
+        value: string;
+        placeholder?: string | undefined;
+        maxLength?: number;
+        /** Plusieurs lignes : Entrée passe à la ligne, Ctrl ou ⌘ + Entrée enregistre. */
+        multiline?: boolean | undefined;
+      }
     | {
         kind: "number";
         value: number;
@@ -429,6 +436,8 @@ function renderValue(props: Props, value: CellValue): ReactNode {
     default:
       return value === "" || value === null ? (
         <span className="text-muted-foreground">{t("inline.empty")}</span>
+      ) : props.kind === "text" && props.multiline ? (
+        <span className="line-clamp-2 whitespace-pre-line">{String(value)}</span>
       ) : (
         String(value)
       );
@@ -470,7 +479,10 @@ function InlineInput({
     onCommit(props.kind === "text" ? text.trim() : text, byKeyboard);
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  const multiline = props.kind === "text" && props.multiline === true;
+
+  function onKeyDown(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (event.key === "Enter" && multiline && !(event.metaKey || event.ctrlKey)) return;
     if (event.key === "Enter") {
       event.preventDefault();
       finish(true);
@@ -478,6 +490,22 @@ function InlineInput({
       done.current = true;
       onCancel(true);
     }
+  }
+
+  if (multiline) {
+    return (
+      <textarea
+        autoFocus
+        aria-label={props.label}
+        rows={3}
+        maxLength={props.kind === "text" ? (props.maxLength ?? 300) : undefined}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={() => finish(false)}
+        onKeyDown={onKeyDown}
+        className="w-full min-w-0 resize-y rounded-md border border-ring bg-card px-2 py-1.5 text-sm outline-none ring-3 ring-ring/30"
+      />
+    );
   }
 
   return (

@@ -412,3 +412,54 @@ begin
   return v_result;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Ordre des disciplines (catalogue : « Monter / Descendre »)
+-- ---------------------------------------------------------------------------
+
+alter table public.disciplines add column position integer not null default 0;
+
+-- Ordre initial : alphabétique, comme jusqu'ici.
+update public.disciplines d set position = r.rank
+from (
+  select id, (row_number() over (partition by gym_id order by name) - 1)::integer as rank
+  from public.disciplines
+) r
+where r.id = d.id;
+
+-- Une nouvelle discipline arrive en dernier.
+create function private.discipline_position_last()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  new.position := coalesce(
+    (select max(d.position) + 1 from public.disciplines d where d.gym_id = new.gym_id), 0);
+  return new;
+end;
+$$;
+
+create trigger disciplines_position_last before insert on public.disciplines
+  for each row execute function private.discipline_position_last();
+
+-- Nouvel ordre (identifiants dans l'ordre voulu) ; les disciplines d'une autre salle sont ignorées.
+create function public.reorder_disciplines(p_gym_id uuid, p_ids uuid[])
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not private.is_gym_manager(p_gym_id) then
+    raise exception 'forbidden';
+  end if;
+  update public.disciplines d set position = (x.ord - 1)::integer
+  from unnest(p_ids) with ordinality as x(id, ord)
+  where d.id = x.id and d.gym_id = p_gym_id;
+end;
+$$;
+
+revoke all on function public.reorder_disciplines(uuid, uuid[]) from public, anon;
+grant execute on function public.reorder_disciplines(uuid, uuid[]) to authenticated;

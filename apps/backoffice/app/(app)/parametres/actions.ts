@@ -1,115 +1,254 @@
 "use server";
 
-import { gymSettingsSchema } from "@salle/shared";
-import { revalidatePath } from "next/cache";
+import {
+  BOOLEAN_SETTINGS,
+  HOME_BLOCKS,
+  HOME_BLOCKS_BY_ROLE,
+  LAYOUT_ROLES,
+  NAV_BADGES,
+  NAV_BADGES_BY_ROLE,
+  openingHoursSchema,
+  SETTINGS_META,
+  settingValueSchema,
+} from "@salle/shared";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import type { SettingsState } from "@/components/settings/settings-form";
-import type { StrategiesState } from "@/components/settings/strategies-form";
+import type { Json, TablesUpdate } from "@salle/supabase";
+import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
+import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 
-const formSchema = z.object({
-  max_upcoming_bookings: z.coerce
-    .number()
-    .pipe(gymSettingsSchema.shape.max_upcoming_bookings.unwrap()),
-  cancellation_recommended_hours: z.coerce
-    .number()
-    .pipe(gymSettingsSchema.shape.cancellation_recommended_hours.unwrap()),
-});
+/*
+ * Paramètres enregistrés sur place : chaque action valide par Zod, écrit (fonction SQL
+ * update_gym_settings, ou colonnes d'identité de gyms sous RLS), puis rafraîchit l'écran.
+ * Le client affiche un toast avec « Annuler » (il rappelle l'action avec l'ancienne valeur).
+ */
 
-export async function saveSettings(
-  _previous: SettingsState,
-  formData: FormData,
-): Promise<SettingsState> {
-  const context = await requireRole(isManagerRole);
-  const values = {
-    max_upcoming_bookings: String(formData.get("max_upcoming_bookings") ?? ""),
-    cancellation_recommended_hours: String(formData.get("cancellation_recommended_hours") ?? ""),
-  };
-  const parsed = formSchema.safeParse(values);
-  if (!parsed.success) {
-    const fieldErrors: SettingsState["fieldErrors"] = {};
-    for (const issue of parsed.error.issues) {
-      if (issue.path[0] === "max_upcoming_bookings")
-        fieldErrors.max_upcoming_bookings = "settings.errors.maxUpcoming";
-      if (issue.path[0] === "cancellation_recommended_hours")
-        fieldErrors.cancellation_recommended_hours = "settings.errors.recommendedHours";
-    }
-    return { values, fieldErrors };
-  }
-
-  return mergeSettings(context.gym.id, parsed.data);
+async function writeSettings(
+  gymId: string,
+  patch: { settings?: Record<string, Json>; private?: Record<string, Json> },
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_gym_settings", {
+    p_gym_id: gymId,
+    p_settings: patch.settings ?? {},
+    p_private: patch.private ?? {},
+  });
+  if (error) return fail(errorMessageKey(error));
+  revalidatePath("/", "layout");
+  refresh();
+  return ok("settings.saved");
 }
 
-/** Fusionne des réglages dans gyms.settings puis revient sur la page avec le résultat. */
-async function mergeSettings(
-  gymId: string,
-  patch: Record<string, number | boolean | null>,
-  back = "/parametres",
-): Promise<never> {
+/** Réglage chiffré ou booléen (SETTINGS_META, BOOLEAN_SETTINGS). */
+export async function saveSetting(input: {
+  key: string;
+  value: number | boolean | null;
+}): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const meta = SETTINGS_META.find((entry) => entry.key === input.key);
+  if (meta) {
+    const value = settingValueSchema(meta).safeParse(input.value);
+    if (!value.success) return fail("settings.errors.outOfRange");
+    return writeSettings(context.gym.id, {
+      [meta.scope === "public" ? "settings" : "private"]: { [meta.key]: value.data },
+    });
+  }
+  const flag = z.enum(BOOLEAN_SETTINGS).safeParse(input.key);
+  if (!flag.success || typeof input.value !== "boolean") return fail("settings.errors.invalid");
+  return writeSettings(context.gym.id, { settings: { [flag.data]: input.value } });
+}
+
+const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+/** Créneau proposé pour une nouvelle permanence. */
+export async function saveDeskSlot(input: { start: string; end: string }): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const slot = z
+    .object({ start: clock, end: clock })
+    .refine((value) => value.end > value.start)
+    .safeParse(input);
+  if (!slot.success) return fail("settings.errors.slot");
+  return writeSettings(context.gym.id, {
+    private: { desk_default_start: slot.data.start, desk_default_end: slot.data.end },
+  });
+}
+
+/** Blocs de l'accueil d'un rôle (dans l'ordre) ou ses pastilles. */
+export async function saveLayout(input: {
+  role: string;
+  kind: "home_blocks" | "nav_badges";
+  values: string[];
+}): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const role = z.enum(LAYOUT_ROLES).safeParse(input.role);
+  if (!role.success) return fail("settings.errors.invalid");
+  const allowed: readonly string[] =
+    input.kind === "home_blocks" ? HOME_BLOCKS_BY_ROLE[role.data] : NAV_BADGES_BY_ROLE[role.data];
+  const values = z
+    .array(z.enum(input.kind === "home_blocks" ? HOME_BLOCKS : NAV_BADGES))
+    .max(allowed.length)
+    .safeParse(input.values);
+  if (!values.success || values.data.some((value) => !allowed.includes(value)))
+    return fail("settings.errors.invalid");
+  const current = (await getGymConfig(context.gym.id)).private[input.kind];
+  return writeSettings(context.gym.id, {
+    private: { [input.kind]: { ...current, [role.data]: [...new Set(values.data)] } },
+  });
+}
+
+const identitySchema = {
+  name: z.string().trim().min(1).max(80),
+  address: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((value) => value || null),
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .regex(/^[+\d\s().-]*$/)
+    .transform((value) => value || null),
+  email: z.union([z.literal(""), z.email().max(120)]).transform((value) => value || null),
+} as const;
+
+/** Nom, adresse, téléphone ou email de la salle. */
+export async function saveIdentity(input: { field: string; value: string }): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const field = z.enum(["name", "address", "phone", "email"]).safeParse(input.field);
+  if (!field.success) return fail("settings.errors.invalid");
+  const value = identitySchema[field.data].safeParse(input.value);
+  if (!value.success) return fail(`settings.identity.errors.${field.data}`);
   const supabase = await createClient();
-  const { data: gym } = await supabase.from("gyms").select("settings").eq("id", gymId).single();
-  const current =
-    gym?.settings && typeof gym.settings === "object" && !Array.isArray(gym.settings)
-      ? gym.settings
-      : {};
   const { error } = await supabase
     .from("gyms")
-    .update({ settings: { ...current, ...patch } })
-    .eq("id", gymId);
+    .update({ [field.data]: value.data } as TablesUpdate<"gyms">)
+    .eq("id", context.gym.id);
+  if (error) return fail("common.unexpectedError");
   revalidatePath("/", "layout");
-  redirect(withFlash(back, error ? { error: "common.unexpectedError" } : { ok: "common.saved" }));
+  refresh();
+  return ok("settings.saved");
 }
 
-const shape = gymSettingsSchema.shape;
-const strategiesSchema = z.object({
-  late_booking_minutes: z.coerce.number().pipe(shape.late_booking_minutes.unwrap()),
-  attendance_opens_minutes_before: z
-    .string()
-    .transform((value) => (value.trim() === "" ? null : Number(value)))
-    .pipe(shape.attendance_opens_minutes_before.unwrap()),
+/** Horaires d'ouverture (plages par jour). */
+export async function saveOpeningHours(input: unknown): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const hours = openingHoursSchema.safeParse(input);
+  if (!hours.success) return fail("settings.hours.errors.invalid");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("gyms")
+    .update({ opening_hours: hours.data as NonNullable<Json> })
+    .eq("id", context.gym.id);
+  if (error) return fail("common.unexpectedError");
+  revalidatePath("/", "layout");
+  refresh();
+  return ok("settings.hours.saved");
+}
+
+const closureSchema = z.object({
+  day: z.iso.date(),
+  label: z.string().trim().min(1).max(80),
 });
 
-export async function saveStrategies(
-  _previous: StrategiesState,
-  formData: FormData,
-): Promise<StrategiesState> {
+/** Jour de fermeture (alerte pour le gérant ; les cours restent possibles). */
+export async function addClosure(input: { day: string; label: string }): Promise<ActionResult> {
   const context = await requireRole(isManagerRole);
-  const values: StrategiesState["values"] = {
-    late_booking_minutes: String(formData.get("late_booking_minutes") ?? "").trim() || "0",
-    attendance_opens_minutes_before: String(
-      formData.get("attendance_opens_minutes_before") ?? "",
-    ).trim(),
-    allow_attendance_reset: formData.get("allow_attendance_reset") === "on",
-    manager_can_remove_credits: formData.get("manager_can_remove_credits") === "on",
-    staff_can_suspend_members: formData.get("staff_can_suspend_members") === "on",
-    staff_can_create_members: formData.get("staff_can_create_members") === "on",
-  };
-  const parsed = strategiesSchema.safeParse(values);
-  if (!parsed.success) {
-    const fieldErrors: StrategiesState["fieldErrors"] = {};
-    for (const issue of parsed.error.issues) {
-      if (issue.path[0] === "late_booking_minutes")
-        fieldErrors.late_booking_minutes = "strategies.errors.lateBooking";
-      if (issue.path[0] === "attendance_opens_minutes_before")
-        fieldErrors.attendance_opens_minutes_before = "strategies.errors.attendanceOpens";
-    }
-    return { values, fieldErrors };
-  }
+  const closure = closureSchema.safeParse(input);
+  if (!closure.success) return fail("settings.closures.errors.invalid");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("gym_closures")
+    .insert({ gym_id: context.gym.id, ...closure.data });
+  if (error)
+    return fail(
+      error.code === "23505" ? "settings.closures.errors.duplicate" : "common.unexpectedError",
+    );
+  refresh();
+  return ok("settings.closures.added");
+}
 
-  return mergeSettings(
-    context.gym.id,
-    {
-      ...parsed.data,
-      allow_attendance_reset: values.allow_attendance_reset,
-      manager_can_remove_credits: values.manager_can_remove_credits,
-      staff_can_suspend_members: values.staff_can_suspend_members,
-      staff_can_create_members: values.staff_can_create_members,
-    },
-    "/parametres?onglet=strategies",
-  );
+export async function removeClosure(input: { id: string }): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const id = z.guid().safeParse(input.id);
+  if (!id.success) return fail("settings.errors.invalid");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("gym_closures")
+    .delete()
+    .eq("id", id.data)
+    .eq("gym_id", context.gym.id);
+  if (error) return fail("common.unexpectedError");
+  refresh();
+  return ok("settings.closures.removed");
+}
+
+const LOGO_TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as const;
+const LOGO_MAX_BYTES = 1024 * 1024;
+
+/** Logo téléversé dans gym-assets/<salle>/ ; l'ancien fichier est supprimé. */
+export async function uploadLogo(formData: FormData): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return fail("settings.logo.errors.missing");
+  const extension = LOGO_TYPES[file.type as keyof typeof LOGO_TYPES];
+  if (!extension) return fail("settings.logo.errors.type");
+  if (file.size > LOGO_MAX_BYTES) return fail("settings.logo.errors.size");
+
+  const supabase = await createClient();
+  const previous = (await getGymConfig(context.gym.id)).identity.logoPath;
+  const path = `${context.gym.id}/logo-${Date.now()}.${extension}`;
+  const upload = await supabase.storage
+    .from("gym-assets")
+    .upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
+  if (upload.error) return fail("settings.logo.errors.upload");
+  const { error } = await supabase
+    .from("gyms")
+    .update({ logo_path: path })
+    .eq("id", context.gym.id);
+  if (error) {
+    await supabase.storage.from("gym-assets").remove([path]);
+    return fail("common.unexpectedError");
+  }
+  if (previous) await supabase.storage.from("gym-assets").remove([previous]);
+  revalidatePath("/", "layout");
+  refresh();
+  return ok("settings.logo.saved");
+}
+
+export async function removeLogo(): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const supabase = await createClient();
+  const previous = (await getGymConfig(context.gym.id)).identity.logoPath;
+  const { error } = await supabase
+    .from("gyms")
+    .update({ logo_path: null })
+    .eq("id", context.gym.id);
+  if (error) return fail("common.unexpectedError");
+  if (previous) await supabase.storage.from("gym-assets").remove([previous]);
+  revalidatePath("/", "layout");
+  refresh();
+  return ok("settings.logo.removed");
+}
+
+/** Ordre des disciplines (identifiants dans l'ordre voulu). */
+export async function reorderDisciplines(input: { ids: string[] }): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const ids = z.array(z.guid()).min(1).max(200).safeParse(input.ids);
+  if (!ids.success) return fail("settings.errors.invalid");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reorder_disciplines", {
+    p_gym_id: context.gym.id,
+    p_ids: ids.data,
+  });
+  if (error) return fail(errorMessageKey(error));
+  revalidatePath("/planning", "layout");
+  refresh();
+  return ok("catalog.reordered");
 }
 
 const TEAM = "/parametres?onglet=equipe";

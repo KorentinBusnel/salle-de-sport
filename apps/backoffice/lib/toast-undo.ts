@@ -21,8 +21,12 @@ type Outcome = { error: MessageKey } | { error?: null | undefined };
 export function toastUndo(options: {
   message: string;
   mode: "inverse" | "deferred";
+  /** Même identifiant : le toast remplace le précédent (réglage modifié plusieurs fois). */
+  id?: string | undefined;
   run: () => Promise<Outcome>;
   undo?: (() => Promise<Outcome>) | undefined;
+  /** Après « Annuler » (mode différé : l'action n'est pas partie, rétablir l'affichage). */
+  onUndo?: (() => void) | undefined;
   onSettled?: (() => void) | undefined;
 }) {
   const report = (outcome: Outcome) => {
@@ -35,6 +39,7 @@ export function toastUndo(options: {
       if (outcome.error) return report(outcome);
       options.onSettled?.();
       toast.success(options.message, {
+        ...(options.id ? { id: options.id } : {}),
         duration: UNDO_DURATION_MS,
         action: options.undo
           ? {
@@ -68,6 +73,7 @@ export function toastUndo(options: {
       label: t("ui.undo"),
       onClick: () => {
         cancelled = true;
+        options.onUndo?.();
         toast(t("ui.undone"));
       },
     },

@@ -1,7 +1,7 @@
 -- Configuration de la salle : réglages internes (équipe seulement), fusion atomique par le gérant,
 -- identité modifiable mais fuseau figé, jours de fermeture, seuils lus par les fonctions.
 begin;
-select plan(19);
+select plan(22);
 
 insert into auth.users (id, email) values
   ('e0000003-0000-0000-0000-000000000001', 'c-gerant@test.local'),
@@ -78,6 +78,19 @@ reset role;
 set local role anon;
 select throws_ok($$select * from public.gym_private_settings$$, '42501', null, 'visiteur : aucun accès');
 reset role;
+
+-- Ordre des disciplines : nouvelle en dernier, réordonnées par le gérant seulement.
+insert into public.disciplines (id, gym_id, name, color) values
+  ('e2000003-0000-0000-0000-000000000001', 'ea000003-0000-0000-0000-000000000001', 'Yoga', '#16a34a'),
+  ('e2000003-0000-0000-0000-000000000002', 'ea000003-0000-0000-0000-000000000001', 'Boxe', '#dc2626');
+select is((select array_agg(name order by position) from public.disciplines where gym_id = 'ea000003-0000-0000-0000-000000000001'),
+  array['Yoga', 'Boxe'], 'nouvelle discipline en dernier');
+select pg_temp.login_as('e0000003-0000-0000-0000-000000000001');
+select lives_ok($$select public.reorder_disciplines('ea000003-0000-0000-0000-000000000001',
+  array['e2000003-0000-0000-0000-000000000002', 'e2000003-0000-0000-0000-000000000001']::uuid[])$$, 'gérant : réordonne');
+reset role;
+select is((select array_agg(name order by position) from public.disciplines where gym_id = 'ea000003-0000-0000-0000-000000000001'),
+  array['Boxe', 'Yoga'], 'ordre enregistré');
 
 select is(private.storage_gym_id('ea000003-0000-0000-0000-000000000001/logo-1.png'),
   'ea000003-0000-0000-0000-000000000001'::uuid, 'dossier du logo : identifiant de la salle');

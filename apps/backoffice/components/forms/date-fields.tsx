@@ -371,7 +371,7 @@ export function DateTimeField({
         aria-invalid={props.invalid || undefined}
         aria-label={t("forms.time")}
         onChange={(event) => set(day && event.target.value ? `${day}T${event.target.value}` : null)}
-        className="w-28 tabular-nums"
+        className="w-32 tabular-nums"
       />
     </div>
   );

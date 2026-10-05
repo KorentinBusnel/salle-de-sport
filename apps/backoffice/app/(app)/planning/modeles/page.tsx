@@ -56,6 +56,7 @@ export default async function TemplatesPage({
       .from("disciplines")
       .select("id, name, color")
       .eq("gym_id", context.gym.id)
+      .order("position")
       .order("name"),
     supabase
       .from("coaches")

@@ -117,7 +117,11 @@ export function AppSidebar({
               <Link href="/" onClick={close}>
                 <Avatar className="size-8 rounded-lg">
                   {gymLogoUrl ? (
-                    <AvatarImage src={gymLogoUrl} alt="" className="object-contain" />
+                    <AvatarImage
+                      src={gymLogoUrl}
+                      alt=""
+                      className="rounded-[inherit] object-contain"
+                    />
                   ) : null}
                   <AvatarFallback className="rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
                     {initials(gymName)}

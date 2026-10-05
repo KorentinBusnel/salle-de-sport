@@ -14,7 +14,9 @@ describe("permanences à l'accueil", () => {
   ];
 
   it("plage : 30 min avant la première séance, 30 min après la dernière", () => {
-    expect(hours([deskWindow(sessions)!])).toEqual(["06:30-19:00"]);
+    const window = deskWindow(sessions);
+    expect(window).not.toBeNull();
+    if (window) expect(hours([window])).toEqual(["06:30-19:00"]);
     expect(deskWindow([])).toBeNull();
   });
 

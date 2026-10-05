@@ -124,6 +124,9 @@ En session cloud, démarrer Supabase sans les services inutiles :
   dessus (utiliser `session_coaches!inner(coach_id)`). Modifier une séance ou un cours :
   `update_session(id, changes, 'one' | 'following')`, `update_template`, `create_session` ;
   schémas `classChangesSchema` / `templateChangesSchema` dans `packages/shared`.
+- **Permanences** `desk_shifts` (équipe en lecture, gérant en écriture, trigger `not_team_member`) ;
+  **note « à savoir »** `member_care_notes` (accueil et gérant, plus les coachs de l'adhérent via
+  `private.coaches_member`, jamais l'adhérent) ; **digest** `daily_digests` (gérant).
 - Autres écritures métier **par fonctions** : `move_session` (déplacement, inscrits prévenus),
   `send_campaign`, `add_team_role` /
   `remove_team_role`. Lectures agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`,
@@ -171,17 +174,26 @@ En session cloud, démarrer Supabase sans les services inutiles :
   d'envoi : `SubmitButton` (état d'envoi). Action irréversible : `ConfirmDialog`. Actions rapides
   sans rechargement (pointage) : Server Action qui renvoie `{ error }` puis `refresh()`.
 - Coque : `components/app-sidebar.tsx`, entrées construites par `buildNavigation` (`lib/navigation.ts`,
-  testé par rôle) en trois blocs Quotidien / Opérations / Paramètres ; `PageHeader`, `metadata` par
-  page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
+  testé par rôle) : blocs Quotidien / Opérations, **Paramètres en pied** (`footer`), pastilles
+  d'attente. Barre du haut : fil d'Ariane (`AppBreadcrumb`), **un seul champ ⌘K / « / »**
+  (`CommandPalette` : adhérents, et assistant pour le gérant ; `openAssistant(prompt)` l'ouvre sur une
+  demande préparée), « + Nouveau » (`NewMenu`). `PageHeader`, `metadata` par page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
   (`isManagerRole`, `isFrontDeskRole`) dans `lib/auth-roles.ts` (testables, sans `server-only`).
-- Paramètres : une page à onglets (`/parametres?onglet=general|strategies|catalogue|equipe|integrations`,
-  `TabNav`) ; une nouvelle section de réglages y devient un onglet, pas une entrée de menu.
+- Paramètres : une page à sections (`/parametres?onglet=general|strategies|catalogue|equipe|integrations`,
+  navigation verticale `SettingsNav` avec une phrase d'aide) ; une nouvelle section de réglages y
+  devient une section, pas une entrée de menu.
+- Accueil (`app/(app)/page.tsx`) orienté action, par rôle : brief du jour (gérant), Opérations,
+  Clients, Finance. Lectures `today_trials`, `crm_todo`, `unpaid_members` ; trous de permanence par
+  `deskWindow` / `uncoveredIntervals` (`packages/shared/src/desk.ts`).
 - **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
   faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
   de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
   interface `components/assistant/` (Hub, ⌘K, résumé de fiche). Un outil qui agit n'agit pas : il
   **propose** (`proposes: true`), la Server Action de validation exécute. Clé absente : état « non
-  configuré », jamais d'erreur.
+  configuré », jamais d'erreur. **Digest du jour** (`lib/ai/digest.ts`) : outils en lecture plus
+  `submit_digest`, entrée validée par `digestInputSchema` (`packages/shared/src/digest.ts`), stocké
+  dans `daily_digests` ; lu par `getTodayDigest` (`lib/digest.ts`). Ne jamais transmettre le contenu
+  d'une note « à savoir » au modèle.
 - Tailles tactiles : `pointer-coarse:` dans les variantes (bouton, champ, select) ; le rendu bureau
   ne change pas. Lectures au fil de la frappe : Route Handler (`app/api/…`), pas de Server Action. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
   du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).

@@ -86,6 +86,15 @@
   p {
     text-wrap: pretty;
   }
+  /*
+   * Un enfant de grille ne force plus la largeur de sa colonne (taille minimale automatique) :
+   * au téléphone, une ligne de boutons ou des onglets ne font plus déborder la page.
+   * Hors tableaux : une colonne de tableau se mesure au contenu minimal de ses cellules.
+   * Couche de base : toute classe min-w-* l'emporte.
+   */
+  :where(#contenu .grid > *:not(table *)) {
+    min-width: 0;
+  }
 }
 
 /* Réponses de l'assistant (Markdown) : rythme de lecture sobre, aligné sur les tokens. */

@@ -176,41 +176,44 @@ export default async function MembersPage({
       />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <nav
-          aria-label={t("members.status")}
-          className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1"
-        >
-          {filters.map((filter) => {
-            const active = filter.value === status;
-            return (
-              <Link
-                key={filter.label}
-                href={href({ statut: filter.value ?? "" })}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors pointer-coarse:py-2.5",
-                  active
-                    ? "bg-card font-medium text-foreground shadow-border"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {filter.label}
-                {filter.count !== undefined ? (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 text-xs tabular-nums",
-                      filter.value === "prospect" && filter.count > 0
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background",
-                    )}
-                  >
-                    {filter.count}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Défilement des onglets au téléphone sans élargir la colonne. */}
+        <div className="w-full min-w-0 overflow-x-auto lg:w-auto">
+          <nav
+            aria-label={t("members.status")}
+            className="flex w-fit gap-1 rounded-xl bg-muted p-1"
+          >
+            {filters.map((filter) => {
+              const active = filter.value === status;
+              return (
+                <Link
+                  key={filter.label}
+                  href={href({ statut: filter.value ?? "" })}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors pointer-coarse:py-2.5",
+                    active
+                      ? "bg-card font-medium text-foreground shadow-border"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {filter.label}
+                  {filter.count !== undefined ? (
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 text-xs tabular-nums",
+                        filter.value === "prospect" && filter.count > 0
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background",
+                      )}
+                    >
+                      {filter.count}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
         <form role="search" className="w-full lg:max-w-sm">
           {status ? <input type="hidden" name="statut" value={status} /> : null}

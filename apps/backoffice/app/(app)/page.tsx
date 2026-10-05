@@ -198,7 +198,7 @@ export default async function DashboardPage() {
               <Link
                 href={`/planning/${session.id}`}
                 className={cn(
-                  "grid grid-cols-[4.5rem_1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors hover:bg-foreground/[0.03] focus-visible:bg-accent focus-visible:outline-none sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_auto]",
+                  "grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors hover:bg-foreground/[0.03] focus-visible:bg-accent focus-visible:outline-none sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_auto]",
                   (session.phase === "past" || session.status === "cancelled") &&
                     "text-muted-foreground",
                 )}

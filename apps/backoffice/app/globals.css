@@ -6,6 +6,8 @@
 /* Classes de ton partagées (packages/shared/src/display.ts). */
 @source "../../../packages/shared/src";
 
+/* Pas de mode sombre (BRIEF §12) : les classes dark: des primitives ne s'activent que sous
+   une classe .dark jamais posée (sans cette ligne, Tailwind suivrait le thème du système). */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

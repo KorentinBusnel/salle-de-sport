@@ -33,6 +33,9 @@ export const fr = {
   },
   ui: {
     close: "Fermer",
+    undo: "Annuler",
+    undone: "Action annulée.",
+    notifications: "Notifications",
     more: "Plus",
     pagination: "Pagination",
     previous: "Précédent",

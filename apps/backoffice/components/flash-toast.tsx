@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { asMessageKey, flashParams } from "@/lib/flash";
@@ -12,7 +12,6 @@ import { t } from "@/lib/i18n";
  */
 export function FlashToast() {
   const params = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const shown = useRef<string | null>(null);
 
@@ -33,8 +32,10 @@ export function FlashToast() {
     next.delete("erreur");
     next.delete("n");
     const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [params, pathname, router]);
+    // history.replaceState est synchronisé avec le routeur Next sans aller-retour serveur
+    // (router.replace relançait le rendu de la page).
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }, [params, pathname]);
 
   return null;
 }

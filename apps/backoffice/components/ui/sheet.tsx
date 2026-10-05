@@ -86,11 +86,26 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/** Corps défilant entre l'en-tête et le pied (Watermelon sheet-5) : formulaires longs. */
+function SheetBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sheet-body"
+      className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-4", className)}
+      {...props}
+    />
+  );
+}
+
+/** Pied collant : actions toujours visibles, même dans un long formulaire. */
 function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn(
+        "sticky bottom-0 mt-auto flex flex-col gap-2 border-t bg-popover p-4 sm:flex-row sm:justify-end",
+        className,
+      )}
       {...props}
     />
   );
@@ -125,6 +140,7 @@ export {
   SheetClose,
   SheetContent,
   SheetHeader,
+  SheetBody,
   SheetFooter,
   SheetTitle,
   SheetDescription,

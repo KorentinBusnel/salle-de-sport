@@ -10,6 +10,15 @@ const alertVariants = cva(
         default: "bg-card text-card-foreground",
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+        // Bandeaux « soft » (Watermelon alert-15/21/25) sur les tons de packages/shared.
+        "soft-primary":
+          "border-primary/20 bg-accent text-accent-foreground *:data-[slot=alert-description]:text-accent-foreground/85",
+        "soft-success":
+          "border-success/25 bg-[color-mix(in_oklab,var(--color-success)_8%,var(--card))] text-success *:data-[slot=alert-description]:text-foreground/80",
+        "soft-warning":
+          "border-warning/25 bg-[color-mix(in_oklab,var(--color-warning)_8%,var(--card))] text-warning *:data-[slot=alert-description]:text-foreground/80",
+        "soft-destructive":
+          "border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_8%,var(--card))] text-destructive *:data-[slot=alert-description]:text-foreground/80",
       },
     },
     defaultVariants: {
@@ -18,15 +27,17 @@ const alertVariants = cva(
   },
 );
 
+/** `role="alert"` interrompt le lecteur d'écran : à réserver aux erreurs ; « status » ou aucun rôle sinon. */
 function Alert({
   className,
   variant,
+  role = "alert",
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
-      role="alert"
+      role={role}
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />

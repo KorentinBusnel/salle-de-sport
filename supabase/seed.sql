@@ -617,3 +617,47 @@ select s.gym_id, pg_temp.sid('c:c3'), s.id, s.starts_at, s.ends_at,
 from public.class_sessions s
 where s.template_id = pg_temp.sid('t:hy-sat:6') and s.status = 'scheduled'
   and s.coach_id <> pg_temp.sid('c:c3');
+
+-- ---------------------------------------------------------------------------
+-- Accueil orienté action : permanences, essais du jour, note « à savoir »
+-- ---------------------------------------------------------------------------
+
+-- Permanences de la semaine : Emma le matin, Inès l'après-midi ; la soirée reste à couvrir.
+insert into public.desk_shifts (gym_id, profile_id, starts_at, ends_at, created_by)
+select pg_temp.sid('gym'), pg_temp.sid(v.profile),
+  ((current_date + d) + v.from_time) at time zone 'Europe/Paris',
+  ((current_date + d) + v.to_time) at time zone 'Europe/Paris',
+  pg_temp.sid('u:staff:gerant')
+from generate_series(0, 6) as d
+cross join (values ('u:staff:accueil', time '06:30', time '14:00'),
+                   ('u:coach:c4', time '14:00', time '18:00')) as v(profile, from_time, to_time);
+
+-- Deux prospects en essai aux deux prochaines séances du jour qui ont de la place.
+with upcoming as (
+  select s.id, s.gym_id, row_number() over (order by s.starts_at) as rank
+  from public.class_sessions s
+  where s.gym_id = pg_temp.sid('gym') and s.status = 'scheduled'
+    and s.starts_at > now()
+    and s.starts_at < ((current_date + 1)::timestamp at time zone 'Europe/Paris')
+    and s.booked_count < s.capacity
+),
+trialists as (
+  select m.id, row_number() over (order by m.created_at desc, m.id) as rank
+  from public.members m
+  where m.gym_id = pg_temp.sid('gym') and m.status = 'prospect'
+    and not exists (select 1 from public.bookings b where b.member_id = m.id)
+)
+insert into public.bookings (gym_id, session_id, member_id, status)
+select u.gym_id, u.id, t.id, 'confirmed'
+from upcoming u join trialists t on t.rank = u.rank
+where u.rank <= 2;
+
+insert into public.member_care_notes (member_id, gym_id, note, updated_by)
+select b.member_id, b.gym_id, 'Genou droit fragile : éviter les sauts, prévoir des variantes.',
+  pg_temp.sid('u:staff:accueil')
+from public.bookings b
+join public.members m on m.id = b.member_id and m.status = 'prospect'
+join public.class_sessions s on s.id = b.session_id
+where b.gym_id = pg_temp.sid('gym') and s.starts_at > now()
+order by s.starts_at
+limit 1;

@@ -513,6 +513,14 @@ export const fr = {
     noCoach: "Aucune fiche coach n'est associée à votre compte.",
   },
   memberProfile: {
+    careNote: "À savoir",
+    careNoteHint:
+      "Blessure, contre-indication, point d'attention… Visible de l'accueil, du gérant et des coachs de ses séances, jamais de l'adhérent.",
+    careNotePlaceholder: "Ex. : genou fragile, éviter les sauts",
+    careNoteSave: "Enregistrer la note",
+    careNoteSaved: "Note « à savoir » enregistrée.",
+    careNoteCleared: "Note « à savoir » supprimée.",
+    careNoteTooLong: "La note est limitée à 500 caractères.",
     title: "Fiche adhérent",
     credits: "{count, plural, =0 {Aucun crédit} one {# crédit} other {# crédits}}",
     noSubscription: "Sans abonnement",
@@ -1093,6 +1101,7 @@ export const fr = {
     updated: "Permanence modifiée.",
     deleted: "Permanence supprimée.",
     row: "Accueil",
+    editShift: "Modifier la permanence de {name}, {start}–{end}",
     errors: {
       endBeforeStart: "La fin doit suivre le début.",
     },

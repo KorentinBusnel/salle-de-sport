@@ -1,6 +1,8 @@
 import {
   coachesLabel,
+  deskWindow,
   sessionPhase,
+  uncoveredIntervals,
   zonedDateKey,
   zonedMinutesOfDay,
   zonedStartOfDateKey,
@@ -9,6 +11,7 @@ import {
 import { CalendarPlusIcon, CalendarXIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DeskDay } from "@/components/desk/desk-day";
 import { Flash } from "@/components/flash";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { PageHeader } from "@/components/page-header";
@@ -29,6 +32,7 @@ import { currentTime } from "@/lib/clock";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import { getTeamOptions } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import { layoutDay } from "@/lib/week-layout";
 import { updateSessionField } from "./[id]/actions";
@@ -105,6 +109,44 @@ export default async function PlanningPage({
     .order("starts_at");
 
   if (error) return <p className="text-destructive">{t("planning.loadError")}</p>;
+
+  // Permanences à l'accueil de la semaine (toute l'équipe les voit, le gérant les planifie).
+  const manager = isManagerRole(context.role);
+  const [{ data: shiftRows }, team] = await Promise.all([
+    supabase
+      .from("desk_shifts")
+      .select(
+        "id, profile_id, starts_at, ends_at, note, profiles!desk_shifts_profile_id_fkey(first_name, last_name)",
+      )
+      .eq("gym_id", context.gym.id)
+      .lt("starts_at", week.end.toISOString())
+      .gt("ends_at", week.start.toISOString())
+      .order("starts_at"),
+    manager ? getTeamOptions(context) : [],
+  ]);
+  const clock = (date: Date | string) => format.time(date);
+  const deskFor = (dayKey: string) => {
+    const dayShifts = (shiftRows ?? []).filter(
+      (row) => zonedDateKey(new Date(row.starts_at), tz) === dayKey,
+    );
+    const scheduledThatDay = data.filter(
+      (row) => row.status === "scheduled" && zonedDateKey(new Date(row.starts_at), tz) === dayKey,
+    );
+    return {
+      shifts: dayShifts.map((row) => ({
+        id: row.id,
+        profileId: row.profile_id,
+        name: [row.profiles?.first_name, row.profiles?.last_name].filter(Boolean).join(" "),
+        start: clock(row.starts_at),
+        end: clock(row.ends_at),
+        note: row.note,
+      })),
+      gaps: uncoveredIntervals(deskWindow(scheduledThatDay), dayShifts).map((gap) => ({
+        start: clock(gap.start),
+        end: clock(gap.end),
+      })),
+    };
+  };
 
   const sessions = data
     .map((session) => {
@@ -318,6 +360,15 @@ export default async function PlanningPage({
                 );
               })}
             </nav>
+            <div className="grid gap-2 rounded-xl bg-card p-3 shadow-border">
+              <h3 className="text-sm font-medium">{t("desk.row")}</h3>
+              <DeskDay
+                dayKey={selectedKey}
+                team={team}
+                manager={manager}
+                {...deskFor(selectedKey)}
+              />
+            </div>
             {daySessions.length === 0 ? (
               <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
                 {t("planning.noSessionThatDay")}
@@ -433,6 +484,21 @@ export default async function PlanningPage({
                       </div>
                     );
                   })}
+
+                  <div className="sticky left-0 z-10 flex items-start justify-end border-b bg-card px-1.5 py-2 text-xs font-medium text-muted-foreground">
+                    {t("desk.row")}
+                  </div>
+                  {week.days.map((day) => (
+                    <div key={`desk-${day.key}`} className="border-b border-l p-1.5">
+                      <DeskDay
+                        dayKey={day.key}
+                        team={team}
+                        manager={manager}
+                        compact
+                        {...deskFor(day.key)}
+                      />
+                    </div>
+                  ))}
 
                   <div className="sticky left-0 z-10 bg-card" style={{ height: gridHeight }}>
                     {hours.map((hour) => (

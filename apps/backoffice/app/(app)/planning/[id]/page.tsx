@@ -188,6 +188,17 @@ export default async function SessionPage({
     .filter((b) => b.status === "waitlisted")
     .sort((a, b) => (a.waitlist_position ?? 0) - (b.waitlist_position ?? 0));
   const cancelledCount = session.bookings.filter((b) => b.status === "cancelled").length;
+  // Notes « à savoir » des inscrits : la RLS ne les ouvre qu'à l'accueil, au gérant et aux coachs.
+  const seatedIds = seated.flatMap((b) => (b.members ? [b.members.id] : []));
+  const { data: careRows } = seatedIds.length
+    ? await (
+        await createClient()
+      )
+        .from("member_care_notes")
+        .select("member_id, note")
+        .in("member_id", seatedIds)
+    : { data: [] };
+  const careNotes = new Map((careRows ?? []).map((row) => [row.member_id, row.note]));
   const toCheck = seated.filter((b) => b.status === "confirmed").length;
   const excludeIds = session.bookings
     .filter((b) => b.status !== "cancelled" && b.members)
@@ -306,6 +317,14 @@ export default async function SessionPage({
                               <span className="truncate text-xs text-muted-foreground">
                                 {booking.members?.phone ?? booking.members?.email ?? ""}
                               </span>
+                              {booking.members && careNotes.has(booking.members.id) ? (
+                                <span className="text-xs text-warning">
+                                  <span className="font-medium">
+                                    {t("memberProfile.careNote")} :{" "}
+                                  </span>
+                                  {careNotes.get(booking.members.id)}
+                                </span>
+                              ) : null}
                             </span>
                             {scheduled ? (
                               <>

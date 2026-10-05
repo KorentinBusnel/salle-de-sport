@@ -6,3 +6,4 @@ export * from "./classes.ts";
 export * from "./crm.ts";
 export * from "./display.ts";
 export * from "./digest.ts";
+export * from "./desk.ts";

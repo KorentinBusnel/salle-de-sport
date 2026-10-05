@@ -1012,6 +1012,64 @@ export type Database = {
           },
         ];
       };
+      gym_closures: {
+        Row: {
+          created_at: string;
+          day: string;
+          gym_id: string;
+          id: string;
+          label: string;
+        };
+        Insert: {
+          created_at?: string;
+          day: string;
+          gym_id: string;
+          id?: string;
+          label: string;
+        };
+        Update: {
+          created_at?: string;
+          day?: string;
+          gym_id?: string;
+          id?: string;
+          label?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_closures_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gym_private_settings: {
+        Row: {
+          gym_id: string;
+          settings: NonNullable<Json>;
+          updated_at: string;
+        };
+        Insert: {
+          gym_id: string;
+          settings?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Update: {
+          gym_id?: string;
+          settings?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_private_settings_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: true;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gym_roles: {
         Row: {
           created_at: string;
@@ -1055,8 +1113,12 @@ export type Database = {
         Row: {
           address: string | null;
           created_at: string;
+          email: string | null;
           id: string;
+          logo_path: string | null;
           name: string;
+          opening_hours: NonNullable<Json>;
+          phone: string | null;
           settings: NonNullable<Json>;
           slug: string;
           timezone: string;
@@ -1065,8 +1127,12 @@ export type Database = {
         Insert: {
           address?: string | null;
           created_at?: string;
+          email?: string | null;
           id?: string;
+          logo_path?: string | null;
           name: string;
+          opening_hours?: NonNullable<Json>;
+          phone?: string | null;
           settings?: NonNullable<Json>;
           slug: string;
           timezone?: string;
@@ -1075,8 +1141,12 @@ export type Database = {
         Update: {
           address?: string | null;
           created_at?: string;
+          email?: string | null;
           id?: string;
+          logo_path?: string | null;
           name?: string;
+          opening_hours?: NonNullable<Json>;
+          phone?: string | null;
           settings?: NonNullable<Json>;
           slug?: string;
           timezone?: string;
@@ -2378,6 +2448,10 @@ export type Database = {
           member_id: string;
           plan: string;
         }[];
+      };
+      update_gym_settings: {
+        Args: { p_gym_id: string; p_private?: Json; p_settings?: Json };
+        Returns: undefined;
       };
       update_session: {
         Args: { p_changes: Json; p_scope?: string; p_session_id: string };

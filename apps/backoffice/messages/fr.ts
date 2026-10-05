@@ -1060,6 +1060,7 @@ export const fr = {
     not_team_member: "Cette personne ne fait pas partie de l'équipe de la salle.",
     invalid_amount: "Nombre de crédits invalide (1 à 50).",
     reason_required: "Indiquez le motif du retrait.",
+    invalid_settings: "Réglages invalides.",
     insufficient_credits: "Le solde de crédits est insuffisant pour ce retrait.",
     invalid_transition: "Ce changement de statut n'est pas possible.",
     invalid_input: "Prénom et nom sont obligatoires.",

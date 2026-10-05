@@ -232,7 +232,12 @@ function NavLink({
         tooltip={item.label}
         className="pointer-coarse:h-10"
       >
-        <Link href={item.href} aria-current={active ? "page" : undefined} onClick={onNavigate}>
+        <Link
+          href={item.href}
+          aria-current={active ? "page" : undefined}
+          onClick={onNavigate}
+          transitionTypes={["nav"]}
+        >
           <Icon />
           <span>{item.label}</span>
           <LinkPending className="ml-auto size-1.5 shrink-0" />

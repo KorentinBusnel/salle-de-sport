@@ -11,6 +11,8 @@ export const fr = {
     errorTitle: "Un problème est survenu",
     errorBody: "La page n'a pas pu se charger. Vérifiez la connexion puis réessayez.",
     retry: "Réessayer",
+    sectionTitle: "Cette partie n'a pas pu se charger",
+    sectionBody: "Le reste de la page reste utilisable. Vérifiez la connexion puis réessayez.",
   },
   topbar: {
     searchPlaceholder: "Rechercher un adhérent…",

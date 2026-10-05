@@ -5,6 +5,7 @@ import { Suspense, type ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
 import { NavBadge } from "@/components/nav-badge";
+import { PageCrumbProvider } from "@/components/page-crumb";
 import type { NewMenuItem } from "@/components/new-menu";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -98,28 +99,30 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const sidebarState = (await cookies()).get("sidebar_state")?.value;
 
   return (
-    <SidebarProvider defaultOpen={sidebarState !== "false"}>
-      <a
-        href="#contenu"
-        className="sr-only z-50 rounded-md bg-card px-3 py-2 text-sm shadow-border focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-      >
-        {t("nav.skipToContent")}
-      </a>
-      <AppSidebar
-        gymName={context.gym.name}
-        displayName={context.displayName}
-        roleLabel={t(`roles.${context.role}`)}
-        groups={navigation.groups}
-        footer={navigation.footer}
-        badges={badges}
-        signOut={signOut}
-      />
-      <SidebarInset className="min-w-0 bg-card md:peer-data-[variant=inset]:shadow-border">
-        <AppTopbar crumbs={crumbs} search={frontDesk} assistant={manager} create={create} />
-        <main id="contenu" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <PageCrumbProvider>
+      <SidebarProvider defaultOpen={sidebarState !== "false"}>
+        <a
+          href="#contenu"
+          className="sr-only z-50 rounded-md bg-card px-3 py-2 text-sm shadow-border focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        >
+          {t("nav.skipToContent")}
+        </a>
+        <AppSidebar
+          gymName={context.gym.name}
+          displayName={context.displayName}
+          roleLabel={t(`roles.${context.role}`)}
+          groups={navigation.groups}
+          footer={navigation.footer}
+          badges={badges}
+          signOut={signOut}
+        />
+        <SidebarInset className="min-w-0 bg-card md:peer-data-[variant=inset]:shadow-border">
+          <AppTopbar crumbs={crumbs} search={frontDesk} assistant={manager} create={create} />
+          <main id="contenu" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </PageCrumbProvider>
   );
 }

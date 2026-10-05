@@ -1,20 +1,17 @@
 import type { ReactNode } from "react";
 
-/** En-tête de page : titre, ligne d'informations, fil d'Ariane et actions à droite. */
+/** En-tête de page : titre, ligne d'informations et actions à droite (fil d'Ariane : `PageCrumb`). */
 export function PageHeader({
   title,
   description,
-  breadcrumb,
   actions,
 }: {
   title: ReactNode;
   description?: ReactNode | undefined;
-  breadcrumb?: ReactNode | undefined;
   actions?: ReactNode | undefined;
 }) {
   return (
     <header className="grid gap-3">
-      {breadcrumb}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="grid gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

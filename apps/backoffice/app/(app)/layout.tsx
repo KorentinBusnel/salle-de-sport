@@ -1,4 +1,5 @@
 import { ShieldOffIcon } from "lucide-react";
+import { navBadgesFor } from "@salle/shared";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -21,7 +22,7 @@ import { getTeamContext, isFrontDeskRole, isManagerRole } from "@/lib/auth";
 import { getOwnCoachId } from "@/lib/coaches";
 import { buildNavigation, type BadgeKey } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
-import { getGymSettings } from "@/lib/settings";
+import { getGymConfig } from "@/lib/settings";
 import { signOut } from "./actions";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -58,12 +59,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const frontDesk = isFrontDeskRole(context.role);
 
   // Seules les lectures légères et mises en cache bloquent la coque ; les pastilles arrivent à part.
-  const [settings, ownCoachId] = await Promise.all([
-    getGymSettings(context.gym.id),
+  const [config, ownCoachId] = await Promise.all([
+    getGymConfig(context.gym.id),
     // Coach sans rôle de gestion : sa fiche (disponibilités) et ses heures.
     manager ? null : getOwnCoachId(context.userId, context.gym.id),
   ]);
-  const navigation = buildNavigation(context.role, { ownCoachId });
+  const settings = config.settings;
+  const navigation = buildNavigation(context.role, {
+    ownCoachId,
+    badges: navBadgesFor(context.role, config.private),
+  });
   const badges: Partial<Record<BadgeKey, ReactNode>> = {};
   for (const item of [...navigation.groups.flatMap((group) => group.items), ...navigation.footer]) {
     if (item.badge) {
@@ -108,7 +113,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           {t("nav.skipToContent")}
         </a>
         <AppSidebar
-          gymName={context.gym.name}
+          gymName={config.identity.name || context.gym.name}
+        gymLogoUrl={config.identity.logoUrl}
           displayName={context.displayName}
           roleLabel={t(`roles.${context.role}`)}
           groups={navigation.groups}

@@ -403,7 +403,7 @@ export const fr = {
     creditsBalance: "Solde",
     creditsConfirm: "{count, plural, one {Ajouter # crédit} other {Ajouter # crédits}}",
     creditsAdded: "Crédits ajoutés.",
-    creditsInvalid: "Nombre de crédits invalide (1 à 50).",
+    creditsInvalid: "Nombre de crédits invalide (1 à {count}).",
     creditsRemoved: "Crédits retirés.",
     creditsMode: "Ajouter ou retirer",
     creditsModeAdd: "Ajouter",

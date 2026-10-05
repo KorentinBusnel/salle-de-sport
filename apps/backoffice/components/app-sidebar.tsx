@@ -22,7 +22,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition, type ReactNode } from "react";
 import { LinkPending } from "@/components/link-pending";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,6 +81,7 @@ export function activeHref(pathname: string, hrefs: string[]): string | undefine
 
 export function AppSidebar({
   gymName,
+  gymLogoUrl,
   displayName,
   roleLabel,
   groups,
@@ -91,6 +92,7 @@ export function AppSidebar({
   /** Pastilles rendues côté serveur (sous Suspense), par compteur. */
   badges: Partial<Record<BadgeKey, ReactNode>>;
   gymName: string;
+  gymLogoUrl: string | null;
   displayName: string;
   roleLabel: string;
   groups: NavGroup[];
@@ -113,9 +115,14 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/" onClick={close}>
-                <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-                  {initials(gymName)}
-                </span>
+                <Avatar className="size-8 rounded-lg">
+                  {gymLogoUrl ? (
+                    <AvatarImage src={gymLogoUrl} alt="" className="object-contain" />
+                  ) : null}
+                  <AvatarFallback className="rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
+                    {initials(gymName)}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{gymName}</span>
                   <span className="truncate text-xs text-muted-foreground">{t("app.title")}</span>

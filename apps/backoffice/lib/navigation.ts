@@ -1,4 +1,10 @@
-import { type GymRole } from "@salle/shared";
+import {
+  DEFAULT_NAV_BADGES,
+  type GymRole,
+  layoutRole,
+  NAV_BADGES,
+  type NavBadge,
+} from "@salle/shared";
 import type { NavGroup, NavItem } from "@/components/app-sidebar";
 import { isFrontDeskRole, isManagerRole } from "@/lib/auth-roles";
 import { t } from "@/lib/i18n";
@@ -6,8 +12,8 @@ import { t } from "@/lib/i18n";
 export type Navigation = { groups: NavGroup[]; footer: NavItem[] };
 
 /** Compteurs possibles d'une pastille (fonction SQL nav_counts). */
-export const BADGE_KEYS = ["prospects", "unanswered", "trials_to_call", "unpaid"] as const;
-export type BadgeKey = (typeof BADGE_KEYS)[number];
+export const BADGE_KEYS = NAV_BADGES;
+export type BadgeKey = NavBadge;
 
 /** Entrée qui porte chaque pastille. */
 export const BADGE_HREF: Record<BadgeKey, string> = {
@@ -17,8 +23,6 @@ export const BADGE_HREF: Record<BadgeKey, string> = {
   unpaid: "/",
 };
 
-/** Pastilles affichées par défaut (réglables par le gérant). */
-export const DEFAULT_BADGES: readonly BadgeKey[] = ["prospects", "unanswered"];
 
 /**
  * Barre latérale par rôle :
@@ -61,7 +65,7 @@ export function buildNavigation(
   ];
 
   // Pastilles : sur l'entrée qui les porte, si elle est visible pour ce rôle.
-  const enabled = new Set(options.badges ?? DEFAULT_BADGES);
+  const enabled = new Set(options.badges ?? DEFAULT_NAV_BADGES[layoutRole(role)]);
   const withBadges = (items: NavItem[]) =>
     items.map((item) => {
       const badge = BADGE_KEYS.find((key) => enabled.has(key) && BADGE_HREF[key] === item.href);

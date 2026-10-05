@@ -1,8 +1,11 @@
 import {
   canSeeFinancials,
   coachesLabel,
-  deskWindow,
+  deskWindows,
+  type HomeBlock,
+  homeBlocksFor,
   isStaffRole,
+  openingIntervals,
   sessionPhase,
   uncoveredIntervals,
   zonedDateKey,
@@ -36,6 +39,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTeamOptions } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import { getCrmTodo } from "@/lib/nav-counts";
+import { getGymConfig } from "@/lib/settings";
 
 export const metadata: Metadata = { title: t("nav.today") };
 
@@ -76,32 +80,41 @@ export default async function DashboardPage() {
   const format = gymFormatters(tz);
   const money = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
-  const [sessionsResult, trialsResult, shiftsResult, todoResult, unpaidResult, digest, team] =
-    await Promise.all([
-      supabase
-        .from("class_sessions")
-        .select(
-          "id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), session_coaches(position, coaches(display_name, profile_id)), bookings(status)",
-        )
-        .eq("gym_id", context.gym.id)
-        .gte("starts_at", start.toISOString())
-        .lt("starts_at", end.toISOString())
-        .order("starts_at"),
-      supabase.rpc("today_trials", { p_gym_id: context.gym.id, p_day: today }),
-      supabase
-        .from("desk_shifts")
-        .select(
-          "id, profile_id, starts_at, ends_at, note, profiles!desk_shifts_profile_id_fkey(first_name, last_name)",
-        )
-        .eq("gym_id", context.gym.id)
-        .lt("starts_at", end.toISOString())
-        .gt("ends_at", start.toISOString())
-        .order("starts_at"),
-      manager ? getCrmTodo(context.gym.id) : [],
-      manager ? supabase.rpc("unpaid_members", { p_gym_id: context.gym.id }) : null,
-      configured ? getTodayDigest(context) : null,
-      manager ? getTeamOptions(context) : [],
-    ]);
+  const [
+    sessionsResult,
+    trialsResult,
+    shiftsResult,
+    todoResult,
+    unpaidResult,
+    digest,
+    team,
+    config,
+  ] = await Promise.all([
+    supabase
+      .from("class_sessions")
+      .select(
+        "id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), session_coaches(position, coaches(display_name, profile_id)), bookings(status)",
+      )
+      .eq("gym_id", context.gym.id)
+      .gte("starts_at", start.toISOString())
+      .lt("starts_at", end.toISOString())
+      .order("starts_at"),
+    supabase.rpc("today_trials", { p_gym_id: context.gym.id, p_day: today }),
+    supabase
+      .from("desk_shifts")
+      .select(
+        "id, profile_id, starts_at, ends_at, note, profiles!desk_shifts_profile_id_fkey(first_name, last_name)",
+      )
+      .eq("gym_id", context.gym.id)
+      .lt("starts_at", end.toISOString())
+      .gt("ends_at", start.toISOString())
+      .order("starts_at"),
+    manager ? getCrmTodo(context.gym.id) : [],
+    manager ? supabase.rpc("unpaid_members", { p_gym_id: context.gym.id }) : null,
+    configured ? getTodayDigest(context) : null,
+    manager ? getTeamOptions(context) : [],
+    getGymConfig(context.gym.id),
+  ]);
 
   if (sessionsResult.error) {
     return <p className="text-destructive">{t("dashboard.loadError")}</p>;
@@ -136,7 +149,15 @@ export default async function DashboardPage() {
   const newcomers = [...new Map(trials.map((row) => [row.member_id, row])).values()];
 
   const shifts = shiftsResult.data ?? [];
-  const gaps = uncoveredIntervals(deskWindow(scheduled), shifts);
+  // Présence attendue : horaires d'ouverture du jour, sinon séances ± marge (réglages).
+  const gaps = uncoveredIntervals(
+    deskWindows(scheduled, {
+      opening: openingIntervals(config.openingHours, today, tz),
+      marginMinutes: config.private.desk_margin_minutes,
+    }),
+    shifts,
+    config.private.desk_min_gap_minutes,
+  );
   const todo = todoResult;
   const todoTotal = todo.reduce((sum, row) => sum + row.total, 0);
   const unpaid = unpaidResult?.data ?? [];
@@ -250,24 +271,11 @@ export default async function DashboardPage() {
     </section>
   );
 
-  return (
-    <div className="grid gap-8">
-      <PageHeader
-        title={t("today.greeting", {
-          name: firstName,
-          actions: t("today.actions", { count: actions }),
-        })}
-        description={format.longDay(now)}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/planning">{t("today.openPlanning")}</Link>
-          </Button>
-        }
-      />
-
-      {configured ? <DailyBrief digest={digest} /> : null}
-
-      <section aria-labelledby="operations" className="grid gap-4">
+  // Blocs de l'accueil : ceux du rôle, dans l'ordre réglé par le gérant (Paramètres › Accueil).
+  const blocks: Record<HomeBlock, ReactNode> = {
+    brief: configured ? <DailyBrief key="brief" digest={digest} /> : null,
+    operations: (
+      <section key="operations" aria-labelledby="operations" className="grid gap-4">
         <SectionTitle id="operations" href="/planning" link={t("today.dayPlanning")}>
           {t("today.operations")}
         </SectionTitle>
@@ -474,7 +482,11 @@ export default async function DashboardPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <DeskShiftDialog
                   team={team}
-                  draft={{ date: today, start: "09:00", end: "12:00" }}
+                  draft={{
+                    date: today,
+                    start: config.private.desk_default_start,
+                    end: config.private.desk_default_end,
+                  }}
                   trigger={
                     <Button size="sm" variant="outline">
                       <PlusIcon data-icon="inline-start" />
@@ -491,168 +503,185 @@ export default async function DashboardPage() {
         </div>
         {list}
       </section>
-
-      {frontDesk ? (
-        <section aria-labelledby="clients" className="grid gap-4">
-          <SectionTitle
-            id="clients"
-            href={manager ? "/crm" : "/adherents"}
-            link={t(manager ? "today.pipeline" : "nav.members")}
-          >
-            {t("today.clients")}
-          </SectionTitle>
-          <div className={cn("grid items-start gap-4", manager && "lg:grid-cols-2")}>
-            <Panel title={t("today.newcomers")}>
-              {newcomers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("today.newcomersEmpty")}</p>
-              ) : (
-                <ul className="grid gap-1">
-                  {newcomers.map((person) => (
-                    <li key={person.member_id}>
-                      <Link
-                        href={`/adherents/${person.member_id}`}
-                        className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted"
-                      >
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-                          {person.first_name.charAt(0)}
-                          {person.last_name.charAt(0)}
-                        </span>
-                        <span className="grid min-w-0 flex-1">
-                          <span className="truncate font-medium">
-                            {person.first_name} {person.last_name}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {person.discipline} {clock(person.starts_at)}
-                            {person.is_trial ? ` · ${t("today.trial")}` : ""}
-                          </span>
-                        </span>
-                        <StatusPill tone="neutral" dot={false}>
-                          {t("today.visit", { count: person.visit_number })}
-                        </StatusPill>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-            {manager ? (
-              <Panel title={t("today.crm.title")}>
-                <ul className="grid gap-1">
-                  {todo.map((row) => {
-                    const meta = CRM_LINKS[row.kind as keyof typeof CRM_LINKS];
-                    if (!meta) return null;
-                    return (
-                      <li key={row.kind} className="flex items-center gap-3 py-1.5">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted font-semibold tabular-nums">
-                          {row.total}
-                        </span>
-                        <span className="grid min-w-0 flex-1">
-                          <span className="font-medium">{t(meta.label)}</span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {t(meta.hint)}
-                          </span>
-                        </span>
-                        {row.total > 0 ? (
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/adherents?a_faire=${row.kind}`}>{t(meta.cta)}</Link>
-                          </Button>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </Panel>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {manager ? (
-        <section aria-labelledby="finance" className="grid gap-4">
-          <SectionTitle
-            id="finance"
-            href="/parametres?onglet=integrations"
-            link={t("today.financeSources")}
-          >
-            {t("today.finance")}
-          </SectionTitle>
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            <Panel
-              title={t("today.unpaid")}
-              aside={
-                unpaid.length ? (
-                  <span className="font-semibold text-destructive tabular-nums">
-                    {money.format(unpaidTotal / 100)}
-                  </span>
-                ) : null
-              }
-            >
-              {unpaid.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("today.unpaidEmpty")}</p>
-              ) : (
-                <ul
-                  className="-mr-2 grid max-h-96 gap-1 overflow-y-auto overscroll-contain pr-2"
-                  tabIndex={0}
-                  aria-label={t("today.unpaid")}
-                >
-                  {unpaid.map((row) => (
-                    <li key={row.member_id} className="flex items-center gap-3 py-1.5">
+    ),
+    clients: frontDesk ? (
+      <section key="clients" aria-labelledby="clients" className="grid gap-4">
+        <SectionTitle
+          id="clients"
+          href={manager ? "/crm" : "/adherents"}
+          link={t(manager ? "today.pipeline" : "nav.members")}
+        >
+          {t("today.clients")}
+        </SectionTitle>
+        <div className={cn("grid items-start gap-4", manager && "lg:grid-cols-2")}>
+          <Panel title={t("today.newcomers")}>
+            {newcomers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("today.newcomersEmpty")}</p>
+            ) : (
+              <ul className="grid gap-1">
+                {newcomers.map((person) => (
+                  <li key={person.member_id}>
+                    <Link
+                      href={`/adherents/${person.member_id}`}
+                      className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
+                        {person.first_name.charAt(0)}
+                        {person.last_name.charAt(0)}
+                      </span>
                       <span className="grid min-w-0 flex-1">
-                        <Link
-                          href={`/adherents/${row.member_id}`}
-                          className="truncate font-medium hover:underline"
-                        >
-                          {row.first_name} {row.last_name}
-                        </Link>
+                        <span className="truncate font-medium">
+                          {person.first_name} {person.last_name}
+                        </span>
                         <span className="truncate text-xs text-muted-foreground">
-                          {[
-                            row.plan,
-                            t("today.failures", { count: row.failures }),
-                            t("today.since", { date: format.dateTime(row.first_failed_at) }),
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
+                          {person.discipline} {clock(person.starts_at)}
+                          {person.is_trial ? ` · ${t("today.trial")}` : ""}
                         </span>
                       </span>
-                      <span className="font-medium tabular-nums">
-                        {money.format(row.amount_cents / 100)}
+                      <StatusPill tone="neutral" dot={false}>
+                        {t("today.visit", { count: person.visit_number })}
+                      </StatusPill>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+          {manager ? (
+            <Panel title={t("today.crm.title")}>
+              <ul className="grid gap-1">
+                {todo.map((row) => {
+                  const meta = CRM_LINKS[row.kind as keyof typeof CRM_LINKS];
+                  if (!meta) return null;
+                  return (
+                    <li key={row.kind} className="flex items-center gap-3 py-1.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted font-semibold tabular-nums">
+                        {row.total}
                       </span>
-                      {configured ? (
-                        <AssistantButton
-                          size="sm"
-                          variant="outline"
-                          prompt={t("today.unpaidPrompt", {
-                            name: `${row.first_name} ${row.last_name}`,
-                            id: row.member_id,
-                            amount: money.format(row.amount_cents / 100),
-                            count: row.failures,
-                          })}
-                        >
-                          {t("today.remind")}
-                        </AssistantButton>
+                      <span className="grid min-w-0 flex-1">
+                        <span className="font-medium">{t(meta.label)}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {t(meta.hint)}
+                        </span>
+                      </span>
+                      {row.total > 0 ? (
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/adherents?a_faire=${row.kind}`}>{t(meta.cta)}</Link>
+                        </Button>
                       ) : null}
                     </li>
-                  ))}
-                </ul>
-              )}
+                  );
+                })}
+              </ul>
             </Panel>
-            <Panel title={t("today.bills")}>
-              <Empty className="rounded-lg border border-dashed p-6">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <CalculatorIcon />
-                  </EmptyMedia>
-                  <EmptyTitle>{t("today.billsPending")}</EmptyTitle>
-                  <EmptyDescription>{t("today.billsHint")}</EmptyDescription>
-                </EmptyHeader>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/parametres?onglet=integrations">{t("today.connect")}</Link>
-                </Button>
-              </Empty>
-            </Panel>
-          </div>
-        </section>
-      ) : null}
+          ) : null}
+        </div>
+      </section>
+    ) : null,
+    finance: manager ? (
+      <section key="finance" aria-labelledby="finance" className="grid gap-4">
+        <SectionTitle
+          id="finance"
+          href="/parametres?onglet=integrations"
+          link={t("today.financeSources")}
+        >
+          {t("today.finance")}
+        </SectionTitle>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <Panel
+            title={t("today.unpaid")}
+            aside={
+              unpaid.length ? (
+                <span className="font-semibold text-destructive tabular-nums">
+                  {money.format(unpaidTotal / 100)}
+                </span>
+              ) : null
+            }
+          >
+            {unpaid.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("today.unpaidEmpty")}</p>
+            ) : (
+              <ul
+                className="-mr-2 grid max-h-96 gap-1 overflow-y-auto overscroll-contain pr-2"
+                tabIndex={0}
+                aria-label={t("today.unpaid")}
+              >
+                {unpaid.map((row) => (
+                  <li key={row.member_id} className="flex items-center gap-3 py-1.5">
+                    <span className="grid min-w-0 flex-1">
+                      <Link
+                        href={`/adherents/${row.member_id}`}
+                        className="truncate font-medium hover:underline"
+                      >
+                        {row.first_name} {row.last_name}
+                      </Link>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {[
+                          row.plan,
+                          t("today.failures", { count: row.failures }),
+                          t("today.since", { date: format.dateTime(row.first_failed_at) }),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </span>
+                    <span className="font-medium tabular-nums">
+                      {money.format(row.amount_cents / 100)}
+                    </span>
+                    {configured ? (
+                      <AssistantButton
+                        size="sm"
+                        variant="outline"
+                        prompt={t("today.unpaidPrompt", {
+                          name: `${row.first_name} ${row.last_name}`,
+                          id: row.member_id,
+                          amount: money.format(row.amount_cents / 100),
+                          count: row.failures,
+                        })}
+                      >
+                        {t("today.remind")}
+                      </AssistantButton>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+          <Panel title={t("today.bills")}>
+            <Empty className="rounded-lg border border-dashed p-6">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <CalculatorIcon />
+                </EmptyMedia>
+                <EmptyTitle>{t("today.billsPending")}</EmptyTitle>
+                <EmptyDescription>{t("today.billsHint")}</EmptyDescription>
+              </EmptyHeader>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/parametres?onglet=integrations">{t("today.connect")}</Link>
+              </Button>
+            </Empty>
+          </Panel>
+        </div>
+      </section>
+    ) : null,
+  };
+
+  return (
+    <div className="grid gap-8">
+      <PageHeader
+        title={t("today.greeting", {
+          name: firstName,
+          actions: t("today.actions", { count: actions }),
+        })}
+        description={format.longDay(now)}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/planning">{t("today.openPlanning")}</Link>
+          </Button>
+        }
+      />
+
+      {homeBlocksFor(context.role, config.private).map((block) => blocks[block])}
     </div>
   );
 }

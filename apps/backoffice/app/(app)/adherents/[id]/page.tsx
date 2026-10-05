@@ -28,7 +28,7 @@ import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import { getGymSettings } from "@/lib/settings";
+import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { adjustCredits, setMemberStatus } from "../actions";
@@ -64,7 +64,9 @@ export default async function MemberProfilePage({
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const context = await requireRole(isFrontDeskRole);
   const manager = isManagerRole(context.role);
-  const settings = await getGymSettings(context.gym.id);
+  const config = await getGymConfig(context.gym.id);
+  const settings = config.settings;
+  const creditLimit = config.private.credit_adjust_max;
   const format = gymFormatters(context.gym.timezone);
   const now = currentTime();
   const tabs: Tab[] = manager ? [...TABS] : ["reservations", "profil"];
@@ -234,6 +236,7 @@ export default async function MemberProfilePage({
                 returnQuery=""
                 returnTo={path}
                 canRemove={settings.manager_can_remove_credits}
+                limit={creditLimit}
                 action={adjustCredits}
               />
             ) : null}

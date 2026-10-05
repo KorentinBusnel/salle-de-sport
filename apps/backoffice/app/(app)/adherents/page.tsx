@@ -30,7 +30,7 @@ import {
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import { getGymSettings } from "@/lib/settings";
+import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { getCrmTodo } from "@/lib/nav-counts";
@@ -60,7 +60,9 @@ export default async function MembersPage({
   const params = await searchParams;
   const context = await requireRole(isFrontDeskRole);
   const manager = isManagerRole(context.role);
-  const settings = await getGymSettings(context.gym.id);
+  const config = await getGymConfig(context.gym.id);
+  const settings = config.settings;
+  const creditLimit = config.private.credit_adjust_max;
   // Stratégies de la salle : les actions désactivées ne sont pas proposées (la base refuse aussi).
   const canCreate = manager || settings.staff_can_create_members;
   const canSuspend = manager || settings.staff_can_suspend_members;
@@ -384,6 +386,7 @@ export default async function MembersPage({
                             balance={balance}
                             returnQuery={returnQuery}
                             canRemove={settings.manager_can_remove_credits}
+                            limit={creditLimit}
                             action={adjustCredits}
                           />
                         ) : null}

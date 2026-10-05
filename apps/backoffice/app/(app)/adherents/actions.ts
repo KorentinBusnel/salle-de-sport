@@ -9,6 +9,7 @@ import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import { getGymConfig } from "@/lib/settings";
 
 /** Revient sur la fiche (returnTo) ou sur la liste en conservant la recherche en cours. */
 function back(formData: FormData) {
@@ -46,10 +47,12 @@ export async function setMemberStatus(formData: FormData) {
 
 /** Ajout (ou retrait, si la stratégie l'autorise) de crédits par le gérant. */
 export async function adjustCredits(formData: FormData) {
-  await requireRole(isManagerRole);
+  const context = await requireRole(isManagerRole);
   const id = z.guid().parse(formData.get("memberId"));
-  const amount = z.coerce.number().int().min(1).max(50).safeParse(formData.get("amount"));
-  if (!amount.success) redirect(withFlash(back(formData), { error: "members.creditsInvalid" }));
+  const { credit_adjust_max: max } = (await getGymConfig(context.gym.id)).private;
+  const amount = z.coerce.number().int().min(1).max(max).safeParse(formData.get("amount"));
+  if (!amount.success)
+    redirect(withFlash(back(formData), { error: "members.creditsInvalid", count: max }));
   const remove = formData.get("mode") === "remove";
   const note = z
     .string()

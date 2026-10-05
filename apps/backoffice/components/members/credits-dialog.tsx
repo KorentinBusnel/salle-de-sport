@@ -20,7 +20,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { t } from "@/lib/i18n";
 
 const MIN = 1;
-const MAX = 50;
 
 /**
  * Ajout de crédits (ou retrait, si la stratégie de la salle l'autorise) : quantité au stepper,
@@ -33,6 +32,7 @@ export function CreditsDialog({
   returnQuery,
   returnTo,
   canRemove,
+  limit,
   action,
 }: {
   memberId: string;
@@ -42,6 +42,8 @@ export function CreditsDialog({
   /** Fiche adhérent : y revenir après l'action plutôt que sur la liste. */
   returnTo?: string | undefined;
   canRemove: boolean;
+  /** Plafond par opération (réglage credit_adjust_max). */
+  limit: number;
   action: (formData: FormData) => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -49,7 +51,7 @@ export function CreditsDialog({
   const [mode, setMode] = useState<"add" | "remove">("add");
   const remove = mode === "remove";
   // Un retrait ne fait pas passer le solde sous zéro (règle vérifiée aussi en SQL).
-  const max = remove ? Math.max(MIN, Math.min(MAX, balance)) : MAX;
+  const max = remove ? Math.max(MIN, Math.min(limit, balance)) : limit;
   const clamp = (value: number) => Math.min(max, Math.max(MIN, Math.round(value) || MIN));
 
   return (

@@ -1,14 +1,14 @@
 "use server";
 
-import { segmentFiltersSchema, zonedDateKey, zonedWeek } from "@salle/shared";
+import { segmentFiltersSchema, zonedDateKey } from "@salle/shared";
 import { refresh, revalidatePath } from "next/cache";
 import { z } from "zod";
-import { anthropicTurn } from "@/lib/ai/client";
-import { askAssistant } from "@/lib/ai/run";
+import { generateDailyDigest } from "@/lib/ai/digest";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { errorMessageKey } from "@/lib/flash";
-import { type MessageKey, t } from "@/lib/i18n";
+import { getTodayDigest } from "@/lib/digest";
+import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 type Result = { error: MessageKey | null; count?: number };
@@ -56,39 +56,50 @@ export async function approveSegment(input: z.input<typeof segmentSchema>): Prom
   return { error: error ? "common.unexpectedError" : null };
 }
 
-/** Lundi de la semaine en cours (« AAAA-MM-JJ »), dans le fuseau de la salle. */
-function weekStart(timezone: string) {
-  const week = zonedWeek(currentTime(), timezone);
-  return week.days[0]?.key ?? zonedDateKey(currentTime(), timezone);
-}
-
-/** Brief hebdomadaire : rédigé par l'assistant à la demande, enregistré pour la semaine. */
-export async function generateBrief(): Promise<Result> {
+/** Digest du jour : rédigé par l'assistant à la demande, enregistré pour la journée. */
+export async function generateDigest(): Promise<Result> {
   const context = await requireRole(isManagerRole);
-  const ai = anthropicTurn();
-  if (!ai) return { error: "assistant.notConfigured" };
   try {
-    const answer = await askAssistant({
-      context,
-      turn: ai.turn,
-      model: ai.model,
-      history: [],
-      question: t("hub.briefPrompt"),
-      emit: () => {},
-    });
+    const result = await generateDailyDigest(context);
+    if ("error" in result) {
+      return {
+        error:
+          result.error === "notConfigured" ? "assistant.notConfigured" : "assistant.errors.failed",
+      };
+    }
     const supabase = await createClient();
-    const { error } = await supabase.from("weekly_briefs").upsert({
+    const { error } = await supabase.from("daily_digests").upsert({
       gym_id: context.gym.id,
-      week_start: weekStart(context.gym.timezone),
-      content: answer.text,
+      day: zonedDateKey(currentTime(), context.gym.timezone),
+      content: { ...result.digest, dismissed: [] },
       generated_by: context.userId,
       generated_at: new Date().toISOString(),
     });
+    revalidatePath("/");
     revalidatePath("/hub");
     refresh();
     return { error: error ? "common.unexpectedError" : null };
   } catch (error) {
-    console.error("brief", error);
+    console.error("digest", error);
     return { error: "assistant.errors.failed" };
   }
+}
+
+/** « Ignorer » une action du digest du jour : elle disparaît de l'accueil et du Hub. */
+export async function dismissDigestItem(itemId: string): Promise<Result> {
+  const context = await requireRole(isManagerRole);
+  const id = z.string().trim().min(1).max(40).safeParse(itemId);
+  if (!id.success) return { error: "common.unexpectedError" };
+  const digest = await getTodayDigest(context);
+  if (!digest) return { error: "common.unexpectedError" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("daily_digests")
+    .update({ content: { ...digest, dismissed: [...new Set([...digest.dismissed, id.data])] } })
+    .eq("gym_id", context.gym.id)
+    .eq("day", digest.day);
+  revalidatePath("/");
+  revalidatePath("/hub");
+  refresh();
+  return { error: error ? "common.unexpectedError" : null };
 }

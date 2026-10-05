@@ -275,6 +275,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - Vercel : le framework est fixé dans `apps/backoffice/vercel.json` ; les variables
   `NEXT_PUBLIC_*` ne doivent pas être marquées « Sensitive ».
 - `BRIEF.md` est exclu de Prettier (document rédigé à la main).
+- Deux versions de `@types/react` coexistent (19.3 pour le back office, 19.2 imposée par Expo pour
+  le mobile) et pnpm remonte l'une ou l'autre dans `node_modules/.pnpm/node_modules`, d'où les
+  types de `next` lisent `react`. `apps/backoffice/tsconfig.json` fixe donc `react` / `react-dom`
+  sur les types du back office (`paths`) : sans cela, la CI peut échouer (« Two different types
+  with this name exist ») alors que le poste local passe.
 - Docker en session cloud : `pnpm docker:start` gère le `docker.pid` périmé laissé par un
   redémarrage du conteneur. Après un redémarrage, certains conteneurs Supabase (Realtime) peuvent
   manquer : `supabase stop` puis `supabase start`.

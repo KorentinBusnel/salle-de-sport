@@ -23,7 +23,6 @@ export const BADGE_HREF: Record<BadgeKey, string> = {
   unpaid: "/",
 };
 
-
 /**
  * Barre latérale par rôle :
  * - Quotidien : ce qu'on ouvre chaque jour (accueil, Hub, planning, indicateurs ; fiche et

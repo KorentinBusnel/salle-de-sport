@@ -114,7 +114,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </a>
         <AppSidebar
           gymName={config.identity.name || context.gym.name}
-        gymLogoUrl={config.identity.logoUrl}
+          gymLogoUrl={config.identity.logoUrl}
           displayName={context.displayName}
           roleLabel={t(`roles.${context.role}`)}
           groups={navigation.groups}

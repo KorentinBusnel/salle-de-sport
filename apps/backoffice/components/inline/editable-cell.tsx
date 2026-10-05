@@ -1,7 +1,7 @@
 "use client";
 
 import { disciplineColors } from "@salle/ui";
-import { CheckIcon, ChevronDownIcon, PencilIcon } from "lucide-react";
+import { CalendarIcon, CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon } from "lucide-react";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -20,7 +20,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { OptionVisual, normalizeSearch } from "@/components/forms/combobox";
+import { dateToKey, formatDateKey, keyToDate } from "@/components/forms/date-fields";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Command,
   CommandEmpty,
@@ -28,6 +31,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -35,7 +39,14 @@ import { type MessageKey, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export type CellValue = string | number | boolean | string[] | null;
-export type CellOption = { value: string; label: string; hint?: string | undefined };
+export type CellOption = {
+  value: string;
+  label: string;
+  hint?: string | undefined;
+  /** Pastille de couleur (discipline) ou avatar à initiales (coach). */
+  color?: string | undefined;
+  person?: boolean | undefined;
+};
 export type CellScope = "one" | "following";
 export type CellSave = (input: {
   id: string;
@@ -77,20 +88,33 @@ type Props = Common &
         value: string | null;
         options: CellOption[];
         clearable?: boolean | undefined;
+        /** « Créer « … » » : crée l'option puis la choisit (renvoie sa valeur, ou null). */
+        onCreate?: ((label: string) => Promise<string | null>) | undefined;
       }
-    | { kind: "multi"; value: string[]; options: CellOption[] }
+    | {
+        kind: "multi";
+        value: string[];
+        options: CellOption[];
+        onCreate?: ((label: string) => Promise<string | null>) | undefined;
+      }
   );
 
 /**
- * Cellule éditable « à la Notion » : un clic (ou Entrée) pour modifier, Entrée ou sortie du
- * champ pour enregistrer, Échap pour annuler. Enregistrement optimiste par Server Action ;
- * en cas de refus (règle SQL), la valeur revient et un toast explique pourquoi.
+ * Cellule éditable « à la Notion » : un clic (ou Entrée) pour modifier, Entrée, Tab ou sortie
+ * du champ pour enregistrer, Échap pour annuler (le focus revient sur la cellule). Choix
+ * multiple : enregistré à la fermeture de la liste, sauf Échap. Enregistrement optimiste par
+ * Server Action ; en cas de refus (règle SQL), la valeur revient et un toast explique pourquoi.
  */
 export function EditableCell(props: Props) {
   const [optimistic, setOptimistic] = useOptimistic<CellValue>(props.value);
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  // Sortie du champ au clavier (Entrée, Échap) : la cellule reprend le focus.
+  const [refocus, setRefocus] = useState(false);
   const [scopeFor, setScopeFor] = useState<CellValue | undefined>(undefined);
+  // Choix multiple en cours : enregistré à la fermeture de la liste.
+  const draft = useRef<string[] | null>(null);
+  const escaped = useRef(false);
 
   function commit(value: CellValue, scope?: CellScope) {
     setEditing(false);
@@ -117,7 +141,7 @@ export function EditableCell(props: Props) {
     pending && "opacity-70",
     props.className,
   );
-  const ariaLabel = `${props.label} : ${typeof display === "string" ? display || t("inline.empty") : ""}${props.disabled ? "" : `, ${t("inline.edit")}`}`;
+  const ariaLabel = `${props.label} : ${textValue(props, optimistic) || t("inline.empty")}${props.disabled ? "" : `, ${t("inline.edit")}`}`;
 
   const scopeDialog = (
     <AlertDialog
@@ -173,20 +197,21 @@ export function EditableCell(props: Props) {
     return <span className={triggerClass}>{display}</span>;
   }
 
-  // Champs saisis au clavier : texte, nombre, heure, date.
-  if (
-    props.kind === "text" ||
-    props.kind === "number" ||
-    props.kind === "time" ||
-    props.kind === "date"
-  ) {
+  // Champs saisis au clavier : texte, nombre, heure.
+  if (props.kind === "text" || props.kind === "number" || props.kind === "time") {
     if (editing) {
       return (
         <InlineInput
           {...props}
           initial={optimistic}
-          onCancel={() => setEditing(false)}
-          onCommit={commit}
+          onCancel={(byKeyboard) => {
+            setRefocus(byKeyboard);
+            setEditing(false);
+          }}
+          onCommit={(value, byKeyboard) => {
+            setRefocus(byKeyboard);
+            commit(value);
+          }}
         />
       );
     }
@@ -196,12 +221,13 @@ export function EditableCell(props: Props) {
           type="button"
           className={triggerClass}
           aria-label={ariaLabel}
+          autoFocus={refocus}
           onClick={() => setEditing(true)}
         >
           {display}
           <PencilIcon
             aria-hidden
-            className="ml-auto size-3 shrink-0 text-muted-foreground opacity-0 group-hover/cell:opacity-100"
+            className="ml-auto size-3 shrink-0 text-muted-foreground opacity-0 group-hover/cell:opacity-100 group-focus-visible/cell:opacity-100 pointer-coarse:opacity-100"
           />
         </button>
         {scopeDialog}
@@ -209,21 +235,57 @@ export function EditableCell(props: Props) {
     );
   }
 
-  // Listes : couleur, choix simple, choix multiple (Popover).
+  // Listes et calendrier : couleur, date, choix simple, choix multiple (Popover).
+  const Chevron = props.kind === "date" ? CalendarIcon : ChevronDownIcon;
+  const selectedDay =
+    props.kind === "date" && typeof optimistic === "string" ? keyToDate(optimistic) : undefined;
   return (
     <>
-      <Popover open={editing} onOpenChange={setEditing}>
+      <Popover
+        open={editing}
+        onOpenChange={(open) => {
+          if (open) {
+            draft.current = null;
+            escaped.current = false;
+          } else if (props.kind === "multi" && draft.current && !escaped.current) {
+            commit(draft.current);
+          }
+          setEditing(open);
+        }}
+      >
         <PopoverTrigger asChild>
           <button type="button" className={triggerClass} aria-label={ariaLabel}>
             {display}
-            <ChevronDownIcon
+            <Chevron
               aria-hidden
-              className="ml-auto size-3.5 shrink-0 text-muted-foreground opacity-0 group-hover/cell:opacity-100"
+              className="ml-auto size-3.5 shrink-0 text-muted-foreground opacity-0 group-hover/cell:opacity-100 group-focus-visible/cell:opacity-100 pointer-coarse:opacity-100"
             />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-0" align="start">
-          {props.kind === "color" ? (
+        <PopoverContent
+          className={cn("p-0", props.kind === "date" ? "w-auto" : "w-64")}
+          align="start"
+          onEscapeKeyDown={() => {
+            escaped.current = true;
+          }}
+        >
+          {props.kind === "date" ? (
+            <div className="grid">
+              <Calendar
+                mode="single"
+                {...(selectedDay ? { selected: selectedDay, defaultMonth: selectedDay } : {})}
+                onSelect={(date) => date && commit(dateToKey(date))}
+                autoFocus
+              />
+              {props.clearable && optimistic ? (
+                <div className="border-t p-2">
+                  <Button variant="ghost" size="sm" onClick={() => commit(null)}>
+                    {t("forms.clear")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : props.kind === "color" ? (
             <div className="grid grid-cols-6 gap-2 p-3" role="listbox" aria-label={props.label}>
               {PALETTE.map((color) => (
                 <button
@@ -253,7 +315,14 @@ export function EditableCell(props: Props) {
                     ? []
                     : [String(optimistic)]
               }
-              onCommit={(values) => commit(props.kind === "multi" ? values : (values[0] ?? null))}
+              onChange={(values) => {
+                draft.current = values;
+              }}
+              onCreate={props.onCreate}
+              onCommit={(values) => {
+                draft.current = null;
+                commit(props.kind === "multi" ? values : (values[0] ?? null));
+              }}
             />
           )}
         </PopoverContent>
@@ -274,6 +343,25 @@ const PALETTE = [
   "#0d9488",
   "#9333ea",
 ] as const;
+
+/** Valeur lue par les lecteurs d'écran (nom accessible de la cellule). */
+function textValue(props: Props, value: CellValue): string {
+  switch (props.kind) {
+    case "select":
+      return props.options.find((o) => o.value === value)?.label ?? "";
+    case "multi":
+      return ((value as string[]) ?? [])
+        .map((v) => props.options.find((o) => o.value === v)?.label ?? "")
+        .filter(Boolean)
+        .join(", ");
+    case "date":
+      return typeof value === "string" && value ? formatDateKey(value) : "";
+    case "number":
+      return `${String(value)}${props.unit ? ` ${props.unit}` : ""}`;
+    default:
+      return value === null ? "" : String(value);
+  }
+}
 
 function renderValue(props: Props, value: CellValue): ReactNode {
   switch (props.kind) {
@@ -298,7 +386,10 @@ function renderValue(props: Props, value: CellValue): ReactNode {
     case "select": {
       const option = props.options.find((o) => o.value === value);
       return option ? (
-        option.label
+        <span className="flex min-w-0 items-center gap-2">
+          <OptionVisual option={option} />
+          <span className="truncate">{option.label}</span>
+        </span>
       ) : (
         <span className="text-muted-foreground">{t("inline.none")}</span>
       );
@@ -308,17 +399,30 @@ function renderValue(props: Props, value: CellValue): ReactNode {
       if (!values.length) return <span className="text-muted-foreground">{t("inline.none")}</span>;
       return (
         <span className="flex flex-wrap gap-1">
-          {values.map((v) => (
-            <span key={v} className="rounded-full bg-muted px-2 py-0.5 text-xs whitespace-nowrap">
-              {props.options.find((o) => o.value === v)?.label ?? "?"}
-            </span>
-          ))}
+          {values.map((v) => {
+            const option = props.options.find((o) => o.value === v);
+            return (
+              <span
+                key={v}
+                className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs whitespace-nowrap"
+              >
+                {option?.color ? (
+                  <span
+                    aria-hidden
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: option.color }}
+                  />
+                ) : null}
+                {option?.label ?? "?"}
+              </span>
+            );
+          })}
         </span>
       );
     }
     case "date":
       return value ? (
-        String(value)
+        <span className="tabular-nums">{formatDateKey(String(value))}</span>
       ) : (
         <span className="text-muted-foreground">{t("inline.none")}</span>
       );
@@ -336,11 +440,15 @@ function InlineInput({
   onCancel,
   onCommit,
   ...props
-}: Props & { initial: CellValue; onCancel: () => void; onCommit: (value: CellValue) => void }) {
+}: Props & {
+  initial: CellValue;
+  onCancel: (byKeyboard: boolean) => void;
+  onCommit: (value: CellValue, byKeyboard: boolean) => void;
+}) {
   const [text, setText] = useState(initial === null ? "" : String(initial));
   const done = useRef(false);
 
-  function finish() {
+  function finish(byKeyboard: boolean) {
     if (done.current) return;
     done.current = true;
     if (props.kind === "number") {
@@ -349,30 +457,26 @@ function InlineInput({
         toast.error(t("inline.outOfRange", { min: props.min, max: props.max }), {
           closeButton: true,
         });
-        onCancel();
+        onCancel(byKeyboard);
         return;
       }
-      onCommit(Math.round(value));
-      return;
-    }
-    if (props.kind === "date") {
-      onCommit(text === "" ? null : text);
+      onCommit(Math.round(value), byKeyboard);
       return;
     }
     if (props.kind === "text" && text.trim() === "") {
-      onCancel();
+      onCancel(byKeyboard);
       return;
     }
-    onCommit(props.kind === "text" ? text.trim() : text);
+    onCommit(props.kind === "text" ? text.trim() : text, byKeyboard);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
-      finish();
+      finish(true);
     } else if (event.key === "Escape") {
       done.current = true;
-      onCancel();
+      onCancel(true);
     }
   }
 
@@ -388,7 +492,8 @@ function InlineInput({
       maxLength={props.kind === "text" ? (props.maxLength ?? 120) : undefined}
       value={text}
       onChange={(event) => setText(event.target.value)}
-      onBlur={finish}
+      // Tab ou clic ailleurs : enregistre, le focus suit son chemin naturel.
+      onBlur={() => finish(false)}
       onKeyDown={onKeyDown}
       className="h-8 w-full min-w-0 rounded-md border border-ring bg-card px-2 text-sm tabular-nums outline-none ring-3 ring-ring/30 pointer-coarse:h-10"
     />
@@ -401,6 +506,8 @@ function OptionList({
   multiple,
   clearable,
   initial,
+  onChange,
+  onCreate,
   onCommit,
 }: {
   label: string;
@@ -408,12 +515,32 @@ function OptionList({
   multiple: boolean;
   clearable: boolean;
   initial: string[];
+  onChange: (values: string[]) => void;
+  onCreate?: ((label: string) => Promise<string | null>) | undefined;
   onCommit: (values: string[]) => void;
 }) {
   const [selected, setSelected] = useState<string[]>(initial);
+  const [search, setSearch] = useState("");
+  const [creating, startCreate] = useTransition();
+  const query = search.trim();
+  const canCreate =
+    onCreate &&
+    query !== "" &&
+    !options.some((option) => normalizeSearch(option.label) === normalizeSearch(query));
+
+  function update(next: string[]) {
+    setSelected(next);
+    onChange(next);
+  }
+
   return (
     <Command>
-      <CommandInput placeholder={t("inline.search")} aria-label={label} />
+      <CommandInput
+        placeholder={t("inline.search")}
+        aria-label={label}
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
         <CommandEmpty>{t("inline.noResult")}</CommandEmpty>
         <CommandGroup>
@@ -430,12 +557,13 @@ function OptionList({
                 value={`${option.label} ${option.value}`}
                 onSelect={() => {
                   if (!multiple) return onCommit([option.value]);
-                  setSelected((current) =>
+                  update(
                     checked
-                      ? current.filter((v) => v !== option.value)
-                      : [...current, option.value],
+                      ? selected.filter((v) => v !== option.value)
+                      : [...selected, option.value],
                   );
                 }}
+                className="pointer-coarse:py-2.5"
               >
                 <span
                   aria-hidden
@@ -446,7 +574,8 @@ function OptionList({
                 >
                   {checked ? <CheckIcon className="size-3" /> : null}
                 </span>
-                <span className="flex-1">{option.label}</span>
+                <OptionVisual option={option} />
+                <span className="flex-1 truncate">{option.label}</span>
                 {option.hint ? (
                   <span className="text-xs text-muted-foreground">{option.hint}</span>
                 ) : null}
@@ -454,6 +583,30 @@ function OptionList({
             );
           })}
         </CommandGroup>
+        {canCreate ? (
+          <>
+            <CommandSeparator />
+            <CommandGroup forceMount>
+              <CommandItem
+                forceMount
+                value={`__create__${query}`}
+                disabled={creating}
+                onSelect={() =>
+                  startCreate(async () => {
+                    const value = await onCreate(query);
+                    if (!value) return;
+                    setSearch("");
+                    if (multiple) update([...selected, value]);
+                    else onCommit([value]);
+                  })
+                }
+              >
+                <PlusIcon aria-hidden />
+                <span className="truncate">{t("forms.create", { query })}</span>
+              </CommandItem>
+            </CommandGroup>
+          </>
+        ) : null}
       </CommandList>
       {multiple ? (
         <div className="flex justify-end gap-2 border-t p-2">

@@ -2334,6 +2334,13 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      tag_suggestions: {
+        Args: { p_gym_id: string; p_limit?: number; p_query?: string };
+        Returns: {
+          tag: string;
+          uses: number;
+        }[];
+      };
       team_members: {
         Args: { p_gym_id: string };
         Returns: {

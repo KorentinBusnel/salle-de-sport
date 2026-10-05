@@ -35,6 +35,7 @@ import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { getTeamOptions } from "@/lib/team";
 import { cn } from "@/lib/utils";
+import { getCrmTodo } from "@/lib/nav-counts";
 
 export const metadata: Metadata = { title: t("nav.today") };
 
@@ -96,7 +97,7 @@ export default async function DashboardPage() {
         .lt("starts_at", end.toISOString())
         .gt("ends_at", start.toISOString())
         .order("starts_at"),
-      manager ? supabase.rpc("crm_todo", { p_gym_id: context.gym.id }) : null,
+      manager ? getCrmTodo(context.gym.id) : [],
       manager ? supabase.rpc("unpaid_members", { p_gym_id: context.gym.id }) : null,
       configured ? getTodayDigest(context) : null,
       manager ? getTeamOptions(context) : [],
@@ -136,7 +137,7 @@ export default async function DashboardPage() {
 
   const shifts = shiftsResult.data ?? [];
   const gaps = uncoveredIntervals(deskWindow(scheduled), shifts);
-  const todo = todoResult?.data ?? [];
+  const todo = todoResult;
   const todoTotal = todo.reduce((sum, row) => sum + row.total, 0);
   const unpaid = unpaidResult?.data ?? [];
   const unpaidTotal = unpaid.reduce((sum, row) => sum + row.amount_cents, 0);

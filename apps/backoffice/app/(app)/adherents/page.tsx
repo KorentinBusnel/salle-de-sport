@@ -33,6 +33,7 @@ import { t } from "@/lib/i18n";
 import { getGymSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+import { getCrmTodo } from "@/lib/nav-counts";
 import { adjustCredits, createMember, setMemberStatus } from "./actions";
 
 export const metadata: Metadata = { title: t("members.title") };
@@ -78,9 +79,7 @@ export default async function MembersPage({
       .eq("status", s);
   const todoKind = manager ? TODO_KINDS.find((k) => k === params.a_faire) : undefined;
   const todoIds = todoKind
-    ? ((await supabase.rpc("crm_todo", { p_gym_id: context.gym.id })).data?.find(
-        (row) => row.kind === todoKind,
-      )?.member_ids ?? [])
+    ? ((await getCrmTodo(context.gym.id)).find((row) => row.kind === todoKind)?.member_ids ?? [])
     : null;
   const [result, ...counts] = await Promise.all([
     todoIds

@@ -2118,6 +2118,15 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      nav_counts: {
+        Args: { p_gym_id: string };
+        Returns: {
+          prospects: number;
+          trials_to_call: number;
+          unanswered: number;
+          unpaid: number;
+        }[];
+      };
       preview_template: {
         Args: { p_body: string; p_gym_id: string; p_member_id?: string; p_subject: string };
         Returns: {

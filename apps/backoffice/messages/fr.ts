@@ -78,6 +78,7 @@ export const fr = {
   },
   nav: {
     signOut: "Se déconnecter",
+    signingOut: "Déconnexion…",
     groupDaily: "Quotidien",
     groupOperations: "Opérations",
     groupSettings: "Paramètres",

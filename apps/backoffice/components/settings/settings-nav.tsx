@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkPending } from "@/components/link-pending";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,7 +24,7 @@ export function SettingsNav({
           href={section.href}
           aria-current={section.current ? "page" : undefined}
           className={cn(
-            "grid shrink-0 gap-0.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
+            "relative grid shrink-0 gap-0.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
             section.current
               ? "bg-accent text-accent-foreground shadow-[inset_0_0_0_1px_var(--color-brand-100)]"
               : "text-foreground hover:bg-muted",
@@ -38,6 +39,7 @@ export function SettingsNav({
           >
             {section.hint}
           </span>
+          <LinkPending className="absolute top-3.5 right-3 size-1.5" />
         </Link>
       ))}
     </nav>

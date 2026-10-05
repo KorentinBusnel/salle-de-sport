@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { buildNavigation } from "./navigation";
 
-const none = { prospects: 0, unanswered: 0, ownCoachId: null };
+const none = { ownCoachId: null };
+const badge = (nav: ReturnType<typeof buildNavigation>, href: string) =>
+  nav.groups.flatMap((g) => g.items).find((i) => i.href === href)?.badge;
 const hrefs = (nav: ReturnType<typeof buildNavigation>) =>
   Object.fromEntries(nav.groups.map((g) => [g.label, g.items.map((i) => i.href)]));
 
 describe("buildNavigation", () => {
   it("gérant : quotidien et opérations, Paramètres en pied", () => {
-    const nav = buildNavigation("manager", { ...none, prospects: 3, unanswered: 2 });
+    const nav = buildNavigation("manager", none);
     expect(hrefs(nav)).toEqual({
       Quotidien: ["/", "/hub", "/planning", "/indicateurs"],
       Opérations: [
@@ -21,26 +23,34 @@ describe("buildNavigation", () => {
       ],
     });
     expect(nav.footer.map((i) => i.href)).toEqual(["/parametres"]);
-    const operations = nav.groups[1]?.items ?? [];
-    expect(operations.find((i) => i.href === "/adherents")?.badge).toBe(3);
-    expect(operations.find((i) => i.href === "/messages")?.badge).toBe(2);
+    // Pastilles par défaut : prospects et messages sans réponse.
+    expect(badge(nav, "/adherents")).toBe("prospects");
+    expect(badge(nav, "/messages")).toBe("unanswered");
+    expect(badge(nav, "/crm")).toBeUndefined();
   });
 
-  it("admin : comme le gérant, même s'il est aussi coach ; pas de pastille à zéro", () => {
-    const nav = buildNavigation("admin", { ...none, ownCoachId: "c" });
+  it("admin : comme le gérant, même s'il est aussi coach", () => {
+    const nav = buildNavigation("admin", { ownCoachId: "c" });
     expect(hrefs(nav)["Quotidien"]).toEqual(["/", "/hub", "/planning", "/indicateurs"]);
-    expect(nav.groups[1]?.items[0]?.badge).toBeUndefined();
+  });
+
+  it("pastilles choisies : chacune sur l'entrée qui la porte", () => {
+    const nav = buildNavigation("manager", { ...none, badges: ["trials_to_call", "unpaid"] });
+    expect(badge(nav, "/crm")).toBe("trials_to_call");
+    expect(badge(nav, "/")).toBe("unpaid");
+    expect(badge(nav, "/adherents")).toBeUndefined();
+    expect(badge(nav, "/messages")).toBeUndefined();
   });
 
   it("accueil : planning et adhérents (pastille des prospects), pas de paramètres", () => {
-    const nav = buildNavigation("staff", { ...none, prospects: 4, unanswered: 9 });
+    const nav = buildNavigation("staff", none);
     expect(hrefs(nav)).toEqual({ Quotidien: ["/", "/planning"], Opérations: ["/adherents"] });
-    expect(nav.groups[1]?.items[0]?.badge).toBe(4);
+    expect(badge(nav, "/adherents")).toBe("prospects");
     expect(nav.footer).toEqual([]);
   });
 
   it("coach : sa fiche et ses heures au quotidien, rien d'autre", () => {
-    const nav = buildNavigation("coach", { ...none, ownCoachId: "c1" });
+    const nav = buildNavigation("coach", { ownCoachId: "c1" });
     expect(hrefs(nav)).toEqual({
       Quotidien: ["/", "/planning", "/coachs/c1", "/coachs/heures"],
     });

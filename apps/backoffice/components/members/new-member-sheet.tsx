@@ -45,10 +45,13 @@ const EMPTY: NewMemberState = {
 /** Création d'une fiche : panneau latéral, doublons signalés avant de confirmer. */
 export function NewMemberSheet({
   action,
+  defaultOpen = false,
 }: {
   action: (state: NewMemberState, formData: FormData) => Promise<NewMemberState>;
+  /** Ouvert d'emblée (« + Nouveau › Adhérent » de la barre du haut). */
+  defaultOpen?: boolean | undefined;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>

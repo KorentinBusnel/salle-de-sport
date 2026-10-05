@@ -49,6 +49,7 @@ export default async function MembersPage({
     tag?: string;
     page?: string;
     ok?: string;
+    nouveau?: string;
     erreur?: string;
   }>;
 }) {
@@ -141,7 +142,11 @@ export default async function MembersPage({
       <PageHeader
         title={t("members.title")}
         description={t("members.count", { count: total })}
-        actions={canCreate ? <NewMemberSheet action={createMember} /> : undefined}
+        actions={
+          canCreate ? (
+            <NewMemberSheet action={createMember} defaultOpen={params.nouveau === "1"} />
+          ) : undefined
+        }
       />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

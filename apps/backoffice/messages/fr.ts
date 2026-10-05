@@ -15,6 +15,21 @@ export const fr = {
   topbar: {
     searchPlaceholder: "Rechercher un adhérent…",
     searchLabel: "Rechercher un adhérent (raccourci /)",
+    searchOrAsk: "Rechercher un adhérent, ou demander à l'assistant…",
+    paletteHelp: "Tapez un nom pour trouver un adhérent, ou une question pour l'assistant.",
+    minChars: "Tapez au moins 2 lettres.",
+    noResults: "Aucun adhérent trouvé.",
+    membersGroup: "Adhérents",
+    assistantGroup: "Assistant",
+    askAbout: "Demander à l'assistant : « {question} »",
+    allResults: "Voir tous les résultats pour « {query} »",
+    breadcrumb: "Fil d'Ariane",
+    new: "Nouveau",
+    newItem: {
+      member: "Adhérent",
+      session: "Séance",
+      campaign: "Campagne",
+    },
   },
   ui: {
     close: "Fermer",

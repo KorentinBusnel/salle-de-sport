@@ -38,6 +38,8 @@ import { adjustCredits, createMember, setMemberStatus } from "./actions";
 export const metadata: Metadata = { title: t("members.title") };
 
 const STATUSES = ["prospect", "active", "suspended", "cancelled"] as const;
+/** Listes « CRM à compléter » de l'accueil (gérant) : `?a_faire=<kind>`. */
+const TODO_KINDS = ["incomplete", "unanswered", "trials_to_call"] as const;
 const PAGE_SIZE = 25;
 
 export default async function MembersPage({
@@ -50,6 +52,7 @@ export default async function MembersPage({
     page?: string;
     ok?: string;
     nouveau?: string;
+    a_faire?: string;
     erreur?: string;
   }>;
 }) {
@@ -73,15 +76,37 @@ export default async function MembersPage({
       .select("id", { count: "exact", head: true })
       .eq("gym_id", context.gym.id)
       .eq("status", s);
+  const todoKind = manager ? TODO_KINDS.find((k) => k === params.a_faire) : undefined;
+  const todoIds = todoKind
+    ? ((await supabase.rpc("crm_todo", { p_gym_id: context.gym.id })).data?.find(
+        (row) => row.kind === todoKind,
+      )?.member_ids ?? [])
+    : null;
   const [result, ...counts] = await Promise.all([
-    supabase.rpc("search_members", {
-      p_gym_id: context.gym.id,
-      ...(search ? { p_query: search } : {}),
-      ...(status ? { p_statuses: [status] } : {}),
-      ...(tag ? { p_tag: tag } : {}),
-      p_limit: PAGE_SIZE,
-      p_offset: (page - 1) * PAGE_SIZE,
-    }),
+    todoIds
+      ? supabase
+          .from("members")
+          .select("id, first_name, last_name, email, phone, status, tags")
+          .eq("gym_id", context.gym.id)
+          .in("id", todoIds.length ? todoIds : ["00000000-0000-0000-0000-000000000000"])
+          .order("last_name")
+          .then(({ data, error }) => ({
+            error,
+            data: (data ?? []).map((m) => ({
+              ...m,
+              email: m.email ?? "",
+              phone: m.phone ?? "",
+              total_count: data?.length ?? 0,
+            })),
+          }))
+      : supabase.rpc("search_members", {
+          p_gym_id: context.gym.id,
+          ...(search ? { p_query: search } : {}),
+          ...(status ? { p_statuses: [status] } : {}),
+          ...(tag ? { p_tag: tag } : {}),
+          p_limit: PAGE_SIZE,
+          p_offset: (page - 1) * PAGE_SIZE,
+        }),
     ...STATUSES.map(countFor),
   ]);
   const statusCount = new Map(STATUSES.map((s, i) => [s, counts[i]?.count ?? 0]));
@@ -203,6 +228,16 @@ export default async function MembersPage({
         </form>
       </div>
 
+      {todoKind ? (
+        <p className="flex items-center gap-2 text-sm">
+          <span className="rounded-full bg-accent px-3 py-0.5 font-medium text-accent-foreground">
+            {t(`members.todo.${todoKind}`)}
+          </span>
+          <Link href="/adherents" className="text-muted-foreground underline hover:text-foreground">
+            {t("members.clearTag")}
+          </Link>
+        </p>
+      ) : null}
       {tag ? (
         <p className="flex items-center gap-2 text-sm">
           {t("members.taggedWith")}

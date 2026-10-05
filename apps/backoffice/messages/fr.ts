@@ -319,6 +319,11 @@ export const fr = {
       "{count, plural, =0 {Aucune nouvelle séance : elles existent déjà.} one {# séance créée.} other {# séances créées.}}",
   },
   members: {
+    todo: {
+      incomplete: "Fiches incomplètes",
+      unanswered: "Messages sans réponse",
+      trials_to_call: "Essais à rappeler",
+    },
     title: "Adhérents",
     count: "{count, plural, =0 {Aucun résultat} one {# adhérent} other {# adhérents}}",
     searchPlaceholder: "Nom, email ou téléphone",
@@ -406,6 +411,14 @@ export const fr = {
       equipe: "Équipe",
       integrations: "Intégrations",
     },
+    tabHint: {
+      general: "Réservations et annulations",
+      strategies: "Relances, pointage, droits de l'accueil",
+      catalogue: "Disciplines et salles",
+      equipe: "Accès du personnel et des coachs",
+      integrations: "Assistant, emails, WhatsApp, banque, paiements",
+    },
+    description: "Les règles de {gym}, son catalogue, son équipe et ses services connectés.",
     bookingRules: "Règles de réservation",
     bookingRulesHint: "Appliquées immédiatement dans l'app des adhérents.",
     maxUpcoming: "Nombre maximum de réservations à venir par adhérent",
@@ -839,9 +852,14 @@ export const fr = {
       hint: "Messages WhatsApp entrants et sortants dans la timeline.",
       next: "À brancher : numéro dédié et compte Meta Business vérifié.",
     },
+    qonto: {
+      name: "Qonto",
+      hint: "Opérations bancaires et trésorerie, en lecture seule : prélèvements rejetés, solde prévisionnel.",
+      next: "À brancher : accès API Qonto (lecture seule).",
+    },
     pennylane: {
       name: "Pennylane",
-      hint: "Chiffre d'affaires, charges et trésorerie, en lecture seule.",
+      hint: "Factures fournisseurs, échéances et rapprochements, en lecture seule.",
       next: "À brancher : clé API Pennylane.",
     },
     stripe: {

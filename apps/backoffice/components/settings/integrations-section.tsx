@@ -1,5 +1,6 @@
 import {
   BotIcon,
+  CalculatorIcon,
   CreditCardIcon,
   LandmarkIcon,
   type LucideIcon,
@@ -13,7 +14,7 @@ import { type MessageKey, t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 type Provider = {
-  key: "claude" | "gmail" | "whatsapp" | "pennylane" | "stripe";
+  key: "claude" | "gmail" | "whatsapp" | "qonto" | "pennylane" | "stripe";
   icon: LucideIcon;
   status: "connected" | "missing" | "later" | "payments";
   detail?: string | undefined;
@@ -53,9 +54,11 @@ export async function IntegrationsSection({ gymId }: { gymId: string }) {
       icon: MessageCircleIcon,
       status: connected("whatsapp") ? "connected" : "later",
     },
+    // Qonto : connecteur prévu (BRIEF §12), pas encore de fournisseur dans `integrations`.
+    { key: "qonto", icon: LandmarkIcon, status: "later" },
     {
       key: "pennylane",
-      icon: LandmarkIcon,
+      icon: CalculatorIcon,
       status: connected("pennylane") ? "connected" : "later",
     },
     { key: "stripe", icon: CreditCardIcon, status: "payments" },

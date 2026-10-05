@@ -1,6 +1,6 @@
--- Hub 360° : conversations privées, briefs, session_stats, message direct, journal IA.
+-- Hub 360° : conversations privées, session_stats, message direct, journal IA.
 begin;
-select plan(17);
+select plan(15);
 
 insert into auth.users (id, email) values
   ('c0000001-0000-0000-0000-000000000001', 'h-gerant@test.local'),
@@ -59,14 +59,6 @@ select throws_ok($$insert into public.ai_conversations (gym_id, profile_id) valu
   '42501', null, 'accueil : pas d''assistant');
 select pg_temp.login_as('c0000001-0000-0000-0000-000000000005');
 select is((select count(*) from public.ai_messages), 0::bigint, 'autre salle : rien');
-
--- Brief hebdomadaire
-select pg_temp.login_as('c0000001-0000-0000-0000-000000000001');
-select lives_ok($$insert into public.weekly_briefs (gym_id, week_start, content, generated_by) values
-  ('ca000001-0000-0000-0000-000000000000', '2026-03-09', 'Brief', 'c0000001-0000-0000-0000-000000000001')$$,
-  'gérant : enregistre le brief');
-select pg_temp.login_as('c0000001-0000-0000-0000-000000000003');
-select is((select count(*) from public.weekly_briefs), 0::bigint, 'accueil : ne voit pas le brief');
 
 -- Statistiques de séances
 select pg_temp.login_as('c0000001-0000-0000-0000-000000000001');

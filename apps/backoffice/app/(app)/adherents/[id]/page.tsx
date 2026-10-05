@@ -39,7 +39,15 @@ import { getGymSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { adjustCredits, setMemberStatus } from "../actions";
-import { addNote, addTag, bookFromProfile, removeTag, setConsent, updateContact } from "./actions";
+import {
+  addNote,
+  addTag,
+  bookFromProfile,
+  removeTag,
+  saveCareNote,
+  setConsent,
+  updateContact,
+} from "./actions";
 
 export const metadata: Metadata = { title: t("memberProfile.title") };
 
@@ -81,6 +89,12 @@ export default async function MemberProfilePage({
     .maybeSingle();
   if (!member) notFound();
   const name = `${member.first_name} ${member.last_name}`;
+
+  const { data: careNote } = await supabase
+    .from("member_care_notes")
+    .select("note, updated_at")
+    .eq("member_id", id)
+    .maybeSingle();
 
   const [bookingsRes, ledgerRes, subscriptionRes, interactionsRes, upcomingRes] = await Promise.all(
     [
@@ -246,6 +260,15 @@ export default async function MemberProfilePage({
         }
       />
       <Flash ok={query.ok} error={query.erreur} />
+      {careNote ? (
+        <p className="flex items-start gap-2 rounded-xl bg-warning/10 px-4 py-3 text-sm ring-1 ring-warning/25">
+          <NotebookPenIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+          <span>
+            <span className="font-medium">{t("memberProfile.careNote")} : </span>
+            {careNote.note}
+          </span>
+        </p>
+      ) : null}
 
       <nav
         aria-label={t("memberProfile.tabs")}
@@ -404,6 +427,28 @@ export default async function MemberProfilePage({
 
       {tab === "profil" ? (
         <div className="grid items-start gap-6 lg:grid-cols-2">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>{t("memberProfile.careNote")}</CardTitle>
+              <CardDescription>{t("memberProfile.careNoteHint")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form action={saveCareNote} className="grid gap-3">
+                {hidden()}
+                <Textarea
+                  name="careNote"
+                  defaultValue={careNote?.note ?? ""}
+                  maxLength={500}
+                  rows={2}
+                  aria-label={t("memberProfile.careNote")}
+                  placeholder={t("memberProfile.careNotePlaceholder")}
+                />
+                <SubmitButton size="sm" variant="outline" className="w-fit">
+                  {t("memberProfile.careNoteSave")}
+                </SubmitButton>
+              </form>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>{t("memberProfile.contact")}</CardTitle>

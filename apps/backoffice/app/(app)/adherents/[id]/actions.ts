@@ -140,3 +140,22 @@ export async function bookFromProfile(formData: FormData) {
   });
   done(path, error, data?.status === "waitlisted" ? "session.addedToWaitlist" : "session.booked");
 }
+
+/** Note « à savoir » (santé, blessure…) : accueil et gérant ; vide = supprimée. */
+export async function saveCareNote(formData: FormData) {
+  const context = await requireRole(isFrontDeskRole);
+  const { id, path } = target(formData);
+  const note = z
+    .string()
+    .trim()
+    .max(500)
+    .safeParse(formData.get("careNote") ?? "");
+  if (!note.success) redirect(withFlash(path, { error: "memberProfile.careNoteTooLong" }));
+  const supabase = await createClient();
+  const { error } = note.data
+    ? await supabase
+        .from("member_care_notes")
+        .upsert({ member_id: id, gym_id: context.gym.id, note: note.data })
+    : await supabase.from("member_care_notes").delete().eq("member_id", id);
+  done(path, error, note.data ? "memberProfile.careNoteSaved" : "memberProfile.careNoteCleared");
+}

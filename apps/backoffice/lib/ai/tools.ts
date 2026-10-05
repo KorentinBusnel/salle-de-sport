@@ -311,6 +311,99 @@ export const assistantTools: AgentTool<ToolContext>[] = [
   }),
 
   defineTool({
+    name: "get_today_board",
+    description:
+      "Journée d'une date (aujourd'hui par défaut) : essais et nouveaux venus (1re ou 2e séance) par séance, et permanences à l'accueil. N'expose jamais le contenu des notes « à savoir », seulement leur présence.",
+    schema: z.object({ date: date.optional() }),
+    step: t("assistant.steps.today"),
+    async run(ctx, input) {
+      const day = input.date ?? ctx.today;
+      const start = zonedStartOfDateKey(day, ctx.timezone);
+      const end = zonedStartOfDateKey(shiftDay(day, 1), ctx.timezone);
+      const [trials, shifts] = await Promise.all([
+        ctx.supabase.rpc("today_trials", { p_gym_id: ctx.gymId, p_day: day }),
+        ctx.supabase
+          .from("desk_shifts")
+          .select("starts_at, ends_at, profiles!desk_shifts_profile_id_fkey(first_name, last_name)")
+          .eq("gym_id", ctx.gymId)
+          .lt("starts_at", end.toISOString())
+          .gt("ends_at", start.toISOString())
+          .order("starts_at"),
+      ]);
+      fail(trials.error);
+      fail(shifts.error);
+      return {
+        date: day,
+        newcomers: (trials.data ?? []).map((row) => ({
+          session_id: row.session_id,
+          starts_at: row.starts_at,
+          discipline: row.discipline,
+          coaches: row.coaches,
+          member_id: row.member_id,
+          name: `${row.first_name} ${row.last_name}`,
+          trial: row.is_trial,
+          visit: row.visit_number,
+          has_note: row.note !== null,
+        })),
+        desk_shifts: (shifts.data ?? []).map((row) => ({
+          starts_at: row.starts_at,
+          ends_at: row.ends_at,
+          who: row.profiles
+            ? `${row.profiles.first_name ?? ""} ${row.profiles.last_name ?? ""}`.trim()
+            : null,
+        })),
+      };
+    },
+  }),
+
+  defineTool({
+    name: "get_crm_todo",
+    description:
+      "CRM à compléter : fiches sans email ou téléphone, adhérents dont le dernier message est resté sans réponse, prospects venus ces 7 derniers jours à rappeler. Totaux et 10 premiers noms.",
+    schema: z.object({}),
+    step: t("assistant.steps.crm"),
+    async run(ctx) {
+      const { data, error } = await ctx.supabase.rpc("crm_todo", { p_gym_id: ctx.gymId });
+      fail(error);
+      const ids = [...new Set((data ?? []).flatMap((row) => row.member_ids.slice(0, 10)))];
+      const { data: members, error: membersError } = ids.length
+        ? await ctx.supabase.from("members").select("id, first_name, last_name").in("id", ids)
+        : { data: [], error: null };
+      fail(membersError);
+      const names = new Map((members ?? []).map((m) => [m.id, `${m.first_name} ${m.last_name}`]));
+      return Object.fromEntries(
+        (data ?? []).map((row) => [
+          row.kind,
+          {
+            total: row.total,
+            members: row.member_ids.slice(0, 10).map((id) => ({ id, name: names.get(id) ?? null })),
+          },
+        ]),
+      );
+    },
+  }),
+
+  defineTool({
+    name: "get_unpaid",
+    description:
+      "Impayés clients : adhérents avec des prélèvements échoués depuis leur dernier paiement réussi ou un abonnement en retard. Montant, nombre d'échecs, date du premier échec.",
+    schema: z.object({}),
+    step: t("assistant.steps.unpaid"),
+    async run(ctx) {
+      const { data, error } = await ctx.supabase.rpc("unpaid_members", { p_gym_id: ctx.gymId });
+      fail(error);
+      return (data ?? []).map((row) => ({
+        member_id: row.member_id,
+        name: `${row.first_name} ${row.last_name}`,
+        plan: row.plan,
+        amount_eur: row.amount_cents / 100,
+        failures: row.failures,
+        first_failed_at: row.first_failed_at,
+      }));
+    },
+  }),
+
+  defineTool({
     name: "propose_message",
     description:
       "Prépare un message (relance, information) à des adhérents précis, affiché au gérant pour validation. N'envoie rien. Variables possibles : {prenom}, {nom}, {salle}.",
@@ -364,20 +457,15 @@ export const assistantTools: AgentTool<ToolContext>[] = [
 ];
 
 /** Consigne système : rôle, salle, date, règles de réponse et de sécurité. */
-export function systemPrompt(
-  gymName: string,
-  today: string,
-  timezone: string,
-  memberContext?: string,
-) {
+export function systemPrompt(gymName: string, today: string, timezone: string, extra?: string) {
   return [
     `Tu es l'assistant du back office de la salle de sport « ${gymName} ». Tu réponds au gérant en français, de façon concise et chiffrée.`,
     `Aujourd'hui : ${today} (fuseau ${timezone}). Les semaines vont du lundi au dimanche.`,
     "Utilise les outils pour toute donnée : n'invente jamais un chiffre, un nom ni une date. Si un outil ne couvre pas la question, dis-le.",
-    "Les données financières (chiffre d'affaires, marge, impayés) ne sont pas encore disponibles : Stripe et Pennylane seront branchés plus tard.",
+    "Finances : seuls les impayés clients sont disponibles (get_unpaid). Chiffre d'affaires, trésorerie et factures fournisseurs attendent Stripe, Qonto et Pennylane : dis-le si on te les demande.",
     "Liens internes en Markdown : adhérent [Prénom Nom](/adherents/<id>), séance [CrossFit du 12/10 18h30](/planning/<id>), pages /indicateurs, /segments, /messages.",
     "Tu ne peux rien envoyer ni modifier toi-même : pour un message ou un segment, utilise propose_message ou propose_segment ; le gérant valide dans l'interface.",
     "Ne cite téléphone ou email que si on te les demande. Mise en forme : phrases courtes, listes à puces, gras pour les chiffres clés.",
-    ...(memberContext ? [memberContext] : []),
+    ...(extra ? [extra] : []),
   ].join("\n");
 }

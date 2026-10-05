@@ -1,6 +1,6 @@
 import "server-only";
 import { zonedDateKey } from "@salle/shared";
-import { type AgentMessage, runAgent, type Turn } from "@/lib/ai/agent";
+import { type AgentMessage, type AgentTool, runAgent, type Turn } from "@/lib/ai/agent";
 import { assistantTools, systemPrompt, type ToolContext } from "@/lib/ai/tools";
 import type { AssistantEvent, Proposal } from "@/lib/ai/types";
 import type { TeamContext } from "@/lib/auth";
@@ -16,6 +16,8 @@ export async function askAssistant({
   question,
   memberId,
   conversationId,
+  tools = assistantTools,
+  instructions,
   emit,
 }: {
   context: TeamContext;
@@ -25,6 +27,10 @@ export async function askAssistant({
   question: string;
   memberId?: string | undefined;
   conversationId?: string | undefined;
+  /** Outils disponibles (par défaut ceux de l'assistant). */
+  tools?: AgentTool<ToolContext>[] | undefined;
+  /** Consignes ajoutées à la consigne système (génération du digest…). */
+  instructions?: string | undefined;
   emit: (event: AssistantEvent) => void;
 }) {
   const supabase = await createClient();
@@ -48,9 +54,14 @@ export async function askAssistant({
   };
   const result = await runAgent({
     turn,
-    system: systemPrompt(context.gym.name, today, context.gym.timezone, memberContext),
+    system: systemPrompt(
+      context.gym.name,
+      today,
+      context.gym.timezone,
+      [memberContext, instructions].filter(Boolean).join("\n") || undefined,
+    ),
     history: [...history, { role: "user", content: question }],
-    tools: assistantTools,
+    tools,
     ctx,
     onText: (delta) => emit({ type: "text", delta }),
     onStep: (label) => emit({ type: "step", label }),

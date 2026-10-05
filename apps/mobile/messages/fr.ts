@@ -150,6 +150,7 @@ export const fr = {
     session_full: "Ce cours est complet.",
     attendance_not_open: "Le pointage n'est pas encore ouvert.",
     strategy_disabled: "Action désactivée par la salle.",
+    not_team_member: "Personne hors de l'équipe.",
     invalid_amount: "Montant invalide.",
     reason_required: "Motif obligatoire.",
     insufficient_credits: "Crédits insuffisants.",

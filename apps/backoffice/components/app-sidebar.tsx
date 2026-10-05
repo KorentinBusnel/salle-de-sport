@@ -81,20 +81,23 @@ export function AppSidebar({
   displayName,
   roleLabel,
   groups,
+  footer,
   signOut,
 }: {
   gymName: string;
   displayName: string;
   roleLabel: string;
   groups: NavGroup[];
+  footer: NavItem[];
   signOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
-  const active = activeHref(
-    pathname,
-    groups.flatMap((group) => group.items.map((item) => item.href)),
-  );
+  const active = activeHref(pathname, [
+    ...groups.flatMap((group) => group.items.map((item) => item.href)),
+    ...footer.map((item) => item.href),
+  ]);
+  const close = () => isMobile && setOpenMobile(false);
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -102,7 +105,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/" onClick={() => isMobile && setOpenMobile(false)}>
+              <Link href="/" onClick={close}>
                 <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
                   {initials(gymName)}
                 </span>
@@ -122,37 +125,14 @@ export function AppSidebar({
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => {
-                  const Icon = ICONS[item.icon];
-                  const isActive = item.href === active;
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={item.label}
-                        className="pointer-coarse:h-10"
-                      >
-                        <Link
-                          href={item.href}
-                          aria-current={isActive ? "page" : undefined}
-                          onClick={() => isMobile && setOpenMobile(false)}
-                        >
-                          <Icon />
-                          <span>{item.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                      {item.badge ? (
-                        <SidebarMenuBadge
-                          className="bg-primary text-primary-foreground tabular-nums peer-data-active/menu-button:text-primary-foreground"
-                          aria-label={t("nav.badge", { count: item.badge })}
-                        >
-                          {item.badge}
-                        </SidebarMenuBadge>
-                      ) : null}
-                    </SidebarMenuItem>
-                  );
-                })}
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    active={item.href === active}
+                    onNavigate={close}
+                  />
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -162,6 +142,18 @@ export function AppSidebar({
       <SidebarFooter>
         {/* Formulaire hors du menu : la fermeture du menu ne le démonte pas. */}
         <form id="signout" action={signOut} />
+        {footer.length ? (
+          <SidebarMenu className="border-t pt-2">
+            {footer.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={item.href === active}
+                onNavigate={close}
+              />
+            ))}
+          </SidebarMenu>
+        ) : null}
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -205,5 +197,40 @@ export function AppSidebar({
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+function NavLink({
+  item,
+  active,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  onNavigate: () => void;
+}) {
+  const Icon = ICONS[item.icon];
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={active}
+        tooltip={item.label}
+        className="pointer-coarse:h-10"
+      >
+        <Link href={item.href} aria-current={active ? "page" : undefined} onClick={onNavigate}>
+          <Icon />
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+      {item.badge ? (
+        <SidebarMenuBadge
+          className="bg-primary text-primary-foreground tabular-nums peer-data-active/menu-button:text-primary-foreground"
+          aria-label={t("nav.badge", { count: item.badge })}
+        >
+          {item.badge}
+        </SidebarMenuBadge>
+      ) : null}
+    </SidebarMenuItem>
   );
 }

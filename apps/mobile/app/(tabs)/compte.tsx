@@ -129,6 +129,14 @@ export default function AccountScreen() {
       </Card>
 
       {member.status === "prospect" ? <Notice>{t("account.prospectHint")}</Notice> : null}
+      {/* Impayé : réservation suspendue ; en ligne, le moyen de paiement se corrige plus bas. */}
+      {subscription?.status === "past_due" ? (
+        <Notice tone="error">
+          {t(
+            subscription.stripe_subscription_id ? "account.pastDueOnline" : "account.pastDueOnSite",
+          )}
+        </Notice>
+      ) : null}
 
       <Card className="gap-1 px-4 py-3.5">
         <Text className="text-xs text-muted-foreground">{t("account.subscription")}</Text>

@@ -2415,6 +2415,7 @@ export type Database = {
           unpaid: number;
         }[];
       };
+      payment_reminder_preview: { Args: { p_member_id: string }; Returns: Json };
       preview_template: {
         Args: { p_body: string; p_gym_id: string; p_member_id?: string; p_subject: string };
         Returns: {
@@ -2606,6 +2607,10 @@ export type Database = {
         Args: { p_body: string; p_gym_id: string; p_member_ids: string[]; p_subject: string };
         Returns: number;
       };
+      send_payment_reminder: {
+        Args: { p_body: string; p_member_id: string; p_subject: string };
+        Returns: string;
+      };
       session_coach_options: {
         Args: { p_session_id: string };
         Returns: {
@@ -2695,6 +2700,34 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      settle_unpaid: {
+        Args: {
+          p_method: Database["public"]["Enums"]["payment_method"];
+          p_subscription_id: string;
+        };
+        Returns: {
+          cancel_at: string | null;
+          canceled_at: string | null;
+          commitment_ends_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          plan_id: string;
+          started_at: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          stripe_subscription_id: string | null;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "subscriptions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       sync_stripe_subscription: {
         Args: { p_sub: Json };
         Returns: {
@@ -2765,12 +2798,18 @@ export type Database = {
         Args: { p_gym_id: string };
         Returns: {
           amount_cents: number;
+          currency: string;
           failures: number;
           first_failed_at: string;
           first_name: string;
           last_name: string;
+          last_reminded_at: string;
           member_id: string;
+          online: boolean;
           plan: string;
+          reminders: number;
+          settleable: boolean;
+          subscription_id: string;
         }[];
       };
       update_gym_settings: {

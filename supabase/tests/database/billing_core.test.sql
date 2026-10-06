@@ -128,8 +128,8 @@ reset role;
 update public.subscriptions set current_period_end = now() - interval '1 minute'
 where member_id = '72000000-0000-0000-0000-000000000002';
 select is(private.close_manual_periods(), 1, 'échéance passée : abonnement en impayé');
-select is(private.seat_denial('72000000-0000-0000-0000-000000000002', '75000000-0000-0000-0000-000000000002'), 'no_credit',
-  'période non renouvelée : accès suspendu');
+select is(private.seat_denial('72000000-0000-0000-0000-000000000002', '75000000-0000-0000-0000-000000000002'), 'payment_overdue',
+  'période non renouvelée : accès suspendu (motif : impayé)');
 select pg_temp.login_as('71000000-0000-0000-0000-000000000001');
 select ok((public.renew_manual_subscription((select id from public.subscriptions where member_id = '72000000-0000-0000-0000-000000000002'), 'card')).current_period_end > now(),
   'renouvellement : nouvelle période');

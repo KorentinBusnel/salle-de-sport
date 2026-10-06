@@ -135,6 +135,14 @@ stripe_not_configured`. Les codes d'erreur renvoyés figurent dans `BOOKING_ERRO
   ou remise modifiés dans le back office : identifiants Stripe remis à `null`, recréés à la synchro.
   En session cloud, le runtime Docker ne passe pas le proxy (certificat) : lancer une fonction
   avec Deno sur l'hôte (`npx deno@2 run --allow-net --allow-env --allow-read billing/index.ts`).
+- **Impayés** (`dunning`) : liste `unpaid_members` (accueil et gérant, sur `private.unpaid_rows` :
+  échecs de facture d'abonnement et abonnements `past_due` / `unpaid`, jamais un carnet échoué) ;
+  texte de relance unique `private.payment_reminder_text` (aperçu `payment_reminder_preview`),
+  relance **uniquement via** `send_payment_reminder` (une par jour, `audit_log`), règlement d'un
+  abonnement manuel via `settle_unpaid` (même prolongation que `renew_manual_subscription` :
+  `private.extend_manual_period`), relances automatiques `private.run_dunning` (job
+  `dunning-daily`, réglages `dunning_first_days` / `dunning_second_days`). Réservation refusée
+  pour impayé : `payment_overdue` (`private.seat_denial`).
 - **Stratégies** de la salle (`gyms.settings`, miroir `gymSettingsSchema`) : lues en SQL par
   `private.gym_setting_int` / `gym_setting_bool`, désactivées par défaut. Le back office masque
   une action désactivée (`getGymSettings`, `lib/settings.ts`), la base la refuse
@@ -307,6 +315,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `RefundButton` ; « non configuré » = toast d'information (`stripeErrorKey`). Reçu PDF :
   `buildReceipt` (`lib/receipt.ts`, pdf-lib, polices standard : passer le texte par `pdfText`),
   route `app/api/paiements/[id]/recu` (gérant), lien `ReceiptLink`.
+- Impayés : `UnpaidActions` (`components/billing/unpaid-actions.tsx` : « Relancer » avec message
+  modifiable, « Encaisser » si encaissable), actions `relances-actions.ts` ; bloc Finance de
+  l'accueil ouvert à l'accueil (impayés seulement ; renouvellements et factures au gérant).
 - Synthèse de fiche : `MemberOverview` (`components/members/member-overview.tsx`) lit la fonction SQL
   `member_overview` (accueil et gérant ; `finance` à `null` hors gérant), sous `SectionError` +
   `Suspense`. Tons d'abonnement : `SUBSCRIPTION_STATUS_TONE` (shared).

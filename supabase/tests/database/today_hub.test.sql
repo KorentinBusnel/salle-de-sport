@@ -48,11 +48,11 @@ insert into public.bookings (gym_id, session_id, member_id, status) values
   ('da000001-0000-0000-0000-000000000000', 'd6000001-0000-0000-0000-000000000009', 'd1000001-0000-0000-0000-000000000002', 'confirmed'),
   ('da000001-0000-0000-0000-000000000000', 'd6000001-0000-0000-0000-000000000009', 'd1000001-0000-0000-0000-000000000003', 'confirmed');
 -- N : un paiement réussi puis deux échecs ; V : à jour.
-insert into public.payments (gym_id, member_id, amount_cents, status, method, created_at) values
-  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 6900, 'succeeded', 'sepa_debit', '2029-11-01'),
-  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 6900, 'failed', 'sepa_debit', '2029-12-01'),
-  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 6900, 'failed', 'sepa_debit', '2029-12-05'),
-  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000003', 6900, 'succeeded', 'sepa_debit', '2029-12-01');
+insert into public.payments (gym_id, member_id, amount_cents, status, method, created_at, stripe_invoice_id) values
+  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 6900, 'succeeded', 'sepa_debit', '2029-11-01', 'in_th0'),
+  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 6900, 'failed', 'sepa_debit', '2029-12-01', 'in_th1'),
+  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 6900, 'failed', 'sepa_debit', '2029-12-05', 'in_th2'),
+  ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000003', 6900, 'succeeded', 'sepa_debit', '2029-12-01', 'in_th3');
 -- N a écrit, sans réponse ; V a reçu une réponse.
 insert into public.interactions (gym_id, member_id, channel, direction, summary, occurred_at) values
   ('da000001-0000-0000-0000-000000000000', 'd1000001-0000-0000-0000-000000000002', 'email', 'inbound', 'Question', '2029-12-02'),
@@ -141,8 +141,8 @@ select is(
   (select first_name || ':' || failures || ':' || amount_cents from public.unpaid_members('da000001-0000-0000-0000-000000000000')),
   'Nina:2:6900', 'deux échecs depuis le dernier paiement réussi');
 select pg_temp.login_as('d0000001-0000-0000-0000-000000000002');
-select throws_ok($$select * from public.unpaid_members('da000001-0000-0000-0000-000000000000')$$,
-  'P0001', 'forbidden', 'accueil : pas de finances');
+select is((select count(*) from public.unpaid_members('da000001-0000-0000-0000-000000000000')),
+  1::bigint, 'accueil : voit les impayés pour relancer et encaisser');
 select pg_temp.login_as('d0000001-0000-0000-0000-000000000006');
 select throws_ok($$select * from public.unpaid_members('da000001-0000-0000-0000-000000000000')$$,
   'P0001', 'forbidden', 'autre salle : refusé');

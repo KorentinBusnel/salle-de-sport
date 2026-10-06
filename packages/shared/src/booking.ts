@@ -98,6 +98,11 @@ export const BOOKING_ERROR_CODES = [
   "no_stripe_customer",
   "not_refundable",
   "payment_not_found",
+  // Impayés et relances
+  "not_unpaid",
+  "not_settleable",
+  "already_reminded",
+  "payment_overdue",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

@@ -7,6 +7,19 @@ export const alt = seo.ogAlt;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// Titre du hero mot par mot (Satori ne coupe pas proprement un texte mêlé d'italique).
+const words = [
+  ...hero.title.before
+    .trim()
+    .split(" ")
+    .map((text) => ({ text, italic: false })),
+  { text: hero.title.emphasis, italic: true },
+  ...hero.title.after
+    .trim()
+    .split(" ")
+    .map((text) => ({ text, italic: false })),
+];
+
 /** Image Open Graph (1200 × 630) : logo, titre du hero, tarif fondateur. */
 export default async function OpenGraphImage() {
   return new ImageResponse(
@@ -38,9 +51,14 @@ export default async function OpenGraphImage() {
           maxWidth: 1000,
         }}
       >
-        {hero.title.before}
-        <span style={{ fontStyle: "italic", margin: "0 0.22em" }}>{hero.title.emphasis}</span>
-        {hero.title.after.trim()}
+        {words.map((word, index) => (
+          <span
+            key={index}
+            style={{ marginRight: "0.24em", fontStyle: word.italic ? "italic" : "normal" }}
+          >
+            {word.text}
+          </span>
+        ))}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
         <div

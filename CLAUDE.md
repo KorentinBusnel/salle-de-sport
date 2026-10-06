@@ -239,7 +239,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   d'envoi : `SubmitButton` (état d'envoi). Action irréversible : `ConfirmDialog`. Actions rapides
   sans rechargement (pointage) : Server Action qui renvoie `{ error }` puis `refresh()`.
 - Coque : `components/app-sidebar.tsx`, entrées construites par `buildNavigation` (`lib/navigation.ts`,
-  testé par rôle) : blocs Quotidien / Opérations, **Paramètres en pied** (`footer`), pastilles
+  testé par rôle) : blocs Quotidien / Opérations / Clients / Marketplace, **Paramètres en pied** (`footer`), pastilles
   d'attente : `buildNavigation` ne place que des **clés** (`navBadgesFor`, réglables par rôle), les
   comptes arrivent à part (`NavBadge` sous `Suspense`, fonction SQL `nav_counts`) — le layout n'attend
   que `getTeamContext` et `getGymConfig`. Une fiche donne son titre au fil d'Ariane par
@@ -324,9 +324,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `buildReceipt` (`lib/receipt.ts`, pdf-lib, polices standard : passer le texte par `pdfText`),
   route `app/api/paiements/[id]/recu` (gérant), lien `ReceiptLink`.
 - Marketplace (gérant) : `/marketplace` (catalogue, `?q=`, `?categorie=`), `/marketplace/commandes`,
-  `/marketplace/devis`, onglets `MarketplaceNav`, `CartSheet`, `QuoteDialog`, `OrderActions`
+  `/marketplace/devis` (une entrée chacune du bloc Marketplace, sans onglets), `CartSheet`, `QuoteDialog`, `OrderActions`
   (`components/marketplace/`). Espace **Plateforme** (`/plateforme?onglet=catalogue|fournisseurs|devis|commandes`,
-  rôle `admin`, en pied de la barre latérale) : catalogue en `EditableCell` / `AddRow`,
+  rôle `admin`, dernière entrée du bloc Marketplace) : catalogue en `EditableCell` / `AddRow`,
   `TiersDialog`, `ImageUpload`, `AnswerQuote`, `OrderStatusButtons` (`components/platform/`).
 - Impayés : `UnpaidActions` (`components/billing/unpaid-actions.tsx` : « Relancer » avec message
   modifiable, « Encaisser » si encaissable), actions `relances-actions.ts` ; bloc Finance de

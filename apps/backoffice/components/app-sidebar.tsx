@@ -8,12 +8,14 @@ import {
   ClockIcon,
   CreditCardIcon,
   DumbbellIcon,
+  FileTextIcon,
   FilterIcon,
   HouseIcon,
   KanbanIcon,
   LogOutIcon,
   MailIcon,
   MailPlusIcon,
+  PackageIcon,
   RepeatIcon,
   SettingsIcon,
   SparklesIcon,
@@ -70,6 +72,8 @@ const ICONS = {
   payments: CreditCardIcon,
   marketplace: StoreIcon,
   platform: BuildingIcon,
+  orders: PackageIcon,
+  quotes: FileTextIcon,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof ICONS;

@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AddToCart } from "@/components/marketplace/add-to-cart";
 import { type CartLine, CartSheet } from "@/components/marketplace/cart-sheet";
-import { MarketplaceNav } from "@/components/marketplace/marketplace-nav";
 import { QuoteDialog } from "@/components/marketplace/quote-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,7 @@ import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: t("marketplace.title") };
+export const metadata: Metadata = { title: t("marketplace.tab.catalog") };
 
 /** Sans accents ni casse, pour la recherche. */
 const fold = (text: string) =>
@@ -91,7 +90,7 @@ export default async function MarketplacePage({
   return (
     <div className="grid gap-6">
       <PageHeader
-        title={t("marketplace.title")}
+        title={t("marketplace.tab.catalog")}
         description={t("marketplace.hint")}
         actions={
           <>
@@ -100,7 +99,6 @@ export default async function MarketplacePage({
           </>
         }
       />
-      <MarketplaceNav current="/marketplace" />
 
       <div className="flex flex-wrap items-center gap-3">
         <form action="/marketplace" className="relative w-full max-w-sm">

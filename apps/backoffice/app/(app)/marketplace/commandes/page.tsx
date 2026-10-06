@@ -1,7 +1,6 @@
 import { formatMoney, MP_ORDER_STATUS_TONE } from "@salle/shared";
 import { ReceiptIcon } from "lucide-react";
 import type { Metadata } from "next";
-import { MarketplaceNav } from "@/components/marketplace/marketplace-nav";
 import { OrderActions } from "@/components/marketplace/order-actions";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -43,8 +42,7 @@ export default async function MarketplaceOrdersPage() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title={t("marketplace.title")} description={t("marketplace.hint")} />
-      <MarketplaceNav current="/marketplace/commandes" />
+      <PageHeader title={t("marketplace.tab.orders")} description={t("marketplace.ordersHint")} />
       {!orders?.length ? (
         <Empty className="rounded-xl border border-dashed">
           <EmptyHeader>

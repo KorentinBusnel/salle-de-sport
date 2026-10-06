@@ -1,7 +1,6 @@
 import { formatMoney, MP_QUOTE_STATUS_TONE } from "@salle/shared";
 import { FileTextIcon } from "lucide-react";
 import type { Metadata } from "next";
-import { MarketplaceNav } from "@/components/marketplace/marketplace-nav";
 import { QuoteActions } from "@/components/marketplace/order-actions";
 import { QuoteDialog } from "@/components/marketplace/quote-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -37,11 +36,10 @@ export default async function MarketplaceQuotesPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title={t("marketplace.title")}
-        description={t("marketplace.hint")}
+        title={t("marketplace.tab.quotes")}
+        description={t("marketplace.quotesHint")}
         actions={<QuoteDialog label={t("marketplace.quote.newRequest")} variant="default" />}
       />
-      <MarketplaceNav current="/marketplace/devis" />
       {!quotes?.length ? (
         <Empty className="rounded-xl border border-dashed">
           <EmptyHeader>

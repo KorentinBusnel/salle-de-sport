@@ -142,6 +142,8 @@ export const fr = {
     signingOut: "Déconnexion…",
     groupDaily: "Quotidien",
     groupOperations: "Opérations",
+    groupClients: "Clients",
+    groupMarketplace: "Marketplace",
     skipToContent: "Aller au contenu",
     badge: "{count} à traiter",
     today: "Aujourd'hui",
@@ -162,6 +164,8 @@ export const fr = {
     catalog: "Catalogue",
     marketplace: "Marketplace",
     platform: "Plateforme",
+    orders: "Commandes",
+    quotes: "Devis",
   },
   common: {
     save: "Enregistrer",
@@ -1358,6 +1362,8 @@ export const fr = {
   marketplace: {
     title: "Marketplace",
     hint: "Produits et services négociés pour le réseau, à commander pour la salle ou à revendre.",
+    ordersHint: "Commandes de la salle, de la validation à la réception.",
+    quotesHint: "Demandes de prix pour un service ou une grande quantité.",
     tab: {
       catalog: "Catalogue",
       orders: "Commandes",

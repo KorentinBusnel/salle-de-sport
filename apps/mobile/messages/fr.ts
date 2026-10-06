@@ -250,6 +250,11 @@ export const fr = {
     mp_quote_not_found: "Devis introuvable.",
     mp_quote_expired: "Ce devis a expiré.",
     mp_invalid_status: "Action impossible à ce stade.",
+    mp_campaign_not_found: "Achat groupé introuvable.",
+    mp_campaign_closed: "Cet achat groupé est clos.",
+    mp_commitment_not_found: "Engagement introuvable.",
+    mp_invalid_quantity: "Quantité invalide.",
+    mp_invalid_date: "Date invalide.",
     payment_overdue:
       "Votre abonnement est en attente de paiement : réglez-le pour réserver (Compte).",
     already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",

@@ -1,11 +1,13 @@
 import { formatMoney, mpSavingPercent } from "@salle/shared";
-import { PackageIcon, SearchIcon, SparklesIcon } from "lucide-react";
+import { CircleCheckIcon, PackageIcon, SearchIcon, SparklesIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AddToCart } from "@/components/marketplace/add-to-cart";
 import { type CartLine, CartSheet } from "@/components/marketplace/cart-sheet";
+import { type GroupBuy, GroupBuys } from "@/components/marketplace/group-buys";
 import { QuoteDialog } from "@/components/marketplace/quote-dialog";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   Empty,
@@ -16,6 +18,7 @@ import {
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { isManagerRole, requireRole } from "@/lib/auth";
+import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -36,23 +39,47 @@ const fold = (text: string) =>
 export default async function MarketplacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; categorie?: string }>;
+  searchParams: Promise<{ q?: string; categorie?: string; engagement?: string }>;
 }) {
   const params = await searchParams;
   const context = await requireRole(isManagerRole);
   const supabase = await createClient();
-  const [{ data: categories }, { data: products }, { data: cart }] = await Promise.all([
-    supabase.from("mp_categories").select("id, name").order("position").order("name"),
-    supabase
-      .from("mp_products")
-      .select(
-        "id, kind, category_id, name, brand, description, unit, image_path, list_price_cents, price_cents, mp_price_tiers(min_qty, unit_price_cents)",
-      )
-      .eq("is_active", true)
-      .order("position")
-      .order("name"),
-    supabase.from("mp_cart_items").select("product_id, quantity").eq("gym_id", context.gym.id),
-  ]);
+  const format = gymFormatters(context.gym.timezone);
+  const [{ data: categories }, { data: products }, { data: cart }, { data: campaigns }] =
+    await Promise.all([
+      supabase.from("mp_categories").select("id, name").order("position").order("name"),
+      supabase
+        .from("mp_products")
+        .select(
+          "id, kind, category_id, name, brand, description, unit, image_path, list_price_cents, price_cents, mp_price_tiers(min_qty, unit_price_cents)",
+        )
+        .eq("is_active", true)
+        .order("position")
+        .order("name"),
+      supabase.from("mp_cart_items").select("product_id, quantity").eq("gym_id", context.gym.id),
+      supabase.rpc("mp_campaign_progress", { p_gym_id: context.gym.id }),
+    ]);
+  const groupBuys: GroupBuy[] = (campaigns ?? [])
+    .filter((c) => c.status === "open")
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      productName: c.product_name,
+      unit: c.unit,
+      listPriceCents: c.list_price_cents,
+      endsLabel: format.fullDate(c.ends_at),
+      minQty: c.min_qty,
+      totalQty: c.total_qty,
+      gyms: c.gyms,
+      unitPriceCents: c.unit_price_cents,
+      nextMinQty: c.next_min_qty,
+      nextUnitPriceCents: c.next_unit_price_cents,
+      mine:
+        c.my_commitment_id && c.my_status
+          ? { id: c.my_commitment_id, quantity: c.my_quantity ?? 1, status: c.my_status }
+          : null,
+    }));
 
   const query = fold((params.q ?? "").trim());
   const category = (categories ?? []).find((c) => c.id === params.categorie)?.id ?? null;
@@ -99,6 +126,14 @@ export default async function MarketplacePage({
           </>
         }
       />
+      {params.engagement === "ok" ? (
+        <Alert>
+          <CircleCheckIcon aria-hidden />
+          <AlertTitle>{t("marketplace.groupBuy.cardSaved")}</AlertTitle>
+          <AlertDescription>{t("marketplace.groupBuy.cardSavedHint")}</AlertDescription>
+        </Alert>
+      ) : null}
+      <GroupBuys campaigns={groupBuys} />
 
       <div className="flex flex-wrap items-center gap-3">
         <form action="/marketplace" className="relative w-full max-w-sm">

@@ -707,6 +707,7 @@ insert into public.mp_price_tiers (product_id, min_qty, unit_price_cents) values
   (pg_temp.sid('mp:prod:energy'), 30, 3000),
   (pg_temp.sid('mp:prod:whey'), 6, 2690),
   (pg_temp.sid('mp:prod:whey'), 20, 2490),
+  (pg_temp.sid('mp:prod:whey'), 60, 2290),
   (pg_temp.sid('mp:prod:bars'), 5, 3600),
   (pg_temp.sid('mp:prod:water'), 20, 640);
 
@@ -718,3 +719,8 @@ insert into public.mp_orders (id, gym_id, reference, status, total_cents, create
 values (pg_temp.sid('mp:order:1'), pg_temp.sid('gym'), 'CMD-DEMO-0001', 'shipped', 64800, now() - interval '5 days');
 insert into public.mp_order_items (order_id, gym_id, product_id, name, unit, quantity, unit_price_cents, line_total_cents)
 values (pg_temp.sid('mp:order:1'), pg_temp.sid('gym'), pg_temp.sid('mp:prod:energy'), 'Boisson énergisante 25 cl', 'carton de 24', 20, 3240, 64800);
+
+-- Un achat groupé ouvert : la salle de démo peut s'engager (carte enregistrée par Stripe Checkout).
+insert into public.mp_campaigns (id, product_id, title, description, ends_at, min_qty)
+values (pg_temp.sid('mp:campaign:whey'), pg_temp.sid('mp:prod:whey'), 'Whey de la rentrée',
+  'Commande commune du réseau : plus les salles s''engagent, plus le prix baisse.', now() + interval '12 days', 20);

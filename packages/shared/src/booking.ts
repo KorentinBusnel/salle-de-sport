@@ -110,6 +110,11 @@ export const BOOKING_ERROR_CODES = [
   "mp_quote_not_found",
   "mp_quote_expired",
   "mp_invalid_status",
+  "mp_campaign_not_found",
+  "mp_campaign_closed",
+  "mp_commitment_not_found",
+  "mp_invalid_quantity",
+  "mp_invalid_date",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

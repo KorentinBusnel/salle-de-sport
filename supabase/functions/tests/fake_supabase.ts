@@ -1,5 +1,5 @@
 /**
- * Faux client Supabase des tests : enregistre les appels (rpc, update) et répond par des données
+ * Faux client Supabase des tests : enregistre les appels (rpc, update, upsert) et répond par des données
  * préparées, par table ou par fonction. Les requêtes chaînées renvoient la même promesse.
  */
 type Result = { data: unknown; error: { message: string } | null };
@@ -7,6 +7,7 @@ type Result = { data: unknown; error: { message: string } | null };
 export type Calls = {
   rpc: { fn: string; args: unknown }[];
   updates: { table: string; values: unknown }[];
+  upserts: { table: string; values: unknown }[];
 };
 
 export function fakeSupabase(options: {
@@ -14,7 +15,7 @@ export function fakeSupabase(options: {
   rpc?: Record<string, Result>;
   tables?: Record<string, unknown>;
 }) {
-  const calls: Calls = { rpc: [], updates: [] };
+  const calls: Calls = { rpc: [], updates: [], upserts: [] };
   const query = (table: string) => {
     const result: Result = { data: options.tables?.[table] ?? null, error: null };
     const builder: Record<string, unknown> = {};
@@ -25,6 +26,10 @@ export function fakeSupabase(options: {
     builder.single = () => Promise.resolve(result);
     builder.update = (values: unknown) => {
       calls.updates.push({ table, values });
+      return builder;
+    };
+    builder.upsert = (values: unknown) => {
+      calls.upserts.push({ table, values });
       return builder;
     };
     builder.then = (resolve: (r: Result) => unknown) => Promise.resolve(result).then(resolve);

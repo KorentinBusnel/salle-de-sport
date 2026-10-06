@@ -164,6 +164,17 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `mp_accept_quote` / `mp_decline_quote`, `mp_cancel_order`, `mp_receive_order` ; côté admin
   `mp_answer_quote`, `mp_set_order_status`. Prix par palier : `mp_unit_price` (miroir
   `mpUnitPrice`, `packages/shared/src/marketplace.ts`). Images : bucket public `marketplace`.
+- **Marketplace, paiements** (`marketplace_payments`) : client Stripe de la salle `gym_billing`,
+  paiements à la plateforme `mp_payments` (jamais dans `payments`), achats groupés `mp_campaigns`
+  / `mp_commitments` (`pending_card` → `committed` → `charged` | `failed`), écrits **uniquement
+  via** `mp_commit`, `mp_withdraw`, `mp_create_campaign`, `mp_cancel_campaign`, `mp_close_campaign`
+  (commandes au palier de la quantité totale, renvoie les débits à faire) ; progression
+  `mp_campaign_progress(gym | null)`, contexte de paiement `mp_payment_context`. Webhook :
+  `apply_stripe_event` aiguille `metadata.kind = 'marketplace'` (PaymentIntent) et `'mp_commitment'`
+  (SetupIntent) vers `private.apply_marketplace_event`, le reste vers
+  `private.apply_member_stripe_event`. Edge Function `billing` : `mp_checkout`, `mp_commit`
+  (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
+  `billing/marketplace.ts`.
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -328,6 +339,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`components/marketplace/`). Espace **Plateforme** (`/plateforme?onglet=catalogue|fournisseurs|devis|commandes`,
   rôle `admin`, dernière entrée du bloc Marketplace) : catalogue en `EditableCell` / `AddRow`,
   `TiersDialog`, `ImageUpload`, `AnswerQuote`, `OrderStatusButtons` (`components/platform/`).
+  Paiement : `payOrder` / `commitCampaign` renvoient l'adresse de Stripe Checkout (retour par
+  `appOrigin()`, `lib/origin.ts`, `?paiement=ok` / `?engagement=ok`), `callBilling` renvoie la
+  réponse de la fonction et `stripeErrorKey` relaie les codes métier. Achats groupés : bandeau
+  `GroupBuys` du catalogue, onglet Plateforme `achats-groupes` (`NewCampaign`, `CampaignActions`).
 - Impayés : `UnpaidActions` (`components/billing/unpaid-actions.tsx` : « Relancer » avec message
   modifiable, « Encaisser » si encaissable), actions `relances-actions.ts` ; bloc Finance de
   l'accueil ouvert à l'accueil (impayés seulement ; renouvellements et factures au gérant).

@@ -3,6 +3,7 @@ import { canCancelSubscription } from "../../../packages/shared/src/billing.ts";
 import { corsHeaders, fail, json } from "../_shared/http.ts";
 import type { Stripe } from "../_shared/stripe.ts";
 import type { SupabaseClient } from "../_shared/supabase.ts";
+import { marketplaceCheckout, marketplaceCloseCampaign, marketplaceCommit } from "./marketplace.ts";
 
 export type BillingDeps = {
   stripe: Stripe | null;
@@ -42,6 +43,9 @@ type Context = {
   } | null;
 };
 
+/** Retour depuis Stripe Checkout : page du back office (http ou https seulement). */
+const returnUrl = z.url({ protocol: /^https?$/ });
+
 const requestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("payment_sheet"),
@@ -53,6 +57,16 @@ const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("sync_plan"), planId: z.guid() }),
   z.object({ action: z.literal("sync_promo"), promoId: z.guid() }),
   z.object({ action: z.literal("refund"), paymentId: z.guid() }),
+  // Marketplace : la salle paie la plateforme (gérant), clôture d'un achat groupé (admin).
+  z.object({ action: z.literal("mp_checkout"), orderId: z.guid(), returnUrl: returnUrl }),
+  z.object({
+    action: z.literal("mp_commit"),
+    campaignId: z.guid(),
+    gymId: z.guid(),
+    quantity: z.int().min(1).max(10000),
+    returnUrl: returnUrl,
+  }),
+  z.object({ action: z.literal("mp_close_campaign"), campaignId: z.guid() }),
 ]);
 
 /** Code d'erreur SQL (raise exception '<code>') ou générique. */
@@ -168,7 +182,9 @@ async function ensureCustomer(
  *   SEPA),
  *   résiliation en fin de période après l'engagement, portail Stripe (moyen de paiement,
  *   factures) ;
- * - gérant : synchronisation d'une offre ou d'un code promo, remboursement.
+ * - gérant : synchronisation d'une offre ou d'un code promo, remboursement ; marketplace :
+ *   paiement d'une commande, engagement dans un achat groupé ;
+ * - admin de la plateforme : clôture d'un achat groupé (débit des salles engagées).
  */
 export async function handleBilling(request: Request, deps: BillingDeps): Promise<Response> {
   if (request.method === "OPTIONS") {
@@ -358,6 +374,15 @@ export async function handleBilling(request: Request, deps: BillingDeps): Promis
         });
         return json({ ok: true });
       }
+
+      case "mp_checkout":
+        return await marketplaceCheckout(stripe, deps.admin, user, input);
+
+      case "mp_commit":
+        return await marketplaceCommit(stripe, deps.admin, user, input);
+
+      case "mp_close_campaign":
+        return await marketplaceCloseCampaign(stripe, user, input);
     }
   } catch (error) {
     console.error("billing", input.action, error instanceof Error ? error.message : error);

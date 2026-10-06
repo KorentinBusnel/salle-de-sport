@@ -4,7 +4,10 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isManagerRole, requireRole } from "@/lib/auth";
+import { callBilling } from "@/lib/billing";
 import { errorMessageKey } from "@/lib/flash";
+import { appOrigin } from "@/lib/origin";
+import { stripeErrorKey } from "@/lib/stripe-errors";
 import { createClient } from "@/lib/supabase/server";
 
 /** Quantité d'un produit dans le panier de la salle (0 : retiré). */
@@ -104,4 +107,61 @@ export async function updateOrder(input: {
   return ok(
     input.action === "cancel" ? "marketplace.orders.cancelled" : "marketplace.orders.received",
   );
+}
+
+/** Paiement d'une commande « à payer » : adresse de Stripe Checkout, retour sur les commandes. */
+export async function payOrder(input: { id: string }): Promise<ActionResult<{ url: string }>> {
+  await requireRole(isManagerRole);
+  const id = z.guid().safeParse(input.id);
+  if (!id.success) return fail("common.unexpectedError");
+  const result = await callBilling({
+    action: "mp_checkout",
+    orderId: id.data,
+    returnUrl: `${await appOrigin()}/marketplace/commandes`,
+  });
+  if (!result.ok) return fail(stripeErrorKey(result.error));
+  const url = (result.data as { url?: unknown } | null)?.url;
+  if (typeof url !== "string") return fail("stripeErrors.unexpected");
+  return { ok: true, data: { url } };
+}
+
+/**
+ * Engagement dans un achat groupé (ou nouvelle quantité). Sans carte enregistrée : adresse de
+ * Stripe Checkout pour l'enregistrer, sans débit.
+ */
+export async function commitCampaign(input: {
+  campaignId: string;
+  quantity: number;
+}): Promise<ActionResult<{ url: string | null }>> {
+  const context = await requireRole(isManagerRole);
+  const id = z.guid().safeParse(input.campaignId);
+  const quantity = z.number().int().min(1).max(10000).safeParse(input.quantity);
+  if (!id.success) return fail("common.unexpectedError");
+  if (!quantity.success) return fail("bookingErrors.mp_invalid_quantity");
+  const result = await callBilling({
+    action: "mp_commit",
+    campaignId: id.data,
+    gymId: context.gym.id,
+    quantity: quantity.data,
+    returnUrl: `${await appOrigin()}/marketplace`,
+  });
+  if (!result.ok) return fail(stripeErrorKey(result.error));
+  const url = (result.data as { url?: unknown } | null)?.url;
+  if (typeof url !== "string") {
+    refresh();
+    return { ok: true, message: "marketplace.groupBuy.updated", data: { url: null } };
+  }
+  return { ok: true, data: { url } };
+}
+
+/** Retrait d'un engagement tant que l'achat groupé est ouvert. */
+export async function withdrawCommitment(input: { id: string }): Promise<ActionResult> {
+  await requireRole(isManagerRole);
+  const id = z.guid().safeParse(input.id);
+  if (!id.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mp_withdraw", { p_commitment_id: id.data });
+  if (error) return fail(errorMessageKey(error));
+  refresh();
+  return ok("marketplace.groupBuy.withdrawn");
 }

@@ -138,9 +138,15 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `private.coaches_member`, jamais l'adhérent) ; **digest** `daily_digests` (gérant).
 - Autres écritures métier **par fonctions** : `move_session` (déplacement, inscrits prévenus),
   `send_campaign`, `add_team_role` /
-  `remove_team_role`. Lectures agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`,
-  `filter_members` (filtres JSON = `segmentFiltersSchema` de `packages/shared`, droits de
-  l'appelant), `session_coach_options`.
+  `remove_team_role`, `set_attendance_many` (« Tous présents » : `set_attendance` pour chaque
+  confirmé, renvoie les réservations pointées), `add_member_tag` (étiquette en lot). Lectures
+  agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`, `filter_members` (filtres JSON =
+  `segmentFiltersSchema` de `packages/shared`, droits de l'appelant), `session_coach_options`,
+  `search_members` (tri `p_sort`, solde `credits` pour le gérant, null sinon),
+  `template_change_preview` (séances à venir d'un cours avant de changer son créneau).
+- **Journal** `audit_log` (gérant en lecture, écrit par des fonctions `security definer`) :
+  `export_members` y inscrit chaque export ; le trigger `members_log_consent` chaque changement de
+  consentement marketing (`member.consent`), d'où qu'il vienne.
 - Emailing : variables `{prenom}`, `{nom}`, `{salle}` rendues en SQL (`private.render_template`) ;
   campagnes et automatisations marketing **exigent le consentement email** ; idempotence par
   `dedupe_key`. Jobs `pg_cron` : séances, file d'envoi, campagnes programmées, automatisations.
@@ -215,10 +221,16 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `aria-hidden`, rôles sémantiques (ni couleur brute ni `dark:`), textes par `t()`, focus visible,
   cibles de 40 px en `pointer-coarse:`, `tabular-nums`, jamais `transition-all`.
 - Accueil (`app/(app)/page.tsx`) orienté action, par rôle : brief du jour (gérant), Opérations,
-  Clients, Finance — blocs affichés et ordonnés par rôle (`homeBlocksFor`). Lectures `today_trials`,
-  `crm_todo` (`getCrmTodo`, mémorisé), `unpaid_members` ; trous de permanence par `deskWindows`
-  (horaires d'ouverture du jour, sinon séances ± marge) / `uncoveredIntervals`
-  (`packages/shared/src/desk.ts`).
+  Clients, Finance — blocs affichés et ordonnés par rôle (`homeBlocksFor`), **chacun sous
+  `SectionError` + `Suspense`** (`components/today/*-section.tsx`). Lectures mémorisées par requête
+  dans `lib/today.ts` (`getTodaySessions`, `getTodayTrials`, `getTodayDesk`, `getUnpaid`,
+  `getActionCount`, `getClosureConflicts`, `getSetupSteps`) : une section appelle ce dont elle a
+  besoin, sans relire. Trous de permanence par `deskWindows` (horaires d'ouverture du jour, sinon
+  séances ± marge) / `uncoveredIntervals` (`packages/shared/src/desk.ts`) ; « peu remplie » :
+  `isLowFill` (`display.ts`, seuil `low_fill_percent`). Données vivantes : `LiveRefresh`
+  (`router.refresh()` toutes les 60 s onglet visible, et Realtime sur `class_sessions` de la salle).
+  Client Supabase du navigateur (`lib/supabase/client.ts`) : **Realtime seulement**, jamais
+  d'écriture. Listes longues : `ShowMore` (« Voir les N autres »), pas de zone à défilement.
 - **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
   faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
   de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
@@ -236,10 +248,27 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   « minuit + minutes » (jours de changement d'heure).
 - **Édition en place** (« à la Notion ») : `components/inline/editable-cell.tsx` (texte, nombre,
   heure, date, couleur, liste, multi-sélection, interrupteur ; `askScope` pour « cette séance /
-  et les suivantes ») et `add-row.tsx`. L'action serveur reçoit `{ id, field, value, scope }`,
-  valide par Zod et renvoie `{ error, message?, count? }`.
-- Planning en glisser-déposer : `components/planning/week-dnd.tsx` (@dnd-kit) enveloppe la grille
-  rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant `move_session`.
+  et les suivantes » ; `confirmChange` : Server Action d'aperçu, `{ title, description }` ou null)
+  et `add-row.tsx` (`AddRow` / `AddButton` : l'action renvoie `{ error, id? }`, la nouvelle ligne
+  prend le focus par `?n=<id>` et `FocusRow`, lignes repérées par `data-row-id`). L'action serveur
+  reçoit `{ id, field, value, scope }`, valide par Zod et renvoie `{ error, message?, count? }`.
+- Planning en glisser-déposer : `components/planning/week-dnd.tsx` (@dnd-kit, souris et clavier)
+  enveloppe la grille rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant
+  `move_session` ; la séance déposée reste à sa place (`held`) tant que le serveur n'a pas répondu.
+  Blocs : `data-session-link` (clic = `SessionSheet`, inscrits par `app/api/seances/[id]`) ;
+  colonnes `data-day-column`. Création : `QuickCreateForm` (popover ancré ou `QuickCreateDialog`,
+  `?creer=1`). Permanences : **un seul dialogue** par page (`DeskShiftProvider`, boutons
+  `DeskShiftTrigger`).
+- **Tableaux** (`components/data-table/`) : `DataTableFrame` + `ColumnsMenu` (colonnes masquées par
+  `data-col` et densité, mémorisées dans `localStorage` sous `tableau:<nom>`), `SortHead` (lien et
+  `aria-sort`), `DataTablePagination` (`pageWindow`, `?taille=` 25 / 50 / 100, `lib/pagination.ts`),
+  `SelectionProvider` / `RowCheckbox` / `AllCheckbox` (remise à zéro par `resetKey`). Filtres
+  portés par l'URL : `useUrlState` ; sous `UrlStateProvider`, les filtres d'une page partagent
+  l'attente et `PendingRegion` grise le contenu périmé.
+- Fiche séance : `SessionLiveProvider` (`components/session/session-live.tsx`) — inscription et
+  « Tous présents » optimistes, lus par `MemberCombobox` et `AttendanceToggle`.
+- Catalogue `messages/fr.ts` : **aucune variable dans une branche de pluriel** (le traducteur ne
+  les imbrique pas ; `lib/messages.test.ts` le vérifie) — écrire deux pluriels côte à côte.
 - Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
   du React Compiler refuse `Date.now()` dans le rendu.
 

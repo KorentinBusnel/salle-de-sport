@@ -2664,6 +2664,42 @@ export type Database = {
           },
         ];
       };
+      waitlist: {
+        Row: {
+          consent_text: string;
+          consented_at: string;
+          created_at: string;
+          email: string;
+          id: string;
+          placement: string;
+          source: string;
+          utm_campaign: string | null;
+          utm_medium: string | null;
+        };
+        Insert: {
+          consent_text: string;
+          consented_at?: string;
+          created_at?: string;
+          email: string;
+          id?: string;
+          placement: string;
+          source?: string;
+          utm_campaign?: string | null;
+          utm_medium?: string | null;
+        };
+        Update: {
+          consent_text?: string;
+          consented_at?: string;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          placement?: string;
+          source?: string;
+          utm_campaign?: string | null;
+          utm_medium?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -3002,6 +3038,19 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      join_waitlist: {
+        Args: {
+          p_client_key?: string;
+          p_consent: boolean;
+          p_consent_text: string;
+          p_email: string;
+          p_placement: string;
+          p_source?: string;
+          p_utm_campaign?: string;
+          p_utm_medium?: string;
+        };
+        Returns: Json;
       };
       log_ai_call: {
         Args: {

@@ -115,6 +115,8 @@ export const BOOKING_ERROR_CODES = [
   "mp_commitment_not_found",
   "mp_invalid_quantity",
   "mp_invalid_date",
+  // Liste d'attente de la landing
+  "rate_limited",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

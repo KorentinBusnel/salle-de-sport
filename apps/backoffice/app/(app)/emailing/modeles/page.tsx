@@ -1,24 +1,21 @@
 import { Trash2Icon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmailingNav } from "@/components/emailing-nav";
+import { TemplateEditor } from "@/components/emailing/template-editor";
 import { Flash } from "@/components/flash";
 import { PageHeader } from "@/components/page-header";
-import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { deleteTemplate, saveTemplate } from "../actions";
+import { deleteTemplate } from "../actions";
 
 export const metadata: Metadata = { title: t("emailing.tab.templates") };
 
-/** Modèles d'emails : variables {prenom}, {nom}, {salle} ; aperçu sur un vrai adhérent. */
+/** Modèles d'emails : barre de variables {prenom}, {nom}, {salle} ; aperçu en direct sur un adhérent choisi. */
 export default async function TemplatesPage({
   searchParams,
 }: {
@@ -33,16 +30,6 @@ export default async function TemplatesPage({
     .eq("gym_id", context.gym.id)
     .order("name");
   const current = templates?.find((tpl) => tpl.id === params.modele);
-  const { data: preview } = current
-    ? await supabase
-        .rpc("preview_template", {
-          p_gym_id: context.gym.id,
-          p_subject: current.subject,
-          p_body: current.body,
-        })
-        .single()
-    : { data: null };
-
   return (
     <div className="grid gap-6">
       <PageHeader title={t("emailing.title")} description={t("emailing.noDelivery")} />
@@ -78,86 +65,29 @@ export default async function TemplatesPage({
           ))}
         </nav>
 
-        <div className="grid items-start gap-6 xl:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-3">
-              <div className="grid gap-1">
-                <CardTitle>{current?.name ?? t("emailing.newTemplate")}</CardTitle>
-                <CardDescription>{t("emailing.variablesHint")}</CardDescription>
-              </div>
-              {current ? (
-                <form action={deleteTemplate}>
-                  <input type="hidden" name="templateId" value={current.id} />
+        <div className="grid gap-3">
+          {current ? (
+            <div className="justify-self-end">
+              <ConfirmDialog
+                trigger={
                   <Button
-                    type="submit"
                     variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("emailing.deleteTemplate")}
+                    size="sm"
                     className="text-muted-foreground hover:text-destructive"
                   >
-                    <Trash2Icon />
+                    <Trash2Icon data-icon="inline-start" aria-hidden />
+                    {t("emailing.deleteTemplate")}
                   </Button>
-                </form>
-              ) : null}
-            </CardHeader>
-            <CardContent>
-              <form action={saveTemplate} className="grid gap-4" key={current?.id ?? "new"}>
-                {current ? <input type="hidden" name="templateId" value={current.id} /> : null}
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="tpl-name">{t("emailing.templateName")}</FieldLabel>
-                    <Input
-                      id="tpl-name"
-                      name="name"
-                      required
-                      maxLength={80}
-                      defaultValue={current?.name ?? ""}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="tpl-subject">{t("emailing.subject")}</FieldLabel>
-                    <Input
-                      id="tpl-subject"
-                      name="subject"
-                      required
-                      maxLength={200}
-                      defaultValue={current?.subject ?? ""}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="tpl-body">{t("emailing.body")}</FieldLabel>
-                    <Textarea
-                      id="tpl-body"
-                      name="body"
-                      required
-                      rows={10}
-                      maxLength={10000}
-                      defaultValue={current?.body ?? ""}
-                    />
-                    <FieldDescription>{t("emailing.variables")}</FieldDescription>
-                  </Field>
-                </FieldGroup>
-                <SubmitButton className="w-fit">{t("common.save")}</SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
-
-          {preview ? (
-            <Card className="bg-muted/40">
-              <CardHeader>
-                <CardTitle>{t("emailing.preview")}</CardTitle>
-                <CardDescription>
-                  {preview.member_name
-                    ? t("emailing.previewFor", { name: preview.member_name })
-                    : t("emailing.previewNoMember")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 rounded-lg bg-card p-4 text-sm shadow-border">
-                <p className="font-semibold">{preview.subject}</p>
-                <p className="whitespace-pre-line text-muted-foreground">{preview.body}</p>
-              </CardContent>
-            </Card>
+                }
+                title={t("emailing.deleteTemplateTitle", { name: current.name })}
+                description={t("emailing.deleteTemplateBody")}
+                confirmLabel={t("common.delete")}
+                action={deleteTemplate}
+                fields={{ templateId: current.id }}
+              />
+            </div>
           ) : null}
+          <TemplateEditor key={current?.id ?? "new"} template={current ?? null} />
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { ArrowUpIcon, SparklesIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { openAssistant } from "@/components/command-palette";
+import { askInHub } from "@/components/hub/hub-conversations";
 import { Button } from "@/components/ui/button";
 import { type MessageKey, t } from "@/lib/i18n";
 
@@ -12,7 +12,7 @@ const SUGGESTIONS = [
   "assistant.suggestions.fill",
 ] as const satisfies readonly MessageKey[];
 
-/** Question libre à l'assistant depuis le Hub (ouvre la conversation de la palette). */
+/** Question libre à l'assistant en haut du Hub : ouvre une nouvelle conversation dans le volet du bas. */
 export function AskBar() {
   const [value, setValue] = useState("");
   function submit(event: FormEvent) {
@@ -20,7 +20,7 @@ export function AskBar() {
     const question = value.trim();
     if (!question) return;
     setValue("");
-    openAssistant(question);
+    askInHub(question);
   }
   return (
     <form onSubmit={submit} className="grid gap-2.5 rounded-2xl bg-accent p-3">
@@ -46,7 +46,7 @@ export function AskBar() {
             size="sm"
             variant="outline"
             className="rounded-full bg-card"
-            onClick={() => openAssistant(t(key))}
+            onClick={() => askInHub(t(key))}
           >
             {t(key)}
           </Button>

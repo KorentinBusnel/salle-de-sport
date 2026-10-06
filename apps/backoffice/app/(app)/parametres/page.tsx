@@ -23,6 +23,7 @@ import { TeamSection } from "@/components/settings/team-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
+import { SETTINGS_SECTIONS, type SettingsSection, settingsHref } from "@/lib/settings-sections";
 import { t } from "@/lib/i18n";
 import { type GymConfig, getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
@@ -34,17 +35,8 @@ export const metadata: Metadata = { title: t("settings.title") };
  * (identité, logo, horaires, fermetures), Réservations, Stratégies, Accueil (permanences,
  * blocs et pastilles par rôle), Suivi (seuils), Catalogue, Équipe et Intégrations.
  */
-const TABS = [
-  "salle",
-  "reservations",
-  "strategies",
-  "accueil",
-  "suivi",
-  "catalogue",
-  "equipe",
-  "integrations",
-] as const;
-type Tab = (typeof TABS)[number];
+const TABS = SETTINGS_SECTIONS;
+type Tab = SettingsSection;
 
 /** Anciens liens (« ?onglet=general ») : vers la section qui les a remplacés. */
 const LEGACY: Record<string, Tab> = { general: "reservations" };
@@ -70,7 +62,7 @@ export default async function SettingsPage({
         <SettingsNav
           label={t("settings.sections")}
           sections={TABS.map((x) => ({
-            href: x === "salle" ? "/parametres" : `/parametres?onglet=${x}`,
+            href: settingsHref(x),
             label: t(`settings.tab.${x}`),
             hint: t(`settings.tabHint.${x}`),
             current: x === tab,

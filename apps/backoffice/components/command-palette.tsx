@@ -1,9 +1,30 @@
 "use client";
 
-import { ArrowRightIcon, SearchIcon, SparklesIcon, UserIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CalendarDaysIcon,
+  CalendarPlusIcon,
+  ChartColumnIcon,
+  ClockIcon,
+  DumbbellIcon,
+  FilterIcon,
+  HistoryIcon,
+  HouseIcon,
+  KanbanIcon,
+  type LucideIcon,
+  MailIcon,
+  MailPlusIcon,
+  RepeatIcon,
+  SearchIcon,
+  SettingsIcon,
+  SparklesIcon,
+  UserIcon,
+  UserPlusIcon,
+  UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMemberSearch } from "@/hooks/use-member-search";
 import { AssistantChat } from "@/components/assistant/assistant-chat";
 import {
@@ -22,7 +43,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import { Spinner } from "@/components/ui/spinner";
 import { type MessageKey, t } from "@/lib/i18n";
+import {
+  filterEntries,
+  type PaletteEntry,
+  type PaletteGroup,
+  type PaletteIcon,
+  parseRecents,
+  pushRecent,
+  recentsKey,
+  type RecentEntry,
+} from "@/lib/palette";
 
 const ASK_EVENT = "salle:assistant-ask";
 
@@ -38,17 +70,79 @@ const SUGGESTIONS = [
   "assistant.suggestions.noShows",
 ] as const satisfies readonly MessageKey[];
 
+const ICONS: Record<PaletteIcon, LucideIcon> = {
+  today: HouseIcon,
+  planning: CalendarDaysIcon,
+  templates: RepeatIcon,
+  members: UsersIcon,
+  messages: MailIcon,
+  coaches: DumbbellIcon,
+  hours: ClockIcon,
+  crm: KanbanIcon,
+  segments: FilterIcon,
+  emailing: MailPlusIcon,
+  kpis: ChartColumnIcon,
+  hub: SparklesIcon,
+  settings: SettingsIcon,
+  member: UserPlusIcon,
+  session: CalendarPlusIcon,
+  campaign: MailPlusIcon,
+};
+
+const GROUPS = [
+  ["goto", "topbar.gotoGroup"],
+  ["settings", "topbar.settingsGroup"],
+  ["actions", "topbar.actionsGroup"],
+] as const satisfies readonly (readonly [PaletteGroup, MessageKey])[];
+
+function readRecents(key: string): RecentEntry[] {
+  try {
+    return parseRecents(window.localStorage.getItem(key));
+  } catch {
+    return [];
+  }
+}
+
+function writeRecents(key: string, recents: RecentEntry[]) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(recents));
+  } catch {
+    // Stockage indisponible (navigation privée) : les récents ne sont simplement pas gardés.
+  }
+}
+
 /**
- * Champ unique de la barre du haut (⌘K / Ctrl+K ou « / ») : recherche d'adhérent au fil de la
- * frappe (accueil et gérant) et, pour le gérant, question à l'assistant dans la même palette.
+ * Champ unique de la barre du haut (⌘K / Ctrl+K ou « / »), pour tous les rôles :
+ * - Récents (pages et fiches ouvertes depuis la palette, mémorisés dans ce navigateur) ;
+ * - Adhérents au fil de la frappe (accueil et gérant), avec un indicateur de recherche ;
+ * - Aller à (pages du rôle), Réglages (sections des Paramètres, gérant) et Actions (« Nouveau ») ;
+ * - pour le gérant, question à l'assistant dans la même palette.
  */
-export function CommandPalette({ members, assistant }: { members: boolean; assistant: boolean }) {
+export function CommandPalette({
+  members,
+  assistant,
+  entries,
+  userId,
+}: {
+  members: boolean;
+  assistant: boolean;
+  entries: PaletteEntry[];
+  userId: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [recents, setRecents] = useState<RecentEntry[]>([]);
   const [query, setQuery] = useState("");
   const [question, setQuestion] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const term = query.trim();
+
+  // Les récents sont relus à chaque ouverture (un autre onglet a pu les changer).
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setRecents(readRecents(recentsKey(userId)));
+  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -79,7 +173,14 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
     };
   }, [assistant]);
 
-  const { hits: results } = useMemberSearch(query, { enabled: members && open });
+  const {
+    hits: results,
+    loading,
+    short,
+  } = useMemberSearch(query, {
+    enabled: members && open,
+  });
+  const matches = useMemo(() => filterEntries(entries, term), [entries, term]);
 
   function reset(next: boolean) {
     setOpen(next);
@@ -89,12 +190,19 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
       setConversationId(null);
     }
   }
-  function go(href: string) {
+  function go(href: string, recent?: RecentEntry) {
+    if (recent) {
+      const key = recentsKey(userId);
+      writeRecents(key, pushRecent(readRecents(key), recent));
+    }
     reset(false);
     router.push(href);
   }
 
-  const placeholder = t(assistant ? "topbar.searchOrAsk" : "topbar.searchPlaceholder");
+  const placeholder = t(
+    assistant ? "topbar.searchOrAsk" : members ? "topbar.searchMembersPages" : "topbar.searchPages",
+  );
+  const searching = members && !short && loading && results.length === 0;
 
   return (
     <>
@@ -151,15 +259,31 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
             <Command shouldFilter={false} loop>
               <CommandInput value={query} onValueChange={setQuery} placeholder={placeholder} />
               <CommandList>
-                <CommandEmpty>
-                  {term.length < 2 ? t("topbar.minChars") : t("topbar.noResults")}
-                </CommandEmpty>
-                {assistant && term ? (
-                  <CommandGroup heading={t("topbar.assistantGroup")}>
-                    <CommandItem value={`ask:${term}`} onSelect={() => setQuestion(term)}>
-                      <SparklesIcon className="text-primary" />
-                      <span className="truncate">{t("topbar.askAbout", { question: term })}</span>
-                    </CommandItem>
+                {searching ? (
+                  <div
+                    role="status"
+                    className="flex items-center gap-2 px-3 py-6 text-sm text-muted-foreground"
+                  >
+                    <Spinner />
+                    {t("topbar.searching")}
+                  </div>
+                ) : (
+                  <CommandEmpty>
+                    {members && short && term ? t("topbar.minChars") : t("topbar.noResults")}
+                  </CommandEmpty>
+                )}
+                {!term && recents.length ? (
+                  <CommandGroup heading={t("topbar.recentsGroup")}>
+                    {recents.map((recent) => (
+                      <CommandItem
+                        key={recent.href}
+                        value={`recent:${recent.href}`}
+                        onSelect={() => go(recent.href, recent)}
+                      >
+                        {recent.kind === "member" ? <UserIcon /> : <HistoryIcon />}
+                        <span className="truncate">{recent.label}</span>
+                      </CommandItem>
+                    ))}
                   </CommandGroup>
                 ) : null}
                 {assistant && !term ? (
@@ -178,7 +302,13 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
                       <CommandItem
                         key={member.id}
                         value={`member:${member.id}`}
-                        onSelect={() => go(`/adherents/${member.id}`)}
+                        onSelect={() =>
+                          go(`/adherents/${member.id}`, {
+                            href: `/adherents/${member.id}`,
+                            label: `${member.first_name} ${member.last_name}`,
+                            kind: "member",
+                          })
+                        }
                       >
                         <UserIcon />
                         <span className="truncate">
@@ -197,6 +327,48 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
                     >
                       <ArrowRightIcon />
                       {t("topbar.allResults", { query: term })}
+                    </CommandItem>
+                  </CommandGroup>
+                ) : null}
+                {GROUPS.map(([group, heading]) => {
+                  const items = matches.filter((entry) => entry.group === group);
+                  if (items.length === 0) return null;
+                  return (
+                    <CommandGroup key={group} heading={t(heading)}>
+                      {items.map((entry) => {
+                        const Icon = ICONS[entry.icon];
+                        return (
+                          <CommandItem
+                            key={`${group}:${entry.href}`}
+                            value={`${group}:${entry.href}`}
+                            onSelect={() =>
+                              go(
+                                entry.href,
+                                group === "actions"
+                                  ? undefined
+                                  : { href: entry.href, label: entry.label, kind: "page" },
+                              )
+                            }
+                          >
+                            <Icon />
+                            <span className="truncate">{entry.label}</span>
+                            {entry.hint ? (
+                              <span className="ml-auto truncate pl-3 text-xs text-muted-foreground">
+                                {entry.hint}
+                              </span>
+                            ) : null}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  );
+                })}
+                {/* Question libre en dernier : Entrée ouvre d'abord une page ou une fiche trouvée. */}
+                {assistant && term ? (
+                  <CommandGroup heading={t("topbar.assistantGroup")}>
+                    <CommandItem value={`ask:${term}`} onSelect={() => setQuestion(term)}>
+                      <SparklesIcon className="text-primary" />
+                      <span className="truncate">{t("topbar.askAbout", { question: term })}</span>
                     </CommandItem>
                   </CommandGroup>
                 ) : null}

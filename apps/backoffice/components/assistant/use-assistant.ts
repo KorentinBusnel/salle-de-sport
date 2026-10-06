@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AssistantEvent, Proposal } from "@/lib/ai/types";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -11,13 +11,16 @@ export type ChatMessage = {
   steps: string[];
   proposals: Proposal[];
   pending?: boolean;
+  /** Réponse interrompue par « Arrêter ». */
+  stopped?: boolean;
 };
 
 export type AssistantStatus = "idle" | "streaming" | "not_configured" | "error";
 
 /**
  * Conversation avec l'assistant : envoie la question à /api/assistant et lit le flux NDJSON
- * (texte, étapes, propositions) pour mettre la réponse à jour au fil de l'eau.
+ * (texte, étapes, propositions) pour mettre la réponse à jour au fil de l'eau. `stop()` abandonne
+ * la requête : le serveur interrompt le modèle et garde le texte déjà reçu.
  */
 export function useAssistant({
   conversationId: initialId,
@@ -33,6 +36,11 @@ export function useAssistant({
   const [error, setError] = useState<MessageKey | null>(null);
   const conversation = useRef<string | undefined>(initialId);
   const [conversationId, setConversationId] = useState(initialId);
+  const controller = useRef<AbortController | null>(null);
+
+  const stop = useCallback(() => controller.current?.abort(), []);
+  // Conversation quittée en cours de réponse : la requête est abandonnée (réponse gardée côté serveur).
+  useEffect(() => () => controller.current?.abort(), []);
 
   const ask = useCallback(
     async (question: string) => {
@@ -46,6 +54,8 @@ export function useAssistant({
         { id: crypto.randomUUID(), role: "user", text, steps: [], proposals: [] },
         { id: answerId, role: "assistant", text: "", steps: [], proposals: [], pending: true },
       ]);
+      const abort = new AbortController();
+      controller.current = abort;
       const patch = (update: (m: ChatMessage) => ChatMessage) =>
         setMessages((current) => current.map((m) => (m.id === answerId ? update(m) : m)));
 
@@ -53,6 +63,7 @@ export function useAssistant({
         const response = await fetch("/api/assistant", {
           method: "POST",
           headers: { "content-type": "application/json" },
+          signal: abort.signal,
           body: JSON.stringify({
             message: text,
             ...(conversation.current ? { conversationId: conversation.current } : {}),
@@ -92,13 +103,20 @@ export function useAssistant({
         patch((m) => ({ ...m, pending: false }));
         setStatus("idle");
       } catch {
+        if (abort.signal.aborted) {
+          patch((m) => ({ ...m, pending: false, stopped: true }));
+          setStatus("idle");
+          return;
+        }
         patch((m) => ({ ...m, pending: false }));
         setError("assistant.errors.failed");
         setStatus("error");
+      } finally {
+        if (controller.current === abort) controller.current = null;
       }
     },
     [memberId, status],
   );
 
-  return { messages, status, error, ask, conversationId };
+  return { messages, status, error, ask, stop, conversationId };
 }

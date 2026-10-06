@@ -19,6 +19,7 @@ export async function askAssistant({
   tools = assistantTools,
   instructions,
   emit,
+  signal,
 }: {
   context: TeamContext;
   turn: Turn;
@@ -32,6 +33,8 @@ export async function askAssistant({
   /** Consignes ajoutées à la consigne système (génération du digest…). */
   instructions?: string | undefined;
   emit: (event: AssistantEvent) => void;
+  /** « Arrêter » : interrompt la réponse en cours (le texte reçu est gardé). */
+  signal?: AbortSignal | undefined;
 }) {
   const supabase = await createClient();
   const today = zonedDateKey(currentTime(), context.gym.timezone);
@@ -66,6 +69,7 @@ export async function askAssistant({
     onText: (delta) => emit({ type: "text", delta }),
     onStep: (label) => emit({ type: "step", label }),
     onProposal: (proposal: Proposal) => emit({ type: "proposal", proposal }),
+    signal,
   });
   await supabase.rpc("log_ai_call", {
     p_gym_id: context.gym.id,

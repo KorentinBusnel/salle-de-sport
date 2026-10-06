@@ -20,9 +20,11 @@ import {
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getTeamContext, isFrontDeskRole, isManagerRole } from "@/lib/auth";
 import { getOwnCoachId } from "@/lib/coaches";
+import type { PaletteEntry } from "@/lib/palette";
 import { buildNavigation, type BadgeKey } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
 import { getGymConfig } from "@/lib/settings";
+import { SETTINGS_SECTIONS, settingsHref } from "@/lib/settings-sections";
 import { signOut } from "./actions";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -96,9 +98,36 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     ...(manager
       ? [
           { kind: "session" as const, href: "/planning?creer=1" },
-          { kind: "campaign" as const, href: "/emailing" },
+          { kind: "campaign" as const, href: "/emailing?nouveau=1" },
         ]
       : []),
+  ];
+
+  const palette: PaletteEntry[] = [
+    ...navigation.groups.flatMap((group) =>
+      group.items.map((item) => ({
+        group: "goto" as const,
+        href: item.href,
+        label: item.label,
+        hint: group.label,
+        icon: item.icon,
+      })),
+    ),
+    ...(manager
+      ? SETTINGS_SECTIONS.map((section) => ({
+          group: "settings" as const,
+          href: settingsHref(section),
+          label: t(`settings.tab.${section}`),
+          hint: t(`settings.tabHint.${section}`),
+          icon: "settings" as const,
+        }))
+      : []),
+    ...create.map((item) => ({
+      group: "actions" as const,
+      href: item.href,
+      label: t(`topbar.action.${item.kind}`),
+      icon: item.kind,
+    })),
   ];
 
   const sidebarState = (await cookies()).get("sidebar_state")?.value;
@@ -123,7 +152,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           signOut={signOut}
         />
         <SidebarInset className="min-w-0 bg-card md:peer-data-[variant=inset]:shadow-border">
-          <AppTopbar crumbs={crumbs} search={frontDesk} assistant={manager} create={create} />
+          <AppTopbar
+            crumbs={crumbs}
+            search={frontDesk}
+            assistant={manager}
+            create={create}
+            palette={palette}
+            userId={context.userId}
+          />
           <main id="contenu" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
             {children}
           </main>

@@ -13,7 +13,11 @@ Le langage visuel du back office et de l'app mobile s'inspire de
   date-picker-2/3/10/11/12 et calendar-25, textarea-18, slot-picker), `components/settings/`
   (switch-19), `components/data-table/row-actions-menu.tsx` (dropdown-menu-4),
   `components/segment-meter.tsx` (widget-2), `components/kpi-card.tsx` (widget-9),
-  `components/coach-stack.tsx` (avatar-13/18), `lib/toast-undo.ts` (sonner-6, timed undo).
+  `components/coach-stack.tsx` (avatar-13/18), `lib/toast-undo.ts` (sonner-6, timed undo),
+  `components/hub/hub-conversations.tsx` (mail-dashboard, deux volets),
+  `components/messages/messages-list.tsx` (tallie-dashboard, panneau de détail),
+  `components/emailing/campaigns-board.tsx` et `components/coaches/hours-table.tsx`
+  (data-table, lignes dépliables), `components/kpis/heatmap.tsx` (tooltip).
 
 Les primitives `apps/backoffice/components/ui` viennent du registre officiel shadcn/ui (MIT).
 

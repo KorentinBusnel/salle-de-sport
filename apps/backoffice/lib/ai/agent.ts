@@ -20,6 +20,7 @@ export type ToolSpec = { name: string; description: string; input_schema: Record
 export type Turn = (
   params: { system: string; messages: AgentMessage[]; tools: ToolSpec[] },
   onText: (delta: string) => void,
+  signal?: AbortSignal | undefined,
 ) => Promise<{
   content: (TextBlock | ToolUseBlock)[];
   stopReason: string | null;
@@ -66,7 +67,8 @@ const MAX_RESULT_CHARS = 12_000;
 /**
  * Boucle d'outils : le modèle répond ou appelle des outils ; chaque résultat lui est renvoyé,
  * jusqu'à la réponse finale (au plus MAX_TURNS tours). Les propositions sont remontées à
- * l'interface et ne sont jamais exécutées ici.
+ * l'interface et ne sont jamais exécutées ici. « Arrêter » (signal) interrompt le tour en cours :
+ * le texte déjà reçu est gardé et `stopped` l'indique.
  */
 export async function runAgent<Ctx>({
   turn,
@@ -77,6 +79,7 @@ export async function runAgent<Ctx>({
   onText,
   onStep,
   onProposal,
+  signal,
 }: {
   turn: Turn;
   system: string;
@@ -86,6 +89,7 @@ export async function runAgent<Ctx>({
   onText: (delta: string) => void;
   onStep: (label: string) => void;
   onProposal: (proposal: Proposal) => void;
+  signal?: AbortSignal | undefined;
 }) {
   const messages = [...history];
   const specs = toolSpecs(tools);
@@ -94,12 +98,28 @@ export async function runAgent<Ctx>({
   const steps: string[] = [];
   const proposals: Proposal[] = [];
   let text = "";
+  let stopped = false;
 
   for (let round = 0; round < MAX_TURNS; round++) {
-    const result = await turn({ system, messages, tools: specs }, (delta) => {
-      text += delta;
-      onText(delta);
-    });
+    if (signal?.aborted) {
+      stopped = true;
+      break;
+    }
+    let result: Awaited<ReturnType<Turn>>;
+    try {
+      result = await turn(
+        { system, messages, tools: specs },
+        (delta) => {
+          text += delta;
+          onText(delta);
+        },
+        signal,
+      );
+    } catch (error) {
+      if (!signal?.aborted) throw error;
+      stopped = true;
+      break;
+    }
     usage.input += result.usage.input;
     usage.output += result.usage.output;
     messages.push({ role: "assistant", content: result.content });
@@ -168,5 +188,5 @@ export async function runAgent<Ctx>({
     }
   }
 
-  return { text: text.trim(), steps, proposals, usage, toolsUsed };
+  return { text: text.trim(), steps, proposals, usage, toolsUsed, stopped };
 }

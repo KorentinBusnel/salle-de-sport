@@ -55,3 +55,24 @@ npx eas-cli@latest update --branch preview --environment preview --platform all 
   supplémentaire nécessitera un build de développement (compte Apple Developer).
 - Le schéma du projet de dev se met à jour avec `pnpm exec supabase db push` une fois le projet
   lié (`supabase link`) — la connexion Postgres directe doit alors être autorisée par le réseau.
+
+## Brancher Stripe (mode test)
+
+Tout le code est prêt et testé contre `stripe-mock` ; il ne manque que les clés. Aucune clé Stripe
+ne va dans le dépôt ni dans les apps (seule la clé **publiable** `pk_test_…` est publique).
+
+1. Dans le tableau de bord Stripe (mode test), récupérer la clé secrète `sk_test_…` et la clé
+   publiable `pk_test_…`.
+2. Déployer les fonctions sur le projet de dev : `pnpm exec supabase functions deploy billing` et
+   `pnpm exec supabase functions deploy stripe-webhook --no-verify-jwt`.
+3. Créer un **webhook** Stripe vers `https://<projet>.supabase.co/functions/v1/stripe-webhook`,
+   événements : `customer.subscription.created`, `customer.subscription.updated`,
+   `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`,
+   `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`.
+4. Enregistrer les secrets des fonctions :
+   `pnpm exec supabase secrets set STRIPE_SECRET_KEY=… STRIPE_WEBHOOK_SECRET=…` (le `whsec_…`
+   du webhook).
+5. Ajouter `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` aux variables EAS de l'environnement `preview`,
+   puis republier l'app : les boutons « Acheter » et « S'abonner » apparaissent.
+6. Dans le back office, Paramètres › Offres : « Synchroniser avec Stripe » sur chaque offre (fait
+   aussi au premier achat).

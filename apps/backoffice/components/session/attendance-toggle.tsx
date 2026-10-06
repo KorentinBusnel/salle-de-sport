@@ -3,6 +3,7 @@
 import { RotateCcwIcon } from "lucide-react";
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
+import { useSessionLive } from "@/components/session/session-live";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { t } from "@/lib/i18n";
@@ -39,6 +40,9 @@ export function AttendanceToggle({
 }) {
   const [optimistic, setOptimistic] = useOptimistic(status);
   const [pending, startTransition] = useTransition();
+  // « Tous présents » en cours : la ligne s'affiche déjà présente.
+  const bulk = useSessionLive()?.allAttended ?? false;
+  const shown = bulk && optimistic === "confirmed" ? "attended" : optimistic;
 
   function undo() {
     if (!reset || optimistic === "confirmed") return;
@@ -65,7 +69,7 @@ export function AttendanceToggle({
       <ToggleGroup
         type="single"
         variant="outline"
-        value={optimistic === "confirmed" ? "" : optimistic}
+        value={shown === "confirmed" ? "" : shown}
         onValueChange={choose}
         aria-label={t("session.attendanceFor", { name: memberName })}
         aria-busy={pending}
@@ -86,7 +90,7 @@ export function AttendanceToggle({
           {t("session.markNoShow")}
         </ToggleGroupItem>
       </ToggleGroup>
-      {reset && optimistic !== "confirmed" ? (
+      {reset && shown !== "confirmed" ? (
         <Button
           type="button"
           variant="ghost"

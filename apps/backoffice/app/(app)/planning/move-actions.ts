@@ -2,10 +2,9 @@
 
 import { zonedInstant } from "@salle/shared";
 import { refresh, revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isManagerRole, requireRole } from "@/lib/auth";
-import { errorMessageKey, withFlash } from "@/lib/flash";
+import { errorMessageKey } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
@@ -72,32 +71,6 @@ export async function moveSession(input: MoveInput): Promise<{ error: MessageKey
   revalidatePath(`/planning/${parsed.data.sessionId}`);
   refresh();
   return { error: error ? errorMessageKey(error) : null };
-}
-
-/** « Déplacer… » au clavier, depuis la fiche séance : date et heure saisies. */
-export async function moveSessionForm(formData: FormData) {
-  const context = await requireRole(isManagerRole);
-  const sessionId = z.guid().parse(formData.get("sessionId"));
-  const back = `/planning/${sessionId}`;
-  const date = z.iso.date().safeParse(formData.get("date"));
-  const time = z
-    .string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-    .safeParse(formData.get("time"));
-  if (!date.success || !time.success) redirect(withFlash(back, { error: "session.moveInvalid" }));
-  const [h, m] = time.data.split(":").map(Number);
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("move_session", {
-    p_session_id: sessionId,
-    p_starts_at: zonedInstant(
-      date.data,
-      (h ?? 0) * 60 + (m ?? 0),
-      context.gym.timezone,
-    ).toISOString(),
-  });
-  revalidatePath("/planning");
-  revalidatePath(back);
-  redirect(withFlash(back, error ? { error: errorMessageKey(error) } : { ok: "session.moved" }));
 }
 
 const createSchema = moveSchema.omit({ sessionId: true }).extend({

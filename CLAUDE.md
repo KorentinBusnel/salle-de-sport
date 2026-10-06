@@ -36,6 +36,7 @@ pnpm db:reset                    # base propre (migrations + seed)
 pnpm db:test                     # tests RLS pgTAP
 pnpm db:lint                     # lint SQL + advisors, échoue sur un avertissement
 pnpm db:types                    # régénère packages/supabase/src/database.types.ts
+pnpm fn:test                     # Edge Functions : deno lint, check, test (stripe-mock sur :12111)
 pnpm env:local                   # écrit les .env.local des deux apps depuis Supabase local
 pnpm dev                         # back office + Metro
 ```
@@ -120,6 +121,20 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `payments.plan_id` / `promo_code_id` / `recorded_by`, export `export_payments` (journalisé).
   Affichage des prix : `formatMoney` / `formatPrice` (`packages/shared/src/billing.ts`), tons
   `PAYMENT_STATUS_TONE`.
+- **Stripe** (`stripe_sync`) : la base est un **miroir** tenu par le webhook. `apply_stripe_event`
+  (service_role seul, idempotent par `stripe_events`) traite abonnements, factures, carnets payés
+  (`metadata.kind = 'pack'` : paiement + lot de crédits) et remboursements ; échec de facture =
+  `past_due` + message `billing`. `sync_stripe_subscription` (même miroir, repli sur l'abonnement
+  déjà connu) ; `billing_checkout_context` prépare un achat de l'adhérent (contrôles, prix promo).
+- **Edge Functions** (`supabase/functions`, Deno 2) : `stripe-webhook` (signature, `verify_jwt =
+false`) et `billing` (au nom de l'utilisateur : `payment_sheet`, `cancel`, `portal` pour
+  l'adhérent ; `sync_plan`, `sync_promo`, `refund` pour le gérant). Logique dans `handler.ts`
+  (dépendances injectées, testée contre **stripe-mock** : `pnpm fn:test`, job CI « Edge
+  Functions »), `index.ts` ne fait que brancher. Sans `STRIPE_SECRET_KEY` : `503
+stripe_not_configured`. Les codes d'erreur renvoyés figurent dans `BOOKING_ERROR_CODES`. Prix
+  ou remise modifiés dans le back office : identifiants Stripe remis à `null`, recréés à la synchro.
+  En session cloud, le runtime Docker ne passe pas le proxy (certificat) : lancer une fonction
+  avec Deno sur l'hôte (`npx deno@2 run --allow-net --allow-env --allow-read billing/index.ts`).
 - **Stratégies** de la salle (`gyms.settings`, miroir `gymSettingsSchema`) : lues en SQL par
   `private.gym_setting_int` / `gym_setting_bool`, désactivées par défaut. Le back office masque
   une action désactivée (`getGymSettings`, `lib/settings.ts`), la base la refuse
@@ -287,6 +302,14 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `EditableCell` `money` / `decimals` / `zeroLabel` / `emptyLabel`), fiche adhérent onglet
   « Paiements » et `SaleSheet` (prix au fil de la saisie par `app/api/ventes/devis`),
   `SubscriptionActions`, page `/paiements` (`PaymentsFilters`, export `app/api/paiements/export`).
+  Stripe : `callBilling` (`lib/billing.ts`, `supabase.functions.invoke` avec la session, aucune
+  clé Stripe côté Next), actions `stripe-actions.ts`, `StripeSync` (offres, codes),
+  `RefundButton` ; « non configuré » = toast d'information (`stripeErrorKey`). Reçu PDF :
+  `buildReceipt` (`lib/receipt.ts`, pdf-lib, polices standard : passer le texte par `pdfText`),
+  route `app/api/paiements/[id]/recu` (gérant), lien `ReceiptLink`.
+- Synthèse de fiche : `MemberOverview` (`components/members/member-overview.tsx`) lit la fonction SQL
+  `member_overview` (accueil et gérant ; `finance` à `null` hors gérant), sous `SectionError` +
+  `Suspense`. Tons d'abonnement : `SUBSCRIPTION_STATUS_TONE` (shared).
 - Emailing : `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
   `trigger`), actions `saveCampaign` / `sendCampaignNow` / `setCampaignSchedule` /
   `deleteCampaignQuick` (`ActionResult`) ; audience par `app/api/segments/[id]/audience`, aperçu
@@ -321,6 +344,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   EmptyState) et `components/toast.tsx` (`useToast`, retour haptique) ; `Notice` pour les états
   durables seulement. Police système (pas d'Inter sur mobile). Les vues `Animated.*` ne reçoivent
   pas les classes NativeWind : style animé seul, classes sur une vue enfant.
+- Paiement : `callBilling` (`lib/billing.ts`), `presentPurchase` (`lib/payment-sheet.ts`, repli
+  `.web.ts`), `PaymentsProvider` (`StripeProvider` si `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`, sinon
+  achat masqué). Après paiement : `refresh()` du membre (crédits posés par le webhook).
 - Navigation : `Stack.Protected` dans `app/_layout.tsx` (connexion → onboarding → onglets) ;
   état de l'adhérent partagé par `MemberProvider` (`lib/member.tsx`), à rafraîchir après chaque
   action. Confirmations : `confirmAsync` (`Alert` ne fait rien sur le web).

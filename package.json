@@ -17,6 +17,7 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db && ./supabase/tests/concurrency.sh",
+    "fn:test": "cd supabase/functions && npx --yes deno@2 lint && npx --yes deno@2 check billing/index.ts stripe-webhook/index.ts && npx --yes deno@2 test --allow-net --allow-env --allow-read",
     "db:lint": "supabase db lint --level warning --fail-on warning && supabase db advisors --local --level warn --fail-on warn",
     "db:types": "supabase gen types typescript --local --schema public > packages/supabase/src/database.types.ts && prettier --write packages/supabase/src/database.types.ts",
     "env:local": "./scripts/env-local.sh",

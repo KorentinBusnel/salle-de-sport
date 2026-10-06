@@ -386,6 +386,14 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Webhook Stripe : appelé par Stripe sans jeton Supabase, authentifié par sa signature.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Paiements en ligne : toujours au nom de l'utilisateur connecté (jeton vérifié).
+[functions.billing]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

@@ -1,9 +1,13 @@
 import { formatPrice, type BillingInterval, type PlanType } from "@salle/shared";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { FlatList, Text, View } from "react-native";
-import { Card, ErrorState, Loading, Notice } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { Button, Card, ErrorState, Field, Loading, Notice } from "@/components/ui";
+import { callBilling, onlinePaymentEnabled, type PaymentSheetParams } from "@/lib/billing";
 import { t } from "@/lib/i18n";
 import { useMember } from "@/lib/member";
+import { presentPurchase } from "@/lib/payment-sheet";
 import { supabase } from "@/lib/supabase";
 
 type Plan = {
@@ -35,12 +39,52 @@ function fetchPlans(gymId: string) {
     .order("name");
 }
 
-/** Offres de la salle, consultables ; l'achat en ligne viendra avec le paiement Stripe. */
+/**
+ * Offres de la salle et achat dans l'app (feuille de paiement Stripe ; prélèvement SEPA pour un
+ * abonnement). Sans clé Stripe dans l'app, les offres restent consultables, achat à l'accueil.
+ */
 export default function OffersScreen() {
-  const { state } = useMember();
+  const { state, refresh } = useMember();
+  const toast = useToast();
   const gymId = state.status === "ready" ? state.gym.id : null;
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [promo, setPromo] = useState("");
+  const [buying, setBuying] = useState<string | null>(null);
+
+  async function buy(plan: Plan) {
+    if (state.status !== "ready") return;
+    setBuying(plan.id);
+    try {
+      const code = promo.trim();
+      const sheet = await callBilling<PaymentSheetParams>({
+        action: "payment_sheet",
+        planId: plan.id,
+        ...(code ? { promoCode: code } : {}),
+      });
+      if (sheet.error !== null) {
+        toast("error", sheet.error);
+        return;
+      }
+      const outcome = await presentPurchase(sheet.data, {
+        merchantName: state.gym.name,
+        email: state.member.email,
+        name: `${state.member.first_name} ${state.member.last_name}`,
+      });
+      if (outcome.status === "canceled") return;
+      if (outcome.status === "failed") {
+        toast("error", outcome.message);
+        return;
+      }
+      toast("success", t(plan.type === "recurring" ? "offers.subscribed" : "offers.paid"));
+      // Crédits et abonnement arrivent par le webhook : relecture tout de suite, puis un peu après.
+      await refresh();
+      setTimeout(() => void refresh(), 3000);
+      router.navigate("/");
+    } finally {
+      setBuying(null);
+    }
+  }
 
   async function load() {
     if (!gymId) return;
@@ -63,6 +107,7 @@ export default function OffersScreen() {
   }, [gymId]);
 
   if (!gymId || (plans === null && !failed)) return <Loading />;
+  const subscribed = state.status === "ready" && state.hasSubscription;
   if (failed && plans === null)
     return <ErrorState message={t("common.unexpectedError")} onRetry={load} />;
 
@@ -71,7 +116,24 @@ export default function OffersScreen() {
       data={plans ?? []}
       keyExtractor={(p) => p.id}
       contentContainerClassName="gap-3 px-4 py-5"
-      ListHeaderComponent={<Notice>{t("offers.buySoon")}</Notice>}
+      ListHeaderComponent={
+        onlinePaymentEnabled ? (
+          <View className="gap-3">
+            {subscribed ? <Notice>{t("offers.alreadySubscribed")}</Notice> : null}
+            <Field
+              label={t("offers.promoLabel")}
+              hint={t("offers.promoHint")}
+              value={promo}
+              onChangeText={setPromo}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={30}
+            />
+          </View>
+        ) : (
+          <Notice>{t("offers.buySoon")}</Notice>
+        )
+      }
       ListEmptyComponent={
         <Text className="px-1 text-sm text-muted-foreground">{t("offers.empty")}</Text>
       }
@@ -111,6 +173,17 @@ export default function OffersScreen() {
               <Text className="text-xs font-medium text-foreground">
                 {t("offers.proof", { audience: item.audience ?? "" })}
               </Text>
+            ) : null}
+            {onlinePaymentEnabled && !(item.type === "recurring" && subscribed) ? (
+              <View className="pt-2">
+                <Button
+                  label={t(item.type === "recurring" ? "offers.subscribe" : "offers.buy")}
+                  variant={item.type === "recurring" ? "primary" : "secondary"}
+                  busy={buying === item.id}
+                  disabled={buying !== null && buying !== item.id}
+                  onPress={() => void buy(item)}
+                />
+              </View>
             ) : null}
           </Card>
         );

@@ -1,7 +1,7 @@
 import { formatMoney } from "@salle/shared";
+import { StripeSync } from "@/components/billing/stripe-sync";
 import { AddRow } from "@/components/inline/add-row";
 import { EditableCell } from "@/components/inline/editable-cell";
-import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -47,7 +47,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
       supabase
         .from("promo_codes")
         .select(
-          "id, code, kind, value, ends_on, max_redemptions, is_active, promo_code_plans(plan_id)",
+          "id, code, kind, value, ends_on, max_redemptions, is_active, stripe_coupon_id, promo_code_plans(plan_id)",
         )
         .eq("gym_id", gymId)
         .order("code"),
@@ -84,7 +84,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
           <CardDescription>{t("offers.plansHint")}</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto px-2">
-          <Table className="min-w-[78rem]">
+          <Table className="min-w-[83rem]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-52">{t("offers.name")}</TableHead>
@@ -98,7 +98,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
                 <TableHead className="w-24">{t("offers.proof")}</TableHead>
                 <TableHead className="w-48">{t("offers.disciplines")}</TableHead>
                 <TableHead className="w-20">{t("offers.active")}</TableHead>
-                <TableHead className="w-28">{t("offers.stripe")}</TableHead>
+                <TableHead className="w-48">{t("offers.stripe")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -258,9 +258,12 @@ export async function OffersSection({ gymId }: { gymId: string }) {
                       />
                     </TableCell>
                     <TableCell className="px-2">
-                      <StatusPill tone={p.stripe_price_id ? "success" : "neutral"}>
-                        {t(p.stripe_price_id ? "offers.synced" : "offers.notSynced")}
-                      </StatusPill>
+                      <StripeSync
+                        kind="plan"
+                        id={p.id}
+                        name={p.name}
+                        synced={Boolean(p.stripe_price_id)}
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -278,7 +281,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
           <CardDescription>{t("offers.promosHint")}</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto px-2">
-          <Table className="min-w-[56rem]">
+          <Table className="min-w-[66rem]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-40">{t("offers.code")}</TableHead>
@@ -288,6 +291,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
                 <TableHead className="w-40">{t("offers.endsOn")}</TableHead>
                 <TableHead className="w-32">{t("offers.uses")}</TableHead>
                 <TableHead className="w-20">{t("offers.active")}</TableHead>
+                <TableHead className="w-48">{t("offers.stripe")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -396,9 +400,17 @@ export async function OffersSection({ gymId }: { gymId: string }) {
                       action={updatePromo}
                     />
                   </TableCell>
+                  <TableCell className="px-2">
+                    <StripeSync
+                      kind="promo"
+                      id={p.id}
+                      name={p.code}
+                      synced={Boolean(p.stripe_coupon_id)}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
-              <AddRow label={t("offers.newPromo")} action={createPromo} colSpan={7} />
+              <AddRow label={t("offers.newPromo")} action={createPromo} colSpan={8} />
             </TableBody>
           </Table>
           <p className="px-2 pt-3 text-xs text-muted-foreground">

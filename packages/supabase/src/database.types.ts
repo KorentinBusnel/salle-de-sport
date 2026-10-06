@@ -2049,6 +2049,14 @@ export type Database = {
         Args: { p_delta: number; p_member_id: string; p_note?: string };
         Returns: number;
       };
+      apply_stripe_event: {
+        Args: { p_event: Json; p_method?: Database["public"]["Enums"]["payment_method"] };
+        Returns: string;
+      };
+      billing_checkout_context: {
+        Args: { p_plan_id: string; p_promo_code?: string };
+        Returns: Json;
+      };
       book_session: {
         Args: { p_member_id?: string; p_session_id: string };
         Returns: {
@@ -2370,6 +2378,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      member_overview: { Args: { p_member_id: string }; Returns: Json };
       move_session: {
         Args: { p_session_id: string; p_starts_at: string };
         Returns: {
@@ -2686,6 +2695,31 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      sync_stripe_subscription: {
+        Args: { p_sub: Json };
+        Returns: {
+          cancel_at: string | null;
+          canceled_at: string | null;
+          commitment_ends_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          plan_id: string;
+          started_at: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          stripe_subscription_id: string | null;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "subscriptions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       tag_suggestions: {
         Args: { p_gym_id: string; p_limit?: number; p_query?: string };
         Returns: {
@@ -2770,7 +2804,8 @@ export type Database = {
         | "coach_changed"
         | "campaign"
         | "automation"
-        | "direct";
+        | "direct"
+        | "billing";
       message_status: "queued" | "logged" | "sent" | "failed";
       payment_method: "card" | "sepa_debit" | "cash" | "other";
       payment_status: "pending" | "succeeded" | "failed" | "refunded";
@@ -2925,6 +2960,7 @@ export const Constants = {
         "campaign",
         "automation",
         "direct",
+        "billing",
       ],
       message_status: ["queued", "logged", "sent", "failed"],
       payment_method: ["card", "sepa_debit", "cash", "other"],

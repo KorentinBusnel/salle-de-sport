@@ -15,6 +15,8 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { SortHead } from "@/components/data-table/sort-head";
 import { PageHeader } from "@/components/page-header";
 import { PaymentsFilters } from "@/components/payments/payments-filters";
+import { ReceiptLink } from "@/components/payments/receipt-link";
+import { RefundButton } from "@/components/payments/refund-button";
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,7 +88,7 @@ export default async function PaymentsPage({
   let query = supabase
     .from("payments")
     .select(
-      "id, amount_cents, currency, status, method, description, paid_at, created_at, members(id, first_name, last_name), plans(name), promo_codes(code)",
+      "id, amount_cents, currency, status, method, description, paid_at, created_at, stripe_payment_intent_id, members(id, first_name, last_name), plans(name), promo_codes(code)",
       { count: "exact" },
     )
     .eq("gym_id", context.gym.id)
@@ -179,7 +181,7 @@ export default async function PaymentsPage({
             </Empty>
           ) : (
             <div className="overflow-x-auto rounded-xl bg-card shadow-border">
-              <Table className="min-w-[52rem]">
+              <Table className="min-w-[60rem]">
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <SortHead
@@ -198,6 +200,9 @@ export default async function PaymentsPage({
                       href={href({ tri: sort === "amount" ? "amount_asc" : "amount", page: null })}
                       direction={sort === "amount" ? "desc" : sort === "amount_asc" ? "asc" : null}
                     />
+                    <TableHead className="w-44 pr-4">
+                      <span className="sr-only">{t("payments.actions")}</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -238,6 +243,24 @@ export default async function PaymentsPage({
                       </TableCell>
                       <TableCell className="pr-4 text-right font-medium tabular-nums">
                         {formatMoney(p.amount_cents, p.currency)}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right whitespace-nowrap">
+                        {/* Reçu si encaissé ; remboursement si payé en ligne (Stripe). */}
+                        {p.status === "succeeded" || p.status === "refunded" ? (
+                          <ReceiptLink
+                            paymentId={p.id}
+                            date={format.dateTime(p.paid_at ?? p.created_at)}
+                          />
+                        ) : null}
+                        {p.status === "succeeded" && p.stripe_payment_intent_id ? (
+                          <RefundButton
+                            id={p.id}
+                            amount={formatMoney(p.amount_cents, p.currency)}
+                            name={
+                              p.members ? `${p.members.first_name} ${p.members.last_name}` : "—"
+                            }
+                          />
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}

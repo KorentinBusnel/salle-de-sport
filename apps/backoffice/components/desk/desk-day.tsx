@@ -1,5 +1,5 @@
 import { PlusIcon } from "lucide-react";
-import { DeskShiftDialog, type TeamOption } from "@/components/desk/desk-shift-dialog";
+import { DeskShiftTrigger } from "@/components/desk/desk-shift-dialog";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,6 @@ export function DeskDay({
   dayKey,
   shifts,
   gaps,
-  team,
   manager,
   defaultSlot,
   compact = false,
@@ -31,7 +30,7 @@ export function DeskDay({
   gaps: DeskGapView[];
   /** Créneau proposé pour une nouvelle permanence (réglage de la salle). */
   defaultSlot: { start: string; end: string };
-  team: TeamOption[];
+  /** Gérant : chaque créneau ouvre le dialogue de permanence (DeskShiftProvider). */
   manager: boolean;
   compact?: boolean | undefined;
 }) {
@@ -53,8 +52,8 @@ export function DeskDay({
         return (
           <li key={shift.id}>
             {manager ? (
-              <DeskShiftDialog
-                team={team}
+              <DeskShiftTrigger
+                native
                 draft={{
                   id: shift.id,
                   profileId: shift.profileId,
@@ -63,20 +62,15 @@ export function DeskDay({
                   end: shift.end,
                   note: shift.note ?? undefined,
                 }}
-                trigger={
-                  <button
-                    type="button"
-                    className={cn(chip, "bg-muted hover:bg-accent")}
-                    aria-label={t("desk.editShift", {
-                      name: shift.name,
-                      start: shift.start,
-                      end: shift.end,
-                    })}
-                  >
-                    {content}
-                  </button>
-                }
-              />
+                className={cn(chip, "bg-muted hover:bg-accent")}
+                aria-label={t("desk.editShift", {
+                  name: shift.name,
+                  start: shift.start,
+                  end: shift.end,
+                })}
+              >
+                {content}
+              </DeskShiftTrigger>
             ) : (
               <span className={cn(chip, "bg-muted")}>{content}</span>
             )}
@@ -86,24 +80,19 @@ export function DeskDay({
       {gaps.map((gap) => (
         <li key={gap.start}>
           {manager ? (
-            <DeskShiftDialog
-              team={team}
+            <DeskShiftTrigger
+              native
               draft={{ date: dayKey, start: gap.start, end: gap.end }}
-              trigger={
-                <button
-                  type="button"
-                  className={cn(
-                    chip,
-                    "bg-warning/10 text-warning ring-1 ring-warning/25 hover:bg-warning/15",
-                  )}
-                >
-                  <span className="font-medium tabular-nums">
-                    {gap.start}–{gap.end}
-                  </span>
-                  <span>{t("today.deskGap")}</span>
-                </button>
-              }
-            />
+              className={cn(
+                chip,
+                "bg-warning/10 text-warning ring-1 ring-warning/25 hover:bg-warning/15",
+              )}
+            >
+              <span className="font-medium tabular-nums">
+                {gap.start}–{gap.end}
+              </span>
+              <span>{t("today.deskGap")}</span>
+            </DeskShiftTrigger>
           ) : (
             <span className={cn(chip, "bg-warning/10 text-warning")}>
               <span className="font-medium tabular-nums">
@@ -116,19 +105,14 @@ export function DeskDay({
       ))}
       {manager ? (
         <li>
-          <DeskShiftDialog
-            team={team}
+          <DeskShiftTrigger
+            native
             draft={{ date: dayKey, ...defaultSlot }}
-            trigger={
-              <button
-                type="button"
-                className="flex h-7 w-full items-center justify-center rounded-md border border-dashed text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label={t("desk.addTitle")}
-              >
-                <PlusIcon className="size-3.5" aria-hidden />
-              </button>
-            }
-          />
+            className="flex h-7 w-full items-center justify-center rounded-md border border-dashed text-muted-foreground hover:bg-muted hover:text-foreground pointer-coarse:h-10"
+            aria-label={t("desk.addTitle")}
+          >
+            <PlusIcon className="size-3.5" aria-hidden />
+          </DeskShiftTrigger>
         </li>
       ) : null}
       {!manager && shifts.length === 0 && gaps.length === 0 ? (

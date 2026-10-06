@@ -9,14 +9,13 @@ import {
   UserPlusIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { DeskShiftDialog } from "@/components/desk/desk-shift-dialog";
+import { DeskShiftProvider, DeskShiftTrigger } from "@/components/desk/desk-shift-dialog";
 import { KpiCard } from "@/components/kpi-card";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { CareNotePopover } from "@/components/today/care-note-popover";
 import { HomeCard, HomeSection } from "@/components/today/home-section";
 import { ShowMore } from "@/components/today/show-more";
-import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -173,91 +172,90 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
           )}
         </HomeCard>
 
-        <HomeCard title={t("today.desk")}>
-          {deskEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("today.deskEmpty")}</p>
-          ) : (
-            <ul className="grid gap-2">
-              {deskEntries.map((entry) =>
-                entry.kind === "shift" ? (
-                  <li
-                    key={entry.shift.id}
-                    className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 text-sm"
-                  >
-                    <span className="w-28 shrink-0 font-medium tabular-nums">
-                      {clock(entry.shift.starts_at)} – {clock(entry.shift.ends_at)}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {[entry.shift.profiles?.first_name, entry.shift.profiles?.last_name]
-                        .filter(Boolean)
-                        .join(" ")}
-                      {entry.shift.note ? (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {entry.shift.note}
-                        </span>
+        <DeskShiftProvider team={team}>
+          <HomeCard title={t("today.desk")}>
+            {deskEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("today.deskEmpty")}</p>
+            ) : (
+              <ul className="grid gap-2">
+                {deskEntries.map((entry) =>
+                  entry.kind === "shift" ? (
+                    <li
+                      key={entry.shift.id}
+                      className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 text-sm"
+                    >
+                      <span className="w-28 shrink-0 font-medium tabular-nums">
+                        {clock(entry.shift.starts_at)} – {clock(entry.shift.ends_at)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {[entry.shift.profiles?.first_name, entry.shift.profiles?.last_name]
+                          .filter(Boolean)
+                          .join(" ")}
+                        {entry.shift.note ? (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {entry.shift.note}
+                          </span>
+                        ) : null}
+                      </span>
+                      {frame.manager ? (
+                        <DeskShiftTrigger
+                          draft={{
+                            id: entry.shift.id,
+                            profileId: entry.shift.profile_id,
+                            ...draftFor(
+                              new Date(entry.shift.starts_at),
+                              new Date(entry.shift.ends_at),
+                            ),
+                            note: entry.shift.note ?? undefined,
+                          }}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          {t("today.edit")}
+                        </DeskShiftTrigger>
                       ) : null}
-                    </span>
-                    {frame.manager ? (
-                      <DeskShiftDialog
-                        team={team}
-                        draft={{
-                          id: entry.shift.id,
-                          profileId: entry.shift.profile_id,
-                          ...draftFor(
-                            new Date(entry.shift.starts_at),
-                            new Date(entry.shift.ends_at),
-                          ),
-                          note: entry.shift.note ?? undefined,
-                        }}
-                        trigger={
-                          <Button size="sm" variant="ghost">
-                            {t("today.edit")}
-                          </Button>
-                        }
-                      />
-                    ) : null}
-                  </li>
-                ) : (
-                  <li
-                    key={entry.at}
-                    className="flex items-center gap-3 rounded-lg bg-warning/10 px-3 py-2 text-sm ring-1 ring-warning/25"
-                  >
-                    <span className="w-28 shrink-0 font-medium tabular-nums">
-                      {clock(entry.gap.start)} – {clock(entry.gap.end)}
-                    </span>
-                    <span className="min-w-0 flex-1 font-medium text-warning">
-                      {t("today.deskGap")}
-                    </span>
-                    {frame.manager ? (
-                      <DeskShiftDialog
-                        team={team}
-                        draft={draftFor(entry.gap.start, entry.gap.end)}
-                        trigger={<Button size="sm">{t("today.assign")}</Button>}
-                      />
-                    ) : null}
-                  </li>
-                ),
-              )}
-            </ul>
-          )}
-          {frame.manager ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <DeskShiftDialog
-                team={team}
-                draft={{ date: frame.today, ...desk.defaultSlot }}
-                trigger={
-                  <Button size="sm" variant="outline">
-                    <PlusIcon data-icon="inline-start" aria-hidden />
-                    {t("today.addShift")}
-                  </Button>
-                }
-              />
-              <Link href="/planning" className="text-sm font-medium text-primary hover:underline">
-                {t("today.manageShifts")}
-              </Link>
-            </div>
-          ) : null}
-        </HomeCard>
+                    </li>
+                  ) : (
+                    <li
+                      key={entry.at}
+                      className="flex items-center gap-3 rounded-lg bg-warning/10 px-3 py-2 text-sm ring-1 ring-warning/25"
+                    >
+                      <span className="w-28 shrink-0 font-medium tabular-nums">
+                        {clock(entry.gap.start)} – {clock(entry.gap.end)}
+                      </span>
+                      <span className="min-w-0 flex-1 font-medium text-warning">
+                        {t("today.deskGap")}
+                      </span>
+                      {frame.manager ? (
+                        <DeskShiftTrigger
+                          draft={draftFor(entry.gap.start, entry.gap.end)}
+                          size="sm"
+                        >
+                          {t("today.assign")}
+                        </DeskShiftTrigger>
+                      ) : null}
+                    </li>
+                  ),
+                )}
+              </ul>
+            )}
+            {frame.manager ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <DeskShiftTrigger
+                  draft={{ date: frame.today, ...desk.defaultSlot }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <PlusIcon data-icon="inline-start" aria-hidden />
+                  {t("today.addShift")}
+                </DeskShiftTrigger>
+                <Link href="/planning" className="text-sm font-medium text-primary hover:underline">
+                  {t("today.manageShifts")}
+                </Link>
+              </div>
+            ) : null}
+          </HomeCard>
+        </DeskShiftProvider>
       </div>
 
       <SessionList sessions={day.sessions} clock={clock} />

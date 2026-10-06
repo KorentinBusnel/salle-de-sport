@@ -121,16 +121,24 @@ declare
   v_period_end timestamptz;
   v_cancel_at timestamptz;
   v_row public.subscriptions;
+  v_known public.subscriptions;
 begin
+  -- Abonnement déjà connu : son adhérent et son offre servent de repli (objet sans métadonnées).
+  select * into v_known from public.subscriptions where stripe_subscription_id = p_sub ->> 'id';
   v_member := private.stripe_member(p_sub);
+  if v_member.id is null and v_known.id is not null then
+    select * into v_member from public.members where id = v_known.member_id;
+  end if;
   if v_member.id is null then
     raise exception 'member_not_found';
   end if;
   select * into v_plan from public.plans
   where gym_id = v_member.gym_id
     and (id::text = p_sub #>> '{metadata,plan_id}'
-         or stripe_price_id = private.stripe_id(v_item -> 'price'))
-  order by (id::text = p_sub #>> '{metadata,plan_id}') desc
+         or stripe_price_id = private.stripe_id(v_item -> 'price')
+         or id = v_known.plan_id)
+  order by (id::text = p_sub #>> '{metadata,plan_id}') desc,
+           (stripe_price_id is not distinct from private.stripe_id(v_item -> 'price')) desc
   limit 1;
   if not found then
     raise exception 'plan_not_found';
@@ -350,3 +358,8 @@ to service_role;
 
 revoke all on function public.billing_checkout_context(uuid, text) from public, anon;
 grant execute on function public.billing_checkout_context(uuid, text) to authenticated;
+
+-- Les Edge Functions enregistrent l'identifiant client Stripe d'un adhérent (clé service_role) :
+-- la colonne de recherche de members est calculée par ces fonctions.
+grant usage on schema private to service_role;
+grant execute on function private.search_text(text), private.phone_digits(text) to service_role;

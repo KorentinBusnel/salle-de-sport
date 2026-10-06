@@ -1301,6 +1301,25 @@ export const fr = {
     amount: "Montant",
     empty: "Aucun paiement",
     emptyHint: "Aucun paiement sur cette période avec ces filtres.",
+    actions: "Actions",
+    refund: "Rembourser",
+    refundOf: "Rembourser {amount}",
+    refundTitle: "Rembourser ce paiement ?",
+    refundBody:
+      "{amount} sera rendu à {name} sur son moyen de paiement. Les crédits restants du carnet sont retirés. Cette action est définitive.",
+    refundRequested:
+      "Remboursement demandé : le paiement passera à « Remboursé » d'ici quelques instants.",
+  },
+  stripeErrors: {
+    stripe_not_configured:
+      "Stripe n'est pas encore configuré : ajoutez les clés dans les secrets des Edge Functions.",
+    forbidden: "Action réservée au gérant.",
+    plan_not_found: "Offre introuvable.",
+    payment_not_found: "Paiement introuvable.",
+    not_refundable: "Ce paiement ne peut pas être remboursé en ligne.",
+    not_authenticated: "Session expirée : reconnectez-vous.",
+    stripe_error: "Stripe n'a pas répondu. Réessayez dans un instant.",
+    unexpected: "Une erreur inattendue est survenue.",
   },
   billing: {
     sell: "Vente sur place",
@@ -1403,12 +1422,16 @@ export const fr = {
     stripe: "Stripe",
     synced: "Synchronisée",
     notSynced: "Non synchronisée",
+    syncStripe: "Synchroniser avec Stripe",
+    syncOf: "Synchroniser « {name} » avec Stripe",
+    syncing: "Synchronisation avec Stripe…",
+    syncDone: "Synchronisé avec Stripe",
     newPlan: "Nouvelle offre",
     legend:
       "Engagement et validité à 0 : sans. Aucune discipline cochée : l'offre les couvre toutes. Tarif réduit : renseignez le public et le justificatif à présenter à l'accueil.",
     promos: "Codes promo",
     promosHint:
-      "Saisis lors d'une vente sur place, puis dans l'app quand le paiement en ligne sera branché.",
+      "Saisis lors d'une vente sur place, ou par l'adhérent au paiement dans l'app (première échéance d'un abonnement).",
     code: "Code",
     discountKind: "Remise",
     kind: {
@@ -1469,8 +1492,8 @@ export const fr = {
     },
     stripe: {
       name: "Stripe",
-      hint: "Abonnements, paiements et relances.",
-      next: "Arrive avec la phase paiements.",
+      hint: "Abonnements, paiements en ligne (carte, prélèvement SEPA) et remboursements.",
+      next: "À brancher : clés Stripe dans les secrets des Edge Functions, puis le webhook.",
     },
   },
   assistant: {

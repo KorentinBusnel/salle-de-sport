@@ -93,9 +93,11 @@ export async function updatePlan(input: {
     return failure(error);
   }
 
+  // Prix, intervalle ou type changés : le prix Stripe ne correspond plus. Il est recréé à la
+  // prochaine synchronisation (ou au premier achat), un prix Stripe n'étant pas modifiable.
   let changes: TablesUpdate<"plans">;
   if (field.data === "price") {
-    changes = { price_cents: Math.round((parsed.data as number) * 100) };
+    changes = { price_cents: Math.round((parsed.data as number) * 100), stripe_price_id: null };
   } else if (field.data === "type") {
     const type = parsed.data as (typeof PLAN_TYPES)[number];
     const { data: plan } = await supabase
@@ -110,13 +112,17 @@ export async function updatePlan(input: {
             billing_interval: plan?.billing_interval ?? "month",
             credits: null,
             validity_days: null,
+            stripe_price_id: null,
           }
         : {
             type,
             billing_interval: null,
             commitment_months: null,
             credits: plan?.credits ?? (type === "single" ? 1 : 10),
+            stripe_price_id: null,
           };
+  } else if (field.data === "billing_interval") {
+    changes = { billing_interval: parsed.data as "month" | "year", stripe_price_id: null };
   } else {
     changes = { [field.data]: parsed.data } as TablesUpdate<"plans">;
   }
@@ -215,7 +221,8 @@ export async function updatePromo(input: {
     const value = kind === "percent" ? Math.round(raw) : Math.round(raw * 100);
     if (kind === "percent" && (value < 1 || value > 100))
       return { error: "catalog.errors.invalid" };
-    changes = { kind, value };
+    // Un coupon Stripe n'est pas modifiable : il sera recréé à la prochaine synchronisation.
+    changes = { kind, value, stripe_coupon_id: null };
   } else {
     changes = { [field.data]: parsed.data } as TablesUpdate<"promo_codes">;
   }

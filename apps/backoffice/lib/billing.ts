@@ -1,0 +1,31 @@
+import "server-only";
+import { FunctionsHttpError } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
+
+export type BillingRequest =
+  | { action: "sync_plan"; planId: string }
+  | { action: "sync_promo"; promoId: string }
+  | { action: "refund"; paymentId: string };
+
+/**
+ * Appelle l'Edge Function « billing » au nom de l'utilisateur connecté (son jeton de session) :
+ * aucune clé Stripe côté Next. Renvoie le code d'erreur de la fonction (`stripe_not_configured`,
+ * `forbidden`, `not_refundable`…) ou `unexpected`.
+ */
+export async function callBilling(
+  body: BillingRequest,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.functions.invoke("billing", { body });
+  if (!error) return { ok: true };
+  if (error instanceof FunctionsHttpError) {
+    // Fonction pas encore déployée sur ce projet : même état que des clés absentes.
+    if ((error.context as Response).status === 404)
+      return { ok: false, error: "stripe_not_configured" };
+    const payload = (await (error.context as Response).json().catch(() => null)) as {
+      error?: unknown;
+    } | null;
+    if (typeof payload?.error === "string") return { ok: false, error: payload.error };
+  }
+  return { ok: false, error: "unexpected" };
+}

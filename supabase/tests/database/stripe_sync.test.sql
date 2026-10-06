@@ -1,7 +1,7 @@
 -- Miroir Stripe : événements idempotents, abonnement (accès, impayé, résiliation), carnet payé
 -- en ligne, remboursement ; préparation d'un achat par l'adhérent ; droits (service_role seul).
 begin;
-select plan(24);
+select plan(26);
 
 insert into auth.users (id, email) values
   ('81000000-0000-0000-0000-000000000001', 'ss-membre@test.local'),
@@ -101,6 +101,15 @@ select lives_ok($$select public.sync_stripe_subscription(jsonb_build_object(
   'current_period_end', extract(epoch from now() + interval '20 days')::bigint,
   'metadata', jsonb_build_object('member_id', '82000000-0000-0000-0000-000000000001', 'plan_id', '84000000-0000-0000-0000-000000000001')))$$,
   'résiliation en fin de période synchronisée');
+
+select is((public.sync_stripe_subscription('{"id":"sub_1","status":"active","cancel_at_period_end":false}')).member_id,
+  '82000000-0000-0000-0000-000000000001'::uuid, 'objet sans métadonnées : adhérent et offre repris de l''abonnement connu');
+
+-- Les Edge Functions (service_role) enregistrent le client Stripe d'un adhérent
+set local role service_role;
+select lives_ok($$update public.members set stripe_customer_id = 'cus_bob' where id = '82000000-0000-0000-0000-000000000002'$$,
+  'service_role enregistre le client Stripe (colonne de recherche recalculée)');
+reset role;
 
 select * from finish();
 rollback;

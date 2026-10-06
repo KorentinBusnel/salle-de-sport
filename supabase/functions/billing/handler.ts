@@ -61,6 +61,11 @@ function sqlError(error: { message?: string } | null): string {
   return /^[a-z_]+$/.test(code) ? code : "unexpected";
 }
 
+/** Écriture en base (clé service_role) : une erreur interrompt l'action au lieu d'être ignorée. */
+function check(result: { error: { message?: string } | null }): void {
+  if (result.error) throw new Error(result.error.message ?? "database_error");
+}
+
 /** Le gérant (ou admin) de la salle, d'après ses propres rôles (RLS : lecture de ses rôles). */
 async function isManager(user: SupabaseClient, userId: string, gymId: string): Promise<boolean> {
   const { data } = await user
@@ -112,10 +117,12 @@ export async function syncPlan(
     });
     priceId = price.id;
   }
-  await admin
-    .from("plans")
-    .update({ stripe_product_id: productId, stripe_price_id: priceId })
-    .eq("id", plan.id);
+  check(
+    await admin
+      .from("plans")
+      .update({ stripe_product_id: productId, stripe_price_id: priceId })
+      .eq("id", plan.id),
+  );
   return priceId;
 }
 
@@ -133,7 +140,7 @@ export async function syncPromo(
       : { amount_off: promo.value, currency: "eur" }),
     metadata: { promo_code_id: promo.id, gym_id: promo.gym_id },
   });
-  await admin.from("promo_codes").update({ stripe_coupon_id: coupon.id }).eq("id", promo.id);
+  check(await admin.from("promo_codes").update({ stripe_coupon_id: coupon.id }).eq("id", promo.id));
   return coupon.id;
 }
 
@@ -149,7 +156,9 @@ async function ensureCustomer(
     ...(ctx.member.email ? { email: ctx.member.email } : {}),
     metadata: { member_id: ctx.member.id, gym_id: ctx.member.gym_id },
   });
-  await admin.from("members").update({ stripe_customer_id: customer.id }).eq("id", ctx.member.id);
+  check(
+    await admin.from("members").update({ stripe_customer_id: customer.id }).eq("id", ctx.member.id),
+  );
   return customer.id;
 }
 
@@ -162,7 +171,9 @@ async function ensureCustomer(
  * - gérant : synchronisation d'une offre ou d'un code promo, remboursement.
  */
 export async function handleBilling(request: Request, deps: BillingDeps): Promise<Response> {
-  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
   if (request.method !== "POST") return fail("method_not_allowed", 405);
   const authorization = request.headers.get("authorization");
   if (!authorization) return fail("not_authenticated", 401);
@@ -198,10 +209,16 @@ export async function handleBilling(request: Request, deps: BillingDeps): Promis
         if (ctx.plan.type === "recurring") {
           const price =
             ctx.plan.stripe_price_id ??
-            (await syncPlan(stripe, deps.admin, { ...ctx.plan, gym_id: ctx.member.gym_id }));
+            (await syncPlan(stripe, deps.admin, {
+              ...ctx.plan,
+              gym_id: ctx.member.gym_id,
+            }));
           const coupon = ctx.promo
             ? (ctx.promo.stripe_coupon_id ??
-              (await syncPromo(stripe, deps.admin, { ...ctx.promo, gym_id: ctx.member.gym_id })))
+              (await syncPromo(stripe, deps.admin, {
+                ...ctx.promo,
+                gym_id: ctx.member.gym_id,
+              })))
             : null;
           const subscription = await stripe.subscriptions.create({
             customer,
@@ -219,7 +236,15 @@ export async function handleBilling(request: Request, deps: BillingDeps): Promis
             confirmation_secret?: { client_secret?: string } | null;
           } | null;
           clientSecret = invoice?.confirmation_secret?.client_secret || null;
-          await deps.admin.rpc("sync_stripe_subscription", { p_sub: subscription });
+          // Miroir aussitôt (accès dès la souscription) ; les métadonnées envoyées font foi.
+          check(
+            await deps.admin.rpc("sync_stripe_subscription", {
+              p_sub: {
+                ...subscription,
+                metadata: { ...subscription.metadata, ...metadata },
+              },
+            }),
+          );
         } else {
           // Carnet et séance : la feuille de paiement n'offre pas les moyens différés (SEPA),
           // et les crédits ne sont ajoutés qu'au paiement réussi (webhook).
@@ -257,13 +282,16 @@ export async function handleBilling(request: Request, deps: BillingDeps): Promis
           .in("status", ["active", "trialing", "past_due"])
           .limit(1)
           .maybeSingle();
-        if (!sub?.stripe_subscription_id) return fail("subscription_not_found", 404);
-        if (!canCancelSubscription(sub.commitment_ends_at, deps.now()))
+        if (!sub?.stripe_subscription_id) {
+          return fail("subscription_not_found", 404);
+        }
+        if (!canCancelSubscription(sub.commitment_ends_at, deps.now())) {
           return fail("commitment_running");
+        }
         const updated = await stripe.subscriptions.update(sub.stripe_subscription_id, {
           cancel_at_period_end: true,
         });
-        await deps.admin.rpc("sync_stripe_subscription", { p_sub: updated });
+        check(await deps.admin.rpc("sync_stripe_subscription", { p_sub: updated }));
         return json({ ok: true });
       }
 
@@ -292,7 +320,9 @@ export async function handleBilling(request: Request, deps: BillingDeps): Promis
           .eq("id", input.planId)
           .maybeSingle();
         if (!plan) return fail("plan_not_found", 404);
-        if (!(await isManager(user, userId, plan.gym_id))) return fail("forbidden", 403);
+        if (!(await isManager(user, userId, plan.gym_id))) {
+          return fail("forbidden", 403);
+        }
         const price = await syncPlan(stripe, deps.admin, plan);
         return json({ priceId: price });
       }
@@ -316,11 +346,16 @@ export async function handleBilling(request: Request, deps: BillingDeps): Promis
           .eq("id", input.paymentId)
           .maybeSingle();
         if (!payment) return fail("payment_not_found", 404);
-        if (!(await isManager(user, userId, payment.gym_id))) return fail("forbidden", 403);
-        if (payment.status !== "succeeded" || !payment.stripe_payment_intent_id)
+        if (!(await isManager(user, userId, payment.gym_id))) {
+          return fail("forbidden", 403);
+        }
+        if (payment.status !== "succeeded" || !payment.stripe_payment_intent_id) {
           return fail("not_refundable");
+        }
         // Le webhook charge.refunded marque le paiement et retire les crédits restants.
-        await stripe.refunds.create({ payment_intent: payment.stripe_payment_intent_id });
+        await stripe.refunds.create({
+          payment_intent: payment.stripe_payment_intent_id,
+        });
         return json({ ok: true });
       }
     }

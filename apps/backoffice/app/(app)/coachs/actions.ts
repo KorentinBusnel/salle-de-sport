@@ -1,8 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { openingHoursSchema, WEEKDAY_KEYS } from "@salle/shared";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isManagerRole, requireRole, requireTeamContext } from "@/lib/auth";
 import { getOwnCoachId } from "@/lib/coaches";
 import { errorMessageKey, withFlash } from "@/lib/flash";
@@ -128,53 +130,58 @@ async function requireCoachEditor(coachId: string) {
   redirect("/?erreur=errors.forbiddenRole");
 }
 
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
-const availabilitySchema = z
-  .object({
-    weekday: z.coerce.number().int().min(1).max(7),
-    start_time: time,
-    end_time: time,
-  })
-  .refine((v) => v.end_time > v.start_time);
+/**
+ * Disponibilités de la semaine (éditeur hebdomadaire, enregistrement sur place) : seules les
+ * plages permanentes (sans date de fin) sont remplacées, par différence avec l'existant.
+ */
+export async function saveAvailability(coachId: string, week: unknown): Promise<ActionResult> {
+  const id = z.guid().safeParse(coachId);
+  if (!id.success) return fail("common.unexpectedError");
+  const context = await requireCoachEditor(id.data);
+  const parsed = openingHoursSchema.safeParse(week);
+  if (!parsed.success) return fail("coaches.errors.availability");
 
-export async function addAvailability(formData: FormData) {
-  const coachId = z.guid().parse(formData.get("coachId"));
-  const context = await requireCoachEditor(coachId);
-  const back = `/coachs/${coachId}`;
-  const parsed = availabilitySchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) redirect(withFlash(back, { error: "coaches.errors.availability" }));
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("coach_availabilities").insert({
-    gym_id: context.gym.id,
-    coach_id: coachId,
-    ...parsed.data,
-  });
-  revalidatePath(back);
-  redirect(
-    withFlash(
-      back,
-      error ? { error: errorMessageKey(error) } : { ok: "coaches.availabilityAdded" },
+  const wanted = new Set(
+    WEEKDAY_KEYS.flatMap((day) =>
+      (parsed.data[day] ?? []).map((slot) => `${day}|${slot.start}|${slot.end}`),
     ),
   );
-}
-
-export async function removeAvailability(formData: FormData) {
-  const coachId = z.guid().parse(formData.get("coachId"));
-  await requireCoachEditor(coachId);
-  const id = z.guid().parse(formData.get("availabilityId"));
-  const back = `/coachs/${coachId}`;
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: current, error: readError } = await supabase
     .from("coach_availabilities")
-    .delete()
-    .eq("id", id)
-    .eq("coach_id", coachId);
-  revalidatePath(back);
-  redirect(
-    withFlash(
-      back,
-      error ? { error: errorMessageKey(error) } : { ok: "coaches.availabilityRemoved" },
-    ),
-  );
+    .select("id, weekday, start_time, end_time")
+    .eq("coach_id", id.data)
+    .is("valid_until", null);
+  if (readError) return fail("common.unexpectedError");
+  const key = (row: { weekday: number; start_time: string; end_time: string }) =>
+    `${row.weekday}|${row.start_time.slice(0, 5)}|${row.end_time.slice(0, 5)}`;
+  const existing = new Set((current ?? []).map(key));
+  const removed = (current ?? []).filter((row) => !wanted.has(key(row))).map((row) => row.id);
+  const added = [...wanted]
+    .filter((k) => !existing.has(k))
+    .map((k) => {
+      const [weekday = "1", start_time = "", end_time = ""] = k.split("|");
+      return {
+        gym_id: context.gym.id,
+        coach_id: id.data,
+        weekday: Number(weekday),
+        start_time,
+        end_time,
+      };
+    });
+
+  if (added.length) {
+    const { error } = await supabase.from("coach_availabilities").insert(added);
+    if (error) return fail(errorMessageKey(error));
+  }
+  if (removed.length) {
+    const { error } = await supabase
+      .from("coach_availabilities")
+      .delete()
+      .in("id", removed)
+      .eq("coach_id", id.data);
+    if (error) return fail(errorMessageKey(error));
+  }
+  refresh();
+  return ok("coaches.availabilitySaved");
 }

@@ -63,3 +63,45 @@ export function csvField(value: string | number): string {
   const text = String(value);
   return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
+
+export type CoachSession = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  minutes: number;
+  discipline: string;
+};
+
+/**
+ * Séances tenues du mois pour tous les coachs (gérant) : détail des lignes dépliables du
+ * tableau des heures, en une seule requête. Une séance à deux coachs compte pour chacun.
+ */
+export async function loadMonthSessions(
+  context: TeamContext,
+  range: { from: string; next: string },
+): Promise<Record<string, CoachSession[]>> {
+  const supabase = await createClient();
+  const tz = context.gym.timezone;
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id, starts_at, ends_at, disciplines(name), session_coaches(coach_id)")
+    .eq("gym_id", context.gym.id)
+    .eq("status", "scheduled")
+    .lte("ends_at", currentTime().toISOString())
+    .gte("starts_at", zonedStartOfDateKey(range.from, tz).toISOString())
+    .lt("starts_at", zonedStartOfDateKey(`${range.next}-01`, tz).toISOString())
+    .order("starts_at");
+  if (error) throw new Error(error.message);
+  const byCoach: Record<string, CoachSession[]> = {};
+  for (const s of data ?? []) {
+    const session = {
+      id: s.id,
+      starts_at: s.starts_at,
+      ends_at: s.ends_at,
+      minutes: Math.round((Date.parse(s.ends_at) - Date.parse(s.starts_at)) / 60_000),
+      discipline: s.disciplines?.name ?? "",
+    };
+    for (const { coach_id } of s.session_coaches) (byCoach[coach_id] ??= []).push(session);
+  }
+  return byCoach;
+}

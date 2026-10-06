@@ -46,12 +46,15 @@ export function WeeklySlotsEditor({
   onCommit,
   defaultSlot = { start: "09:00", end: "20:00" },
   disabled = false,
+  labels,
 }: {
   value: WeeklySlots;
   /** Semaine valide (plages ordonnées, sans chevauchement) après chaque modification. */
   onCommit: (next: WeeklySlots) => void;
   defaultSlot?: OpeningSlot | undefined;
   disabled?: boolean | undefined;
+  /** Libellés d'un autre usage que l'ouverture de la salle (disponibilités d'un coach). */
+  labels?: { closed: string; dayOpen: (day: string) => string } | undefined;
 }) {
   // Saisie en cours dans un champ d'heure : enregistrée à la sortie du champ.
   const [draft, setDraft] = useState<WeeklySlots | null>(null);
@@ -86,7 +89,9 @@ export function WeeklySlotsEditor({
               <Switch
                 checked={open}
                 disabled={disabled}
-                aria-label={t("settings.hours.dayOpen", { day: dayLabel })}
+                aria-label={
+                  labels?.dayOpen(dayLabel) ?? t("settings.hours.dayOpen", { day: dayLabel })
+                }
                 onCheckedChange={(checked) =>
                   set(day, checked ? [...(previousOpen ?? [defaultSlot])] : [], true)
                 }
@@ -156,7 +161,7 @@ export function WeeklySlotsEditor({
               </div>
             ) : (
               <p className="flex h-8 items-center text-sm text-muted-foreground pointer-coarse:h-10">
-                {t("settings.hours.closed")}
+                {labels?.closed ?? t("settings.hours.closed")}
               </p>
             )}
 

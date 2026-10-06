@@ -1,9 +1,10 @@
-import { zonedStartOfDateKey, zonedDateKey } from "@salle/shared";
-import { Trash2Icon } from "lucide-react";
+import { type WeekdayKey, zonedStartOfDateKey, zonedDateKey } from "@salle/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { AvailabilityCard } from "@/components/coaches/availability-card";
 import { Flash } from "@/components/flash";
+import type { WeeklySlots } from "@/components/forms/weekly-slots-editor";
 import { PageHeader } from "@/components/page-header";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
@@ -19,7 +20,6 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { PageCrumb } from "@/components/page-crumb";
@@ -29,11 +29,9 @@ import { getOwnCoachId } from "@/lib/coaches";
 import { euros, gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
-import { addAvailability, removeAvailability, updateCoach } from "../actions";
+import { updateCoach } from "../actions";
 
 export const metadata: Metadata = { title: t("coaches.profileTitle") };
-
-const WEEKDAYS = ["1", "2", "3", "4", "5", "6", "7"] as const;
 
 export default async function CoachPage({
   params,
@@ -92,6 +90,13 @@ export default async function CoachPage({
   const taught = new Set(coach.coach_disciplines.map((cd) => cd.discipline_id));
   const rate = coach.coach_compensations[0]?.hourly_rate_cents ?? null;
   const hhmm = (time: string) => time.slice(0, 5);
+  // Plages permanentes, par jour et dans l'ordre : valeur de l'éditeur hebdomadaire.
+  const week: WeeklySlots = {};
+  for (const slot of availabilities ?? []) {
+    if (slot.valid_until) continue;
+    const day = String(slot.weekday) as WeekdayKey;
+    (week[day] ??= []).push({ start: hhmm(slot.start_time), end: hhmm(slot.end_time) });
+  }
 
   return (
     <div className="grid gap-6">
@@ -117,65 +122,7 @@ export default async function CoachPage({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("coaches.availability")}</CardTitle>
-              <CardDescription>{t("coaches.availabilityHint")}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              {availabilities?.length ? (
-                <ul className="divide-y rounded-lg border">
-                  {availabilities.map((slot) => (
-                    <li key={slot.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                      <span className="w-24 font-medium">
-                        {t(`weekdays.${String(slot.weekday) as (typeof WEEKDAYS)[number]}`)}
-                      </span>
-                      <span className="flex-1 tabular-nums">
-                        {hhmm(slot.start_time)} – {hhmm(slot.end_time)}
-                      </span>
-                      <form action={removeAvailability}>
-                        <input type="hidden" name="coachId" value={coach.id} />
-                        <input type="hidden" name="availabilityId" value={slot.id} />
-                        <Button
-                          type="submit"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={t("coaches.removeSlot")}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t("coaches.noAvailability")}</p>
-              )}
-              <form action={addAvailability} className="flex flex-wrap items-end gap-3">
-                <input type="hidden" name="coachId" value={coach.id} />
-                <label className="grid gap-1 text-sm">
-                  <span className="text-muted-foreground">{t("coaches.weekday")}</span>
-                  <NativeSelect name="weekday" defaultValue="1">
-                    {WEEKDAYS.map((day) => (
-                      <NativeSelectOption key={day} value={day}>
-                        {t(`weekdays.${day}`)}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-muted-foreground">{t("coaches.from")}</span>
-                  <Input type="time" name="start_time" defaultValue="07:00" required step={900} />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-muted-foreground">{t("coaches.to")}</span>
-                  <Input type="time" name="end_time" defaultValue="12:00" required step={900} />
-                </label>
-                <SubmitButton variant="outline">{t("coaches.addSlot")}</SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
+          <AvailabilityCard coachId={coach.id} week={week} />
 
           <Card>
             <CardHeader>

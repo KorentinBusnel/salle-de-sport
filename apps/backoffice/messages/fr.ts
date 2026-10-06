@@ -858,6 +858,9 @@ export const fr = {
     rateValue: "{rate} / h",
     profile: "Profil",
     active: "Coach actif",
+    availabilitySaved: "Disponibilités enregistrées.",
+    unavailable: "Indisponible",
+    dayAvailable: "{day} : disponible",
     availability: "Disponibilités",
     availabilityHint:
       "Créneaux hebdomadaires où le coach peut animer : ils servent à proposer un remplaçant.",
@@ -883,7 +886,10 @@ export const fr = {
     hint: "Séances terminées et non annulées, valorisées au taux horaire : base des factures.",
     previousMonth: "Mois précédent",
     nextMonth: "Mois suivant",
+    month: "Mois",
+    showSessions: "Afficher les séances de {name}",
     export: "Exporter (CSV)",
+    exportAll: "Tout exporter (CSV)",
     sessions: "Séances",
     hours: "Heures",
     rate: "Taux",
@@ -1216,6 +1222,7 @@ export const fr = {
     heatmap: "Remplissage par créneau",
     heatmapHint: "Jour × heure de début : taux de remplissage moyen.",
     noData: "Aucune séance passée sur la période.",
+    heatCell: "{day} {hour} h : {seats} places sur {capacity} ({rate} %)",
   },
   inline: {
     edit: "modifier",

@@ -2,7 +2,9 @@ import { monthRange, zonedStartOfDateKey } from "@salle/shared";
 import { ClockIcon, DumbbellIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SortHead } from "@/components/data-table/sort-head";
 import { Flash } from "@/components/flash";
+import { MonthNav } from "@/components/forms/month-nav";
 import { PageHeader } from "@/components/page-header";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
@@ -44,16 +46,21 @@ import { createCoach } from "./actions";
 
 export const metadata: Metadata = { title: t("coaches.title") };
 
+const SORTS = ["name", "name_desc", "sessions", "hours"] as const;
+
+/** Coachs : séances et heures du mois choisi, tri par colonne, création en panneau latéral. */
 export default async function CoachesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; erreur?: string }>;
+  searchParams: Promise<{ ok?: string; erreur?: string; mois?: string; tri?: string }>;
 }) {
   const params = await searchParams;
   const context = await requireRole(isManagerRole);
-  const month = currentMonthKey(context);
+  const thisMonth = currentMonthKey(context);
+  const month = params.mois && monthRange(params.mois) ? params.mois : thisMonth;
   const range = monthRange(month);
   if (!range) throw new Error("mois invalide");
+  const sort = SORTS.find((s) => s === params.tri) ?? "name";
   const tz = context.gym.timezone;
 
   const supabase = await createClient();
@@ -83,6 +90,24 @@ export default async function CoachesPage({
     for (const { coach_id } of s.session_coaches)
       sessionsBy.set(coach_id, (sessionsBy.get(coach_id) ?? 0) + 1);
 
+  // Tri : actifs d'abord, puis la colonne choisie (nombres du plus grand au plus petit).
+  const rows = [...(coaches ?? [])].sort((a, b) => {
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+    const byName = a.display_name.localeCompare(b.display_name, "fr");
+    if (sort === "name") return byName;
+    if (sort === "name_desc") return -byName;
+    const value = (id: string) =>
+      sort === "sessions" ? (sessionsBy.get(id) ?? 0) : (minutesBy.get(id) ?? 0);
+    return value(b.id) - value(a.id) || byName;
+  });
+  const href = (tri: string) => {
+    const query = new URLSearchParams();
+    if (month !== thisMonth) query.set("mois", month);
+    if (tri !== "name") query.set("tri", tri);
+    const text = query.toString();
+    return `/coachs${text ? `?${text}` : ""}`;
+  };
+
   return (
     <div className="grid gap-6">
       <PageHeader
@@ -90,8 +115,9 @@ export default async function CoachesPage({
         description={t("coaches.count", { count: coaches?.length ?? 0 })}
         actions={
           <>
+            <MonthNav month={month} previous={range.previous} next={range.next} />
             <Button asChild variant="outline">
-              <Link href="/coachs/heures">
+              <Link href={`/coachs/heures?mois=${month}`}>
                 <ClockIcon data-icon="inline-start" />
                 {t("coaches.hoursLink")}
               </Link>
@@ -113,18 +139,33 @@ export default async function CoachesPage({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="overflow-hidden rounded-xl bg-card shadow-border">
+        <div className="overflow-x-auto rounded-xl bg-card shadow-border">
           <Table className="min-w-[40rem]">
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="pl-4">{t("coaches.name")}</TableHead>
+                <SortHead
+                  className="pl-4"
+                  label={t("coaches.name")}
+                  href={href(sort === "name" ? "name_desc" : "name")}
+                  direction={sort === "name" ? "asc" : sort === "name_desc" ? "desc" : null}
+                />
                 <TableHead>{t("coaches.disciplines")}</TableHead>
-                <TableHead className="text-right">{t("coaches.sessionsThisMonth")}</TableHead>
-                <TableHead className="pr-4 text-right">{t("coaches.hoursThisMonth")}</TableHead>
+                <SortHead
+                  className="text-right"
+                  label={t("coaches.sessionsThisMonth")}
+                  href={href("sessions")}
+                  direction={sort === "sessions" ? "desc" : null}
+                />
+                <SortHead
+                  className="pr-4 text-right"
+                  label={t("coaches.hoursThisMonth")}
+                  href={href("hours")}
+                  direction={sort === "hours" ? "desc" : null}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {coaches.map((coach) => (
+              {rows.map((coach) => (
                 <TableRow key={coach.id} className="relative">
                   <TableCell className="pl-4">
                     <span className="flex items-center gap-3">

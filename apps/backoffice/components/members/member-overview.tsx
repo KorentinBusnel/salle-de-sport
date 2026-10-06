@@ -1,9 +1,8 @@
-import { formatMoney, SUBSCRIPTION_STATUS_TONE, trendChange, zonedDateKey } from "@salle/shared";
+import { formatMoney, trendChange, zonedDateKey } from "@salle/shared";
 import type { Enums } from "@salle/supabase";
-import { ArrowDownRightIcon, ArrowUpRightIcon, MailIcon } from "lucide-react";
+import { ArrowDownRightIcon, ArrowUpRightIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { StatusPill } from "@/components/status-pill";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -58,20 +57,25 @@ type Overview = {
 const percent = new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 0 });
 const DAY = 86_400_000;
 
-function Block({ title, children }: { title: string; children: ReactNode }) {
+/** Un chiffre du bandeau : libellé, valeur, précision en une ligne. */
+function Stat({
+  label,
+  value,
+  hint,
+  title,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  title?: string | undefined;
+}) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl bg-card p-4 shadow-border">
-      <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-function Figure({ value, label }: { value: ReactNode; label: string }) {
-  return (
-    <div>
-      <p className="text-2xl leading-tight font-medium tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="min-w-0 px-4 py-3" title={title}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 flex items-center gap-1 truncate text-xl leading-tight font-medium tabular-nums">
+        {value}
+      </dd>
+      {hint ? <dd className="truncate text-xs text-muted-foreground">{hint}</dd> : null}
     </div>
   );
 }
@@ -86,8 +90,9 @@ function tenure(since: string, now: Date): string {
 }
 
 /**
- * Synthèse de la fiche (accueil et gérant) : fidélité, offre et crédits, paiements (gérant),
- * derniers emails. Tout vient de `member_overview` ; rien n'est recalculé ici.
+ * Synthèse de la fiche (accueil et gérant) : un bandeau de chiffres (ancienneté, séances, présence,
+ * réservations, abonnement ou crédits, encaissé pour le gérant) et une ligne pour le dernier email.
+ * Tout vient de `member_overview` ; le détail reste dans les onglets.
  */
 export async function MemberOverview({
   memberId,
@@ -101,28 +106,36 @@ export async function MemberOverview({
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("member_overview", { p_member_id: memberId });
   if (error) throw new Error(error.message);
-  const overview = data as unknown as Overview;
-  const { loyalty, offer, finance, emails } = overview;
+  const { loyalty, offer, finance, emails } = data as unknown as Overview;
   const format = gymFormatters(timeZone);
   const now = currentTime();
   const counted = loyalty.attended + loyalty.no_shows;
   const change = trendChange(loyalty.attended_30d, loyalty.attended_prev_30d);
   const sub = offer.subscription;
+  // Jours civils de la salle : une venue d'hier soir reste « hier ».
+  const daysSince = loyalty.last_visit
+    ? Math.round(
+        (Date.parse(zonedDateKey(now, timeZone)) -
+          Date.parse(zonedDateKey(new Date(loyalty.last_visit), timeZone))) /
+          DAY,
+      )
+    : null;
+  const last = emails.last[0];
+  const alert = sub && (sub.status === "past_due" || sub.status === "unpaid");
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
-      <Block title={t("memberOverview.loyalty")}>
-        <p className="text-sm">
-          {t("memberOverview.since", { date: format.fullDate(loyalty.member_since) })}
-          <span className="text-muted-foreground"> · {tenure(loyalty.member_since, now)}</span>
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <Figure
-            value={loyalty.attended}
-            label={t("memberOverview.attended", { count: loyalty.attended })}
-          />
-          <div>
-            <p className="flex items-center gap-1 text-2xl leading-tight font-medium tabular-nums">
+    <div className="overflow-hidden rounded-xl bg-card shadow-border">
+      <dl className="grid grid-cols-2 divide-border sm:grid-cols-3 xl:grid-cols-6 xl:divide-x [&>*]:border-b xl:[&>*]:border-b-0">
+        <Stat
+          label={t("memberOverview.tenure")}
+          value={tenure(loyalty.member_since, now)}
+          hint={t("memberOverview.since", { date: format.monthYear(loyalty.member_since) })}
+          title={format.fullDate(loyalty.member_since)}
+        />
+        <Stat
+          label={t("memberOverview.last30")}
+          value={
+            <>
               {loyalty.attended_30d}
               {change && change.direction !== "flat" ? (
                 change.direction === "up" ? (
@@ -131,155 +144,94 @@ export async function MemberOverview({
                   <ArrowDownRightIcon aria-hidden className="size-4 text-destructive" />
                 )
               ) : null}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {t("memberOverview.last30")}
-              {" · "}
-              {t("memberOverview.previous30", { count: loyalty.attended_prev_30d })}
-            </p>
-          </div>
-        </div>
-        <ul className="grid gap-1 text-sm text-muted-foreground">
-          <li>
-            {loyalty.last_visit
-              ? `${t("memberOverview.lastVisit", {
-                  date: format.longDayInline(loyalty.last_visit),
-                })} · ${t("memberOverview.daysAgo", {
-                  // Jours civils de la salle : une venue d'hier soir reste « hier ».
-                  count: Math.round(
-                    (Date.parse(zonedDateKey(now, timeZone)) -
-                      Date.parse(zonedDateKey(new Date(loyalty.last_visit), timeZone))) /
-                      DAY,
-                  ),
-                })}`
-              : t("memberOverview.neverCame")}
-          </li>
-          {counted > 0 ? (
-            <li>
-              {t("memberOverview.attendanceRate", {
-                rate: percent.format(loyalty.attended / counted),
-              })}
-              {" · "}
-              {t("memberOverview.noShows", { count: loyalty.no_shows })}
-            </li>
-          ) : null}
-          <li>{t("memberOverview.upcoming", { count: loyalty.upcoming })}</li>
-        </ul>
-      </Block>
-
-      <Block title={t("memberOverview.offer")}>
-        {sub ? (
-          <div className="grid gap-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{sub.plan}</span>
-              <StatusPill tone={SUBSCRIPTION_STATUS_TONE[sub.status]}>
-                {t(`billing.subscriptionStatus.${sub.status}`)}
-              </StatusPill>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t(`offers.type.${sub.type}`)} ·{" "}
-              {t(sub.online ? "memberOverview.online" : "memberOverview.manual")}
-            </p>
-            {sub.current_period_end ? (
-              <p className="text-sm">
-                {t(sub.cancel_at ? "billing.endsOn" : "billing.periodEnd", {
-                  date: format.longDayInline(sub.current_period_end),
-                })}
-              </p>
-            ) : null}
-            {sub.commitment_ends_at && Date.parse(sub.commitment_ends_at) > now.getTime() ? (
-              <p className="text-sm text-muted-foreground">
-                {t("billing.commitmentUntil", {
-                  date: format.longDayInline(sub.commitment_ends_at),
-                })}
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <div className="grid gap-1">
-            <span className="font-medium">{t("memberOverview.noSubscription")}</span>
-            {offer.last_plan ? (
-              <p className="text-sm text-muted-foreground">
-                {t("memberOverview.lastPlan", { plan: offer.last_plan })}
-              </p>
-            ) : null}
-          </div>
-        )}
-        <Figure
-          value={offer.credits}
-          label={
-            offer.next_expiry
-              ? t("memberOverview.creditsExpiring", {
-                  date: format.longDayInline(offer.next_expiry),
-                })
-              : t("memberOverview.credits")
+            </>
           }
+          hint={t("memberOverview.total", { count: loyalty.attended })}
+          title={t("memberOverview.previous30", { count: loyalty.attended_prev_30d })}
         />
-      </Block>
-
-      {manager && finance ? (
-        <Block title={t("memberOverview.finance")}>
-          <Figure
-            value={formatMoney(finance.total_paid_cents)}
-            label={t("memberOverview.payments", { count: finance.payments })}
+        <Stat
+          label={t("memberOverview.presence")}
+          value={counted > 0 ? percent.format(loyalty.attended / counted) : "—"}
+          hint={
+            daysSince === null
+              ? t("memberOverview.neverCame")
+              : t("memberOverview.seen", { count: daysSince })
+          }
+          title={t("memberOverview.noShows", { count: loyalty.no_shows })}
+        />
+        <Stat
+          label={t("memberOverview.upcomingLabel")}
+          value={loyalty.upcoming}
+          hint={t("memberOverview.bookings", { count: loyalty.upcoming })}
+        />
+        {sub ? (
+          <Stat
+            label={t("memberOverview.subscription")}
+            value={
+              <span className={cn("truncate text-base", alert && "text-destructive")}>
+                {alert ? t(`billing.subscriptionStatus.${sub.status}`) : sub.plan}
+              </span>
+            }
+            hint={
+              sub.current_period_end
+                ? t(sub.cancel_at ? "memberOverview.endsOn" : "memberOverview.until", {
+                    date: format.dateKey(zonedDateKey(new Date(sub.current_period_end), timeZone)),
+                  })
+                : t(sub.online ? "memberOverview.online" : "memberOverview.manual")
+            }
+            title={sub.plan}
           />
-          <ul className="grid gap-1 text-sm text-muted-foreground">
-            {finance.last_payment_at ? (
-              <li>
-                {t("memberOverview.lastPayment", {
-                  date: format.longDayInline(finance.last_payment_at),
-                })}
-              </li>
-            ) : null}
-            {finance.failed > 0 ? (
-              <li className="text-destructive">
-                {t("memberOverview.failed", { count: finance.failed })}
-              </li>
-            ) : null}
-          </ul>
-          <Link
-            href={`/adherents/${memberId}?onglet=paiements`}
-            className="mt-auto text-sm font-medium text-primary hover:underline"
-          >
-            {t("memberOverview.seePayments")}
-          </Link>
-        </Block>
-      ) : null}
-
-      <Block title={t("memberOverview.emails")}>
-        {emails.last.length ? (
-          <ul className="grid gap-2">
-            {emails.last.map((m) => (
-              <li key={m.id} className="flex items-start gap-2 text-sm">
-                <MailIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">
-                    {m.subject ?? t("memberOverview.noSubject")}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {t(`messages.origins.${m.origin}`)} · {format.dateTime(m.created_at)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t("memberOverview.noEmails")}</p>
+          <Stat
+            label={t("memberOverview.credits")}
+            value={offer.credits}
+            hint={
+              offer.next_expiry
+                ? t("memberOverview.expiresOn", {
+                    date: format.dateKey(zonedDateKey(new Date(offer.next_expiry), timeZone)),
+                  })
+                : t("memberOverview.noSubscription")
+            }
+          />
         )}
-        <p className={cn("text-xs", emails.consent_at ? "text-muted-foreground" : "text-warning")}>
-          {emails.consent_at
-            ? t("memberOverview.consentYes", { date: format.fullDate(emails.consent_at) })
-            : t("memberOverview.consentNo")}
-        </p>
+        {manager && finance ? (
+          <Stat
+            label={t("memberOverview.paid")}
+            value={formatMoney(finance.total_paid_cents)}
+            hint={
+              finance.failed > 0 ? (
+                <span className="text-destructive">
+                  {t("memberOverview.failed", { count: finance.failed })}
+                </span>
+              ) : (
+                t("memberOverview.payments", { count: finance.payments })
+              )
+            }
+          />
+        ) : null}
+      </dl>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t px-4 py-2.5 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">
+          {last
+            ? t("memberOverview.lastEmail", {
+                subject: last.subject ?? t("memberOverview.noSubject"),
+                date: format.dateTime(last.created_at),
+              })
+            : t("memberOverview.noEmails")}
+        </span>
+        <span aria-hidden>·</span>
+        <span className={cn(!emails.consent_at && "text-warning")}>
+          {t(emails.consent_at ? "memberOverview.consentYes" : "memberOverview.consentNo")}
+        </span>
         {manager ? (
           <Link
             href={`/messages?adherent=${memberId}`}
-            className="mt-auto text-sm font-medium text-primary hover:underline"
+            className="ml-auto font-medium text-primary hover:underline"
           >
             {t("memberOverview.allMessages")}
           </Link>
         ) : null}
-      </Block>
+      </p>
     </div>
   );
 }

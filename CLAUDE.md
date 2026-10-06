@@ -310,7 +310,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - Synthèse de fiche : `MemberOverview` (`components/members/member-overview.tsx`) lit la fonction SQL
   `member_overview` (accueil et gérant ; `finance` à `null` hors gérant), sous `SectionError` +
   `Suspense`. Tons d'abonnement : `SUBSCRIPTION_STATUS_TONE` (shared).
-- Emailing : `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
+- Emailing : **une seule entrée** de la barre latérale ; `EmailingNav` (onglets Campagnes, Modèles,
+  Automatisations, Segments, Messages) en tête de chaque page, adresses inchangées (`/segments`,
+  `/messages` rattachées à « Emailing » par `NAV_ALIASES` / `activeHref`, `lib/navigation.ts`).
+  `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
   `trigger`), actions `saveCampaign` / `sendCampaignNow` / `setCampaignSchedule` /
   `deleteCampaignQuick` (`ActionResult`) ; audience par `app/api/segments/[id]/audience`, aperçu
   d'un modèle par `app/api/emailing/apercu` (`preview_template`). `TemplateEditor` (variables au

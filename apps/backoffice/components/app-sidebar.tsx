@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import { initials } from "@/lib/format";
-import type { BadgeKey } from "@/lib/navigation";
+import { activeHref, type BadgeKey } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
 
 const ICONS = {
@@ -71,15 +71,6 @@ const ICONS = {
 export type NavIcon = keyof typeof ICONS;
 export type NavItem = { href: string; label: string; icon: NavIcon; badge?: BadgeKey };
 export type NavGroup = { label: string; items: NavItem[] };
-
-/** Entrée active : celle dont le chemin est le plus long préfixe (« Modèles » ≠ « Planning »). */
-export function activeHref(pathname: string, hrefs: string[]): string | undefined {
-  return hrefs
-    .filter((href) =>
-      href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`),
-    )
-    .sort((a, b) => b.length - a.length)[0];
-}
 
 export function AppSidebar({
   gymName,

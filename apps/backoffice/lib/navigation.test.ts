@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildNavigation } from "./navigation";
+import { activeHref, buildNavigation } from "./navigation";
 
 const none = { ownCoachId: null };
 const badge = (nav: ReturnType<typeof buildNavigation>, href: string) =>
@@ -12,21 +12,12 @@ describe("buildNavigation", () => {
     const nav = buildNavigation("manager", none);
     expect(hrefs(nav)).toEqual({
       Quotidien: ["/", "/hub", "/planning", "/indicateurs"],
-      Opérations: [
-        "/adherents",
-        "/crm",
-        "/segments",
-        "/emailing",
-        "/messages",
-        "/paiements",
-        "/coachs",
-        "/planning/modeles",
-      ],
+      Opérations: ["/adherents", "/crm", "/emailing", "/paiements", "/coachs", "/planning/modeles"],
     });
     expect(nav.footer.map((i) => i.href)).toEqual(["/parametres"]);
     // Pastilles par défaut : prospects et messages sans réponse.
     expect(badge(nav, "/adherents")).toBe("prospects");
-    expect(badge(nav, "/messages")).toBe("unanswered");
+    expect(badge(nav, "/emailing")).toBe("unanswered");
     expect(badge(nav, "/crm")).toBeUndefined();
   });
 
@@ -40,7 +31,7 @@ describe("buildNavigation", () => {
     expect(badge(nav, "/crm")).toBe("trials_to_call");
     expect(badge(nav, "/")).toBe("unpaid");
     expect(badge(nav, "/adherents")).toBeUndefined();
-    expect(badge(nav, "/messages")).toBeUndefined();
+    expect(badge(nav, "/emailing")).toBeUndefined();
   });
 
   it("accueil : planning et adhérents (pastille des prospects), pas de paramètres", () => {
@@ -56,5 +47,19 @@ describe("buildNavigation", () => {
       Quotidien: ["/", "/planning", "/coachs/c1", "/coachs/heures"],
     });
     expect(nav.footer).toEqual([]);
+  });
+});
+
+describe("activeHref", () => {
+  const items = ["/", "/planning", "/planning/modeles", "/emailing"];
+  it("prend le plus long préfixe", () => {
+    expect(activeHref("/planning/modeles/x", items)).toBe("/planning/modeles");
+    expect(activeHref("/planning", items)).toBe("/planning");
+    expect(activeHref("/", items)).toBe("/");
+  });
+  it("Segments et Messages sont des onglets de l'emailing", () => {
+    expect(activeHref("/segments", items)).toBe("/emailing");
+    expect(activeHref("/messages", items)).toBe("/emailing");
+    expect(activeHref("/emailing/modeles", items)).toBe("/emailing");
   });
 });

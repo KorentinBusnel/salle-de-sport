@@ -304,7 +304,12 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `SubscriptionActions`, page `/paiements` (`PaymentsFilters`, export `app/api/paiements/export`).
   Stripe : `callBilling` (`lib/billing.ts`, `supabase.functions.invoke` avec la session, aucune
   clé Stripe côté Next), actions `stripe-actions.ts`, `StripeSync` (offres, codes),
-  `RefundButton` ; « non configuré » = toast d'information (`stripeErrorKey`).
+  `RefundButton` ; « non configuré » = toast d'information (`stripeErrorKey`). Reçu PDF :
+  `buildReceipt` (`lib/receipt.ts`, pdf-lib, polices standard : passer le texte par `pdfText`),
+  route `app/api/paiements/[id]/recu` (gérant), lien `ReceiptLink`.
+- Synthèse de fiche : `MemberOverview` (`components/members/member-overview.tsx`) lit la fonction SQL
+  `member_overview` (accueil et gérant ; `finance` à `null` hors gérant), sous `SectionError` +
+  `Suspense`. Tons d'abonnement : `SUBSCRIPTION_STATUS_TONE` (shared).
 - Emailing : `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
   `trigger`), actions `saveCampaign` / `sendCampaignNow` / `setCampaignSchedule` /
   `deleteCampaignQuick` (`ActionResult`) ; audience par `app/api/segments/[id]/audience`, aperçu

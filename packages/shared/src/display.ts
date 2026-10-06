@@ -35,6 +35,28 @@ export const PAYMENT_STATUS_TONE: Record<"pending" | "succeeded" | "failed" | "r
   refunded: "neutral",
 };
 
+/** Ton d'un statut d'abonnement (fiche adhérent, synthèse). */
+export const SUBSCRIPTION_STATUS_TONE: Record<
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "unpaid"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "paused",
+  Tone
+> = {
+  active: "success",
+  trialing: "brand",
+  past_due: "danger",
+  unpaid: "danger",
+  canceled: "neutral",
+  incomplete: "warning",
+  incomplete_expired: "neutral",
+  paused: "neutral",
+};
+
 export const MEMBER_STATUS_TONE: Record<MemberStatus, Tone> = {
   prospect: "brand",
   active: "success",

@@ -2378,6 +2378,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      member_overview: { Args: { p_member_id: string }; Returns: Json };
       move_session: {
         Args: { p_session_id: string; p_starts_at: string };
         Returns: {

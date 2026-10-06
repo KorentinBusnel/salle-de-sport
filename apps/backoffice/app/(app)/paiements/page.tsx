@@ -15,6 +15,7 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { SortHead } from "@/components/data-table/sort-head";
 import { PageHeader } from "@/components/page-header";
 import { PaymentsFilters } from "@/components/payments/payments-filters";
+import { ReceiptLink } from "@/components/payments/receipt-link";
 import { RefundButton } from "@/components/payments/refund-button";
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
@@ -199,7 +200,7 @@ export default async function PaymentsPage({
                       href={href({ tri: sort === "amount" ? "amount_asc" : "amount", page: null })}
                       direction={sort === "amount" ? "desc" : sort === "amount_asc" ? "asc" : null}
                     />
-                    <TableHead className="w-32 pr-4">
+                    <TableHead className="w-44 pr-4">
                       <span className="sr-only">{t("payments.actions")}</span>
                     </TableHead>
                   </TableRow>
@@ -243,8 +244,14 @@ export default async function PaymentsPage({
                       <TableCell className="pr-4 text-right font-medium tabular-nums">
                         {formatMoney(p.amount_cents, p.currency)}
                       </TableCell>
-                      <TableCell className="pr-4 text-right">
-                        {/* Paiement en ligne réussi : remboursable par Stripe. */}
+                      <TableCell className="pr-4 text-right whitespace-nowrap">
+                        {/* Reçu si encaissé ; remboursement si payé en ligne (Stripe). */}
+                        {p.status === "succeeded" || p.status === "refunded" ? (
+                          <ReceiptLink
+                            paymentId={p.id}
+                            date={format.dateTime(p.paid_at ?? p.created_at)}
+                          />
+                        ) : null}
                         {p.status === "succeeded" && p.stripe_payment_intent_id ? (
                           <RefundButton
                             id={p.id}

@@ -7,6 +7,7 @@ export function gymFormatters(timeZone: string) {
   const longDay = make({ weekday: "long", day: "numeric", month: "long" });
   const shortDay = make({ weekday: "short", day: "numeric" });
   const dateTime = make({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const fullDate = make({ day: "numeric", month: "long", year: "numeric" });
   const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
   const civil = new Intl.DateTimeFormat("fr-FR", {
     timeZone: "UTC",
@@ -27,6 +28,8 @@ export function gymFormatters(timeZone: string) {
     longDayInline: (date: Date | string) => longDay.format(new Date(date)),
     shortDay: (date: Date | string) => capitalize(shortDay.format(new Date(date))),
     dateTime: (date: Date | string) => dateTime.format(new Date(date)),
+    /** « 29 janvier 2025 », quand l'année compte (ancienneté). */
+    fullDate: (date: Date | string) => fullDate.format(new Date(date)),
     /** Date civile « AAAA-MM-JJ » (sans heure) : « 5 oct. 2026 ». */
     dateKey: (key: string) => civil.format(new Date(`${key}T12:00:00Z`)),
     /** Date civile « AAAA-MM-JJ » en toutes lettres : « lundi 12 octobre ». */

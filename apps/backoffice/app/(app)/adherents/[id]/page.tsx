@@ -4,6 +4,7 @@ import {
   formatPrice,
   MEMBER_STATUS_TONE,
   PAYMENT_STATUS_TONE,
+  SUBSCRIPTION_STATUS_TONE,
 } from "@salle/shared";
 import {
   CalendarCheckIcon,
@@ -23,6 +24,10 @@ import { MemberSummary } from "@/components/assistant/member-summary";
 import { EditableCell } from "@/components/inline/editable-cell";
 import { ActivateButton } from "@/components/members/activate-button";
 import { CreditsDialog } from "@/components/members/credits-dialog";
+import { MemberOverview } from "@/components/members/member-overview";
+import { SectionError } from "@/components/section-error";
+import { CardsSkeleton } from "@/components/skeletons";
+import { ReceiptLink } from "@/components/payments/receipt-link";
 import { ConsentSwitches } from "@/components/members/profile/consent-switches";
 import { MemberTags } from "@/components/members/profile/member-tags";
 import { StatusButton } from "@/components/members/profile/status-button";
@@ -198,6 +203,18 @@ export default async function MemberProfilePage({
           </span>
         </p>
       ) : null}
+      {/* Synthèse (accueil et gérant), chargée à part : une erreur reste locale au bloc. */}
+      <section aria-label={t("memberOverview.title")}>
+        <SectionError>
+          <Suspense fallback={<CardsSkeleton count={manager ? 4 : 3} height="h-52" />}>
+            <MemberOverview
+              memberId={member.id}
+              timeZone={context.gym.timezone}
+              manager={manager}
+            />
+          </Suspense>
+        </SectionError>
+      </section>
       {manager && balance + used > 0 ? (
         <SegmentMeter
           label={t("memberProfile.creditsMeter")}
@@ -258,17 +275,6 @@ export default async function MemberProfilePage({
     </div>
   );
 }
-
-const SUBSCRIPTION_TONE = {
-  active: "success",
-  trialing: "brand",
-  past_due: "danger",
-  unpaid: "danger",
-  canceled: "neutral",
-  incomplete: "warning",
-  incomplete_expired: "neutral",
-  paused: "neutral",
-} as const;
 
 /**
  * Abonnement et paiements (gérant) : abonnement en cours (période, engagement, renouvellement
@@ -339,6 +345,14 @@ async function BillingTab({ context, memberId }: { context: TeamContext; memberI
                   <span className="w-24 text-right font-medium tabular-nums">
                     {formatMoney(p.amount_cents, p.currency)}
                   </span>
+                  <span className="w-8">
+                    {p.status === "succeeded" || p.status === "refunded" ? (
+                      <ReceiptLink
+                        paymentId={p.id}
+                        date={format.dateTime(p.paid_at ?? p.created_at)}
+                      />
+                    ) : null}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -357,7 +371,7 @@ async function BillingTab({ context, memberId }: { context: TeamContext; memberI
               <>
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{current.plans?.name}</span>
-                  <StatusPill tone={SUBSCRIPTION_TONE[current.status]}>
+                  <StatusPill tone={SUBSCRIPTION_STATUS_TONE[current.status]}>
                     {t(`billing.subscriptionStatus.${current.status}`)}
                   </StatusPill>
                 </div>

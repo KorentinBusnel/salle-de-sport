@@ -204,8 +204,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   forme (`components/skeletons`) ; erreur de section : `SectionError` (`catchError`). Transition
   entre sections : `template.tsx` (ViewTransition, liens `transitionTypes={["nav"]}` seulement).
   Barre du haut : fil d'Ariane (`AppBreadcrumb`), **un seul champ ⌘K / « / »**
-  (`CommandPalette` : adhérents, et assistant pour le gérant ; `openAssistant(prompt)` l'ouvre sur une
-  demande préparée), « + Nouveau » (`NewMenu`). `PageHeader`, `metadata` par page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
+  (`CommandPalette`, tous les rôles : Récents par compte, adhérents, Aller à, Réglages, Actions —
+  entrées construites par le layout, filtrées par `filterEntries` de `lib/palette.ts` ; assistant
+  pour le gérant, en dernier ; `openAssistant(prompt)` l'ouvre sur une demande préparée), « + Nouveau »
+  (`NewMenu`). Sections des Paramètres : `SETTINGS_SECTIONS` / `settingsHref`
+  (`lib/settings-sections.ts`). `PageHeader`, `metadata` par page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
   (`isManagerRole`, `isFrontDeskRole`) dans `lib/auth-roles.ts` (testables, sans `server-only`).
 - Paramètres : une page à sections (`/parametres?onglet=salle|reservations|strategies|accueil|suivi|catalogue|equipe|integrations`,
   navigation verticale `SettingsNav` avec une phrase d'aide) ; une nouvelle section de réglages y
@@ -234,7 +237,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
   faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
   de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
-  interface `components/assistant/` (Hub, ⌘K, résumé de fiche). Un outil qui agit n'agit pas : il
+  interface `components/assistant/` (Hub, ⌘K, résumé de fiche). Hub en deux volets
+  (`HubConversations` : messages par `app/api/assistant/conversations/[id]`, `?c=` par
+  `history.pushState`) ; « Arrêter » abandonne la requête, le signal interrompt `runAgent` et le
+  texte reçu est enregistré (`stopped`) ; propositions modifiables avant validation. Un outil qui agit n'agit pas : il
   **propose** (`proposes: true`), la Server Action de validation exécute. Clé absente : état « non
   configuré », jamais d'erreur. **Digest du jour** (`lib/ai/digest.ts`) : outils en lecture plus
   `submit_digest`, entrée validée par `digestInputSchema` (`packages/shared/src/digest.ts`), stocké
@@ -265,6 +271,17 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `SelectionProvider` / `RowCheckbox` / `AllCheckbox` (remise à zéro par `resetKey`). Filtres
   portés par l'URL : `useUrlState` ; sous `UrlStateProvider`, les filtres d'une page partagent
   l'attente et `PendingRegion` grise le contenu périmé.
+- Emailing : `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
+  `trigger`), actions `saveCampaign` / `sendCampaignNow` / `setCampaignSchedule` /
+  `deleteCampaignQuick` (`ActionResult`) ; audience par `app/api/segments/[id]/audience`, aperçu
+  d'un modèle par `app/api/emailing/apercu` (`preview_template`). `TemplateEditor` (variables au
+  curseur), `MemberPicker` (`components/members/member-picker.tsx`, choix d'un adhérent au fil de la
+  frappe). Messages : `MessagesFilters` + `MessagesList` (panneau de détail).
+- Coachs : `MonthNav` (`components/forms/month-nav.tsx`, `?mois=`), disponibilités par
+  `AvailabilityCard` (`WeeklySlotsEditor` avec `labels`, action `saveAvailability`, différence sur
+  les plages sans `valid_until`), heures par `HoursTable` (`loadMonthSessions`). Indicateurs :
+  `KpiPeriod` (`DateRangeField`), variations = second appel de `gym_kpis` sur la période
+  précédente, `Heatmap` (infobulles au focus).
 - Fiche séance : `SessionLiveProvider` (`components/session/session-live.tsx`) — inscription et
   « Tous présents » optimistes, lus par `MemberCombobox` et `AttendanceToggle`.
 - Catalogue `messages/fr.ts` : **aucune variable dans une branche de pluriel** (le traducteur ne

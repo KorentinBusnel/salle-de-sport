@@ -286,6 +286,7 @@ export const BOOLEAN_SETTINGS = [
   "manager_can_remove_credits",
   "staff_can_suspend_members",
   "staff_can_create_members",
+  "staff_can_sell",
 ] as const satisfies readonly (keyof typeof gymSettingsSchema.shape)[];
 export type BooleanSetting = (typeof BOOLEAN_SETTINGS)[number];
 

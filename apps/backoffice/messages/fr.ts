@@ -681,6 +681,10 @@ export const fr = {
         label: "Création de fiches par l'accueil",
         hint: "L'accueil peut créer une fiche adhérent. Sinon, seul le gérant le fait.",
       },
+      staff_can_sell: {
+        label: "Ventes sur place par l'accueil",
+        hint: "L'accueil peut enregistrer une vente (espèces, terminal de carte), sans voir l'historique des paiements. Sinon, seul le gérant le fait.",
+      },
     },
     reservations: {
       title: "Réservations et crédits",
@@ -1483,6 +1487,14 @@ export const fr = {
     capacity_below_booked: "Impossible : il y a déjà plus d'inscrits que ce nombre de places.",
     room_capacity_exceeded: "La salle ne peut pas accueillir autant de participants.",
     invalid_duration: "Durée invalide : de 15 à 240 minutes, par pas de 5.",
+    plan_discipline: "L'offre de l'adhérent ne couvre pas cette discipline.",
+    plan_not_found: "Offre introuvable.",
+    plan_inactive: "Cette offre n'est plus vendue.",
+    already_subscribed: "L'adhérent a déjà un abonnement en cours.",
+    promo_invalid: "Code promo invalide pour cette offre.",
+    promo_exhausted: "Ce code promo a atteint son nombre d'utilisations.",
+    subscription_not_found: "Abonnement introuvable.",
+    not_renewable: "Cet abonnement ne se renouvelle pas sur place.",
   },
   roles: {
     member: "Adhérent",

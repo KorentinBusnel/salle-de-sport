@@ -169,5 +169,13 @@ export const fr = {
     capacity_below_booked: "Trop d'inscrits pour ce nombre de places.",
     room_capacity_exceeded: "Capacité de la salle dépassée.",
     invalid_duration: "Durée invalide.",
+    plan_discipline: "Votre offre ne couvre pas cette discipline.",
+    plan_not_found: "Offre introuvable.",
+    plan_inactive: "Cette offre n'est plus proposée.",
+    already_subscribed: "Vous avez déjà un abonnement en cours.",
+    promo_invalid: "Code promo invalide.",
+    promo_exhausted: "Ce code promo n'est plus valable.",
+    subscription_not_found: "Abonnement introuvable.",
+    not_renewable: "Cet abonnement ne peut pas être renouvelé ici.",
   },
 } as const;

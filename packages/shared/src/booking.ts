@@ -21,6 +21,8 @@ export const gymSettingsSchema = z.object({
   staff_can_suspend_members: z.boolean().default(false),
   /** L'accueil peut créer une fiche (sinon : gérant seulement). */
   staff_can_create_members: z.boolean().default(false),
+  /** L'accueil peut enregistrer une vente sur place (sinon : gérant seulement). */
+  staff_can_sell: z.boolean().default(false),
 });
 
 export type GymSettings = z.infer<typeof gymSettingsSchema>;
@@ -81,6 +83,14 @@ export const BOOKING_ERROR_CODES = [
   "room_capacity_exceeded",
   "not_team_member",
   "invalid_duration",
+  "plan_discipline",
+  "plan_not_found",
+  "plan_inactive",
+  "already_subscribed",
+  "promo_invalid",
+  "promo_exhausted",
+  "subscription_not_found",
+  "not_renewable",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

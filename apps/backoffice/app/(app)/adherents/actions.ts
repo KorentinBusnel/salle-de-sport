@@ -29,23 +29,6 @@ const STATUS_OK = {
   cancelled: "members.cancelled",
 } as const satisfies Record<string, MessageKey>;
 
-/** Activer, suspendre, réactiver : set_member_status applique les stratégies de la salle. */
-export async function setMemberStatus(formData: FormData) {
-  await requireRole(isFrontDeskRole);
-  const id = z.guid().parse(formData.get("memberId"));
-  const status = z.enum(["active", "suspended", "cancelled"]).parse(formData.get("status"));
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("set_member_status", { p_member_id: id, p_status: status });
-  revalidatePath("/adherents", "layout");
-  revalidatePath("/crm");
-  redirect(
-    withFlash(
-      back(formData),
-      error ? { error: errorMessageKey(error) } : { ok: STATUS_OK[status] },
-    ),
-  );
-}
-
 /** Ajout (ou retrait, si la stratégie l'autorise) de crédits par le gérant. */
 export async function adjustCredits(formData: FormData) {
   const context = await requireRole(isManagerRole);

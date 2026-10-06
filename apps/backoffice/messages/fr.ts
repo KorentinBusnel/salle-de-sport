@@ -988,6 +988,7 @@ export const fr = {
     errors: {
       notAllowed: "Ce changement d'étape n'est pas possible depuis le pipeline.",
       alreadyBooked: "Ce prospect a déjà réservé : il reste en essai.",
+      undoRefused: "Retour impossible : {reason}",
     },
     more: "{count, plural, one {# autre} other {# autres}} : voir la liste",
   },
@@ -997,9 +998,12 @@ export const fr = {
     saved: "Segments enregistrés",
     new: "Nouveau segment",
     filters: "Critères",
-    filtersHint: "Tous les critères renseignés doivent être remplis.",
+    filtersHint:
+      "Tous les critères renseignés doivent être remplis ; l'aperçu suit à chaque changement.",
     status: "Statut",
-    tags: "Tags (au moins un, séparés par des virgules)",
+    tags: "Étiquettes (au moins une)",
+    tagsPlaceholder: "hyrox, blessure…",
+    moreFilters: "Plus de critères",
     inactiveDays: "Sans séance depuis (jours)",
     discipline: "A pratiqué la discipline",
     any: "Peu importe",
@@ -1007,11 +1011,10 @@ export const fr = {
     joinedSince: "Fiche créée depuis le",
     birthdayMonth: "Anniversaire ce mois-ci",
     emailConsent: "Consentement email",
-    preview: "Voir les adhérents",
     reset: "Réinitialiser",
     count: "{count, plural, =0 {Aucun adhérent} one {# adhérent} other {# adhérents}}",
-    consenting:
-      "{count, plural, =0 {Aucun joignable par email marketing} one {# joignable par email marketing} other {# joignables par email marketing}}",
+    consentHint:
+      "Aperçu mis à jour à chaque critère. Les campagnes ne touchent que les fiches marquées d'un consentement email.",
     name: "Nom du segment",
     namePlaceholder: "Ex. : inactifs 14 jours",
     save: "Enregistrer",

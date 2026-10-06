@@ -10,6 +10,8 @@ type UrlState = {
     changes: Record<string, string | null | undefined>,
     options?: { keepPage?: boolean },
   ) => void;
+  /** Remplace toute la requête (filtres à valeurs multiples). */
+  replaceQuery: (query: string) => void;
   pending: boolean;
 };
 
@@ -38,7 +40,15 @@ function useOwnUrlState(): UrlState {
     [params, pathname, router],
   );
 
-  return { params: new URLSearchParams(params.toString()), set, pending };
+  const replaceQuery = useCallback(
+    (query: string) =>
+      startTransition(() => {
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      }),
+    [pathname, router],
+  );
+
+  return { params: new URLSearchParams(params.toString()), set, replaceQuery, pending };
 }
 
 /**

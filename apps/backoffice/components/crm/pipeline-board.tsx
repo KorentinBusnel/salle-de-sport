@@ -12,7 +12,13 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { type PipelineStage, PIPELINE_STAGES, pipelineMove } from "@salle/shared";
+import {
+  type PipelineStage,
+  PIPELINE_STAGES,
+  pipelineMove,
+  TONE_CLASSES,
+  type Tone,
+} from "@salle/shared";
 import { GripVerticalIcon, MoveRightIcon } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
@@ -36,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { type MessageKey, t } from "@/lib/i18n";
+import { UNDO_DURATION_MS } from "@/lib/toast-undo";
 import { cn } from "@/lib/utils";
 
 export type PipelineCard = {
@@ -48,18 +55,20 @@ export type PipelineCard = {
 export type PipelineColumn = { stage: PipelineStage; total: number; cards: PipelineCard[] };
 type Move = { card: PipelineCard; from: PipelineStage; to: PipelineStage };
 
-const ACCENT: Record<PipelineStage, string> = {
-  lead: "bg-primary",
-  trial: "bg-warning",
-  active: "bg-success",
-  suspended: "bg-neutral-400",
-  cancelled: "bg-neutral-300",
+// Couleurs des étapes : tons partagés (tokens), comme les pastilles de statut.
+const STAGE_TONE: Record<PipelineStage, Tone> = {
+  lead: "brand",
+  trial: "warning",
+  active: "success",
+  suspended: "neutral",
+  cancelled: "danger",
 };
 
 /**
  * Pipeline en colonnes : les cartes se glissent d'une étape à l'autre (souris, doigt ou
  * clavier via « Déplacer vers… »). Déplacement optimiste ; la base tranche et la carte revient
- * si la transition est refusée. Résilier demande une confirmation.
+ * si la transition est refusée. « Annuler » quand le retour est permis (sinon pas de bouton) ;
+ * résilier demande une confirmation. Au téléphone, les colonnes défilent une à une.
  */
 export function PipelineBoard({
   columns,
@@ -108,13 +117,38 @@ export function PipelineBoard({
     run(move);
   }
 
-  function run(move: Move) {
+  function run(move: Move, undoing = false) {
     startTransition(async () => {
       applyMove(move);
       const result = await action({ memberId: move.card.id, from: move.from, to: move.to });
-      if (result.error) toast.error(t(result.error), { closeButton: true });
-      else
-        toast.success(t("crm.moved", { name: move.card.name, stage: t(`crm.stage.${move.to}`) }));
+      if (result.error) {
+        // Retour refusé (ex. : l'essai a déjà réservé) : la carte reste où la base l'a laissée.
+        toast.error(
+          undoing ? t("crm.errors.undoRefused", { reason: t(result.error) }) : t(result.error),
+          {
+            closeButton: true,
+          },
+        );
+        return;
+      }
+      if (undoing) {
+        toast(t("ui.undone"));
+        return;
+      }
+      const back = pipelineMove(move.to, move.from);
+      const reversible = back !== null && !(back.kind === "status" && back.confirm);
+      toast.success(t("crm.moved", { name: move.card.name, stage: t(`crm.stage.${move.to}`) }), {
+        id: `crm-${move.card.id}`,
+        ...(reversible
+          ? {
+              duration: UNDO_DURATION_MS,
+              action: {
+                label: t("ui.undo"),
+                onClick: () => run({ card: move.card, from: move.to, to: move.from }, true),
+              },
+            }
+          : {}),
+      });
     });
   }
 
@@ -139,8 +173,8 @@ export function PipelineBoard({
           screenReaderInstructions: { draggable: t("crm.dragInstructions") },
         }}
       >
-        <div className="-mx-4 overflow-x-auto px-4 pb-2 md:-mx-6 md:px-6">
-          <div className="grid min-w-[64rem] grid-cols-5 gap-3">
+        <div className="-mx-4 snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-2 md:-mx-6 md:scroll-px-6 md:px-6 xl:snap-none">
+          <div className="grid auto-cols-[min(85vw,18rem)] grid-flow-col gap-3 xl:grid-flow-row xl:grid-cols-5">
             {board.map((column) => (
               <Column
                 key={column.stage}
@@ -205,7 +239,7 @@ function Column({
       ref={setNodeRef}
       aria-labelledby={`col-${column.stage}`}
       className={cn(
-        "grid min-h-40 content-start gap-2 rounded-xl bg-muted/60 p-2 transition-colors",
+        "grid min-h-40 snap-start content-start gap-2 rounded-xl bg-muted/60 p-2 transition-colors",
         isOver && "bg-accent ring-2 ring-ring/40",
       )}
     >
@@ -213,7 +247,10 @@ function Column({
         id={`col-${column.stage}`}
         className="flex items-center gap-2 px-1 py-1 text-sm font-medium"
       >
-        <span aria-hidden className={cn("size-2 rounded-full", ACCENT[column.stage])} />
+        <span
+          aria-hidden
+          className={cn("size-2 rounded-full", TONE_CLASSES[STAGE_TONE[column.stage]].dot)}
+        />
         {t(`crm.stage.${column.stage}`)}
         <span className="ml-auto text-muted-foreground tabular-nums">{column.total}</span>
       </h2>

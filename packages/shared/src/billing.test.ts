@@ -48,12 +48,18 @@ describe("calculs", () => {
 
 describe("schémas", () => {
   it("un abonnement exige une périodicité, un carnet des crédits", () => {
-    expect(planSchema.safeParse({ name: "A", type: "recurring", price_cents: 1 }).success).toBe(false);
+    expect(planSchema.safeParse({ name: "A", type: "recurring", price_cents: 1 }).success).toBe(
+      false,
+    );
     expect(planSchema.safeParse({ name: "C", type: "pack", price_cents: 1 }).success).toBe(false);
-    expect(planSchema.safeParse({ name: "C", type: "pack", price_cents: 1, credits: 10 }).success).toBe(true);
+    expect(
+      planSchema.safeParse({ name: "C", type: "pack", price_cents: 1, credits: 10 }).success,
+    ).toBe(true);
   });
   it("code promo normalisé, pourcentage borné", () => {
-    expect(promoSchema.parse({ code: " rentree ", kind: "percent", value: 20 }).code).toBe("RENTREE");
+    expect(promoSchema.parse({ code: " rentree ", kind: "percent", value: 20 }).code).toBe(
+      "RENTREE",
+    );
     expect(promoSchema.safeParse({ code: "X1X", kind: "percent", value: 120 }).success).toBe(false);
   });
 });

@@ -19,16 +19,14 @@ export const PAYMENT_STATUSES = ["pending", "succeeded", "failed", "refunded"] a
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 /** Montant saisi en euros (« 32,50 ») → centimes. */
-export const eurosToCents = z
-  .union([z.number(), z.string()])
-  .transform((value, ctx) => {
-    const n = typeof value === "number" ? value : Number(value.trim().replace(",", "."));
-    if (!Number.isFinite(n) || n < 0 || n > 100_000) {
-      ctx.addIssue({ code: "custom", message: "amount" });
-      return z.NEVER;
-    }
-    return Math.round(n * 100);
-  });
+export const eurosToCents = z.union([z.number(), z.string()]).transform((value, ctx) => {
+  const n = typeof value === "number" ? value : Number(value.trim().replace(",", "."));
+  if (!Number.isFinite(n) || n < 0 || n > 100_000) {
+    ctx.addIssue({ code: "custom", message: "amount" });
+    return z.NEVER;
+  }
+  return Math.round(n * 100);
+});
 
 /** Offre telle que le gérant la saisit (mêmes contraintes que la table plans). */
 export const planSchema = z

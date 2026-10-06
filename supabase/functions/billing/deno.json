@@ -1,0 +1,12 @@
+{
+  "imports": {
+    "zod": "npm:zod@^4.1.0",
+    "stripe": "npm:stripe@^18.5.0",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.75.0"
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  }
+}

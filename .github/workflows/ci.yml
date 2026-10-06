@@ -64,6 +64,28 @@ jobs:
           git diff --exit-code -- packages/supabase/src/database.types.ts \
             || { echo "::error::database.types.ts n'est pas à jour : lancez pnpm db:types et commitez."; exit 1; }
 
+  functions:
+    name: Edge Functions (Deno, stripe-mock)
+    runs-on: ubuntu-latest
+    services:
+      stripe-mock:
+        image: stripe/stripe-mock:latest
+        ports:
+          - 12111:12111
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@v5
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno lint
+      - run: deno check billing/index.ts stripe-webhook/index.ts
+      - run: deno test --allow-net --allow-env --allow-read
+        env:
+          STRIPE_API_BASE: http://localhost:12111
+
   backoffice:
     name: Build du back office
     runs-on: ubuntu-latest

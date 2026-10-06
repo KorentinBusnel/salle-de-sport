@@ -100,17 +100,18 @@ export async function moveSessionForm(formData: FormData) {
   redirect(withFlash(back, error ? { error: errorMessageKey(error) } : { ok: "session.moved" }));
 }
 
-/** Séance ponctuelle créée depuis un créneau vide de la grille (valeurs de la discipline). */
-export async function createSessionAt(input: {
-  dayKey: string;
-  minutes: number;
-  disciplineId: string;
-}): Promise<{ error: MessageKey | null }> {
+const createSchema = moveSchema.omit({ sessionId: true }).extend({
+  disciplineId: z.guid(),
+  coachIds: z.array(z.guid()).max(4).default([]),
+  roomId: z.guid().nullable().default(null),
+});
+
+/** Séance ponctuelle créée depuis un créneau vide (ou « + Nouveau ») : discipline, coachs, salle. */
+export async function createSessionAt(
+  input: z.input<typeof createSchema>,
+): Promise<{ error: MessageKey | null }> {
   const context = await requireRole(isManagerRole);
-  const parsed = moveSchema
-    .omit({ sessionId: true })
-    .extend({ disciplineId: z.guid() })
-    .safeParse(input);
+  const parsed = createSchema.safeParse(input);
   if (!parsed.success) return { error: "common.unexpectedError" };
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_session", {
@@ -121,6 +122,8 @@ export async function createSessionAt(input: {
       parsed.data.minutes,
       context.gym.timezone,
     ).toISOString(),
+    p_coach_ids: parsed.data.coachIds,
+    ...(parsed.data.roomId ? { p_room_id: parsed.data.roomId } : {}),
   });
   revalidatePath("/planning");
   refresh();

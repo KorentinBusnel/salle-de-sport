@@ -255,6 +255,7 @@ export const fr = {
     mp_commitment_not_found: "Engagement introuvable.",
     mp_invalid_quantity: "Quantité invalide.",
     mp_invalid_date: "Date invalide.",
+    rate_limited: "Trop de tentatives. Réessayez dans une heure.",
     payment_overdue:
       "Votre abonnement est en attente de paiement : réglez-le pour réserver (Compte).",
     already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",

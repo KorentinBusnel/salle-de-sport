@@ -2031,6 +2031,7 @@ export const fr = {
     mp_commitment_not_found: "Engagement introuvable.",
     mp_invalid_quantity: "Quantité invalide (de 1 à 10 000).",
     mp_invalid_date: "La date de clôture doit être dans le futur.",
+    rate_limited: "Trop de tentatives. Réessayez dans une heure.",
     payment_overdue:
       "L'abonnement de l'adhérent est en impayé : réservation suspendue jusqu'au règlement.",
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",

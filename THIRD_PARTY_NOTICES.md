@@ -44,3 +44,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Polices Fraunces et Geist — SIL Open Font License 1.1
+
+La landing (`apps/landing`) utilise **Fraunces** (Undercase Type), **Geist** et **Geist Mono**
+(Vercel), sous licence [SIL Open Font License 1.1](https://openfontlicense.org). Les pages les
+chargent par `next/font` (auto-hébergées au build) ; des fichiers TTF statiques sont copiés dans
+`apps/landing/assets/fonts/` pour générer l'image Open Graph et les icônes (`next/og`).

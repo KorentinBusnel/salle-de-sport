@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Conventions de code et de travail pour ce dépôt. Le cahier des charges est `BRIEF.md`.
+Conventions de code et de travail pour ce dépôt. Le cahier des charges est `BRIEF.md` (landing :
+`LANDING_BRIEF.md`).
 
 ## Avant de coder
 
@@ -17,6 +18,7 @@ Conventions de code et de travail pour ce dépôt. Le cahier des charges est `BR
 ```
 apps/backoffice     Next.js 16 (App Router) + Tailwind v4 + shadcn/ui — équipe de la salle
 apps/mobile         Expo SDK 57 + Expo Router + NativeWind 4 — adhérents
+apps/landing        Next.js 16 statique + Tailwind v4 — landing de lancement (Kettl, kettl.ai)
 packages/shared     règles métier, schémas Zod, dates, i18n — TypeScript pur
 packages/supabase   types générés + type du client
 packages/ui         tokens de design (tokens.ts) et thème Tailwind v4 (theme.css)
@@ -39,6 +41,7 @@ pnpm db:types                    # régénère packages/supabase/src/database.ty
 pnpm fn:test                     # Edge Functions : deno lint, check, test (stripe-mock sur :12111)
 pnpm env:local                   # écrit les .env.local des deux apps depuis Supabase local
 pnpm dev                         # back office + Metro
+pnpm --filter @salle/landing build && pnpm --filter @salle/landing check:html   # landing
 ```
 
 En session cloud, démarrer Supabase sans les services inutiles :
@@ -175,6 +178,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `private.apply_member_stripe_event`. Edge Function `billing` : `mp_checkout`, `mp_commit`
   (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
   `billing/marketplace.ts`.
+- **Liste d'attente** (`waitlist`, landing) : table globale **sans aucun accès client**, écrite
+  **uniquement via** `join_waitlist` (exécutable par `service_role` seul, appelée par la Server
+  Action de la landing) ; limite de débit par empreinte HMAC de l'IP (`private.waitlist_attempts`,
+  5 par heure, effacées au bout d'une heure). Vit dans le projet Supabase de **production**.
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -369,6 +376,38 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   les imbrique pas ; `lib/messages.test.ts` le vérifie) — écrire deux pluriels côte à côte.
 - Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
   du React Compiler refuse `Date.now()` dans le rendu.
+
+## Landing (`apps/landing`)
+
+- Page publique de lancement (`LANDING_BRIEF.md`), projet Vercel à part (Root Directory
+  `apps/landing`, domaine kettl.ai). Ni authentification, ni proxy, ni clé anon : seule la Server
+  Action `joinWaitlist` (`app/actions.ts`) parle à Supabase, avec `SUPABASE_SERVICE_ROLE_KEY`
+  (`lib/env.server.ts`), et Resend (`lib/email.ts`, `fetch` sans SDK, `Idempotency-Key`, envoi
+  dans `after()`). Sans Supabase : erreur affichée ; sans Resend : inscription sans email.
+- **Tous les textes** dans `content/landing.ts` (exception à la règle `t()`, BRIEF §12) : la page,
+  le JSON-LD (`lib/jsonld.ts`), `/llms.txt` (`lib/llms.ts`) et l'image Open Graph les lisent. Rien
+  qui ne soit vrai au lancement ; **FAQ sans intégrations**. Mentions légales et confidentialité :
+  `content/legal.ts` ; tant qu'il reste un « À COMPLÉTER », **le build de production échoue**
+  (`lib/launch-guard.ts`).
+- Rendu **statique** (`force-static`) : le texte des six vues de l'aperçu est dans le HTML. Les
+  vues sont rendues côté serveur (`components/preview/views.tsx`) et passées à
+  `ProductPreview` (client : onglets, défilement automatique piloté par `animationend`, empilées
+  dans une même cellule de grille pour un CLS nul, `inert` hors vue active). `scripts/check-html.ts`
+  vérifie le HTML prérendu (CI, job « Build de la landing »).
+- Design : `lib/tokens.ts` (« warm stone », action `#615fff`) reflété par `@theme` dans
+  `app/globals.css` (test de concordance et de contraste avec `contrast` de `@salle/ui`) ;
+  Fraunces / Geist / Geist Mono par `next/font` ; image OG et icônes par `next/og` avec les TTF
+  de `assets/fonts` (OFL). Tertiaire `faint` sur fond sombre seulement ; vert et teal en contour.
+- Un seul `WaitlistProvider` (`useActionState`) pour les deux formulaires : une inscription
+  s'affiche dans les deux. Validation native du navigateur, puis Zod côté serveur
+  (`lib/waitlist-schema.ts`). UTM lus dans l'adresse au rendu, **rien n'est stocké dans le
+  navigateur** (aucun cookie : la confidentialité l'affirme).
+- `robots.ts` : tout autoriser en production (`VERCEL_ENV`), tout interdire ailleurs ; liste des
+  robots IA dans `lib/robots-rules.ts` (à revérifier chez chaque éditeur). Mesure d'audience
+  `@vercel/analytics` rendue seulement sur Vercel (`VERCEL`), événements par `track()`
+  (`lib/analytics.ts`).
+- Port local **3001** (`pnpm --filter @salle/landing dev`) ; image du hero `next/image` avec
+  `loading="eager"` et `fetchPriority="high"` (pas de `placeholder="blur"`, coûteux à peindre).
 
 ## App mobile (Expo)
 

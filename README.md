@@ -76,3 +76,34 @@ ne va dans le dépôt ni dans les apps (seule la clé **publiable** `pk_test_…
    puis republier l'app : les boutons « Acheter » et « S'abonner » apparaissent.
 6. Dans le back office, Paramètres › Offres : « Synchroniser avec Stripe » sur chaque offre (fait
    aussi au premier achat).
+
+## Landing de lancement (kettl.ai)
+
+Page publique `apps/landing` (cahier des charges : [LANDING_BRIEF.md](LANDING_BRIEF.md)).
+
+```sh
+pnpm --filter @salle/landing dev          # http://localhost:3001
+pnpm --filter @salle/landing build && pnpm --filter @salle/landing check:html
+```
+
+En local, l'inscription écrit dans Supabase local si `SUPABASE_URL=http://127.0.0.1:54321` et
+`SUPABASE_SERVICE_ROLE_KEY` (de `supabase status`) sont définies ; sans Resend, aucun email ne
+part (avertissement dans les logs).
+
+Mise en ligne :
+
+1. **Supabase de production** : créer le projet (région UE, Paris de préférence), y appliquer
+   toutes les migrations **sans seed** (API Management, comme pour le projet de dev ; renseigner
+   `SUPABASE_PROD_PROJECT_REF` dans la session cloud).
+2. **Vercel** : nouveau projet sur le dépôt, Root Directory `apps/landing`, domaine `kettl.ai`
+   (plan Pro : usage commercial et événements de Web Analytics). Variables (Production) :
+   `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` du projet de production (cette dernière en
+   « Sensitive »), `RESEND_API_KEY`, `RESEND_FROM` (ex. `Kettl <bonjour@kettl.ai>`), et au besoin
+   `NEXT_PUBLIC_SITE_URL`. Activer Web Analytics dans le projet.
+3. **Resend** : vérifier le domaine `kettl.ai` (enregistrements DNS).
+4. **Contenu** : compléter `apps/landing/content/legal.ts` (le build de production échoue tant
+   qu'il reste un « À COMPLÉTER ») et remplacer la photo provisoire
+   `apps/landing/assets/hero-provisoire.webp` par une photo HD sous licence, sans marque visible.
+5. **Après déploiement** : Search Console et Bing Webmaster Tools (vérification par DNS, envoi de
+   `https://kettl.ai/sitemap.xml`), test des résultats enrichis et validateur Schema.org,
+   PageSpeed Insights (mobile et desktop), puis une vraie inscription (ligne en base, email reçu).

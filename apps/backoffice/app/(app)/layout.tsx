@@ -88,7 +88,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     ...navigation.footer.map((item) => ({
       href: item.href,
       label: item.label,
-      group: t("nav.groupSettings"),
+      // Les entrées de pied (Plateforme, Paramètres) sont leur propre racine.
+      group: item.label,
     })),
   ];
   const create: NewMenuItem[] = [

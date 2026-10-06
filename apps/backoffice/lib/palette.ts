@@ -19,6 +19,8 @@ export type PaletteIcon =
   | "hub"
   | "settings"
   | "payments"
+  | "marketplace"
+  | "platform"
   | "member"
   | "session"
   | "campaign";

@@ -12,7 +12,15 @@ describe("buildNavigation", () => {
     const nav = buildNavigation("manager", none);
     expect(hrefs(nav)).toEqual({
       Quotidien: ["/", "/hub", "/planning", "/indicateurs"],
-      Opérations: ["/adherents", "/crm", "/emailing", "/paiements", "/coachs", "/planning/modeles"],
+      Opérations: [
+        "/adherents",
+        "/crm",
+        "/emailing",
+        "/paiements",
+        "/marketplace",
+        "/coachs",
+        "/planning/modeles",
+      ],
     });
     expect(nav.footer.map((i) => i.href)).toEqual(["/parametres"]);
     // Pastilles par défaut : prospects et messages sans réponse.
@@ -21,9 +29,10 @@ describe("buildNavigation", () => {
     expect(badge(nav, "/crm")).toBeUndefined();
   });
 
-  it("admin : comme le gérant, même s'il est aussi coach", () => {
+  it("admin : comme le gérant, même s'il est aussi coach, plus l'espace Plateforme", () => {
     const nav = buildNavigation("admin", { ownCoachId: "c" });
     expect(hrefs(nav)["Quotidien"]).toEqual(["/", "/hub", "/planning", "/indicateurs"]);
+    expect(nav.footer.map((i) => i.href)).toEqual(["/plateforme", "/parametres"]);
   });
 
   it("pastilles choisies : chacune sur l'entrée qui la porte", () => {

@@ -75,6 +75,7 @@ export function buildNavigation(
       // Une seule entrée : campagnes, modèles, automatisations, segments et messages en onglets.
       { href: "/emailing", label: t("nav.emailing"), icon: "emailing" },
       { href: "/paiements", label: t("nav.payments"), icon: "payments" },
+      { href: "/marketplace", label: t("nav.marketplace"), icon: "marketplace" },
       { href: "/coachs", label: t("nav.coaches"), icon: "coaches" },
       { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" },
     ]),
@@ -93,6 +94,12 @@ export function buildNavigation(
       { label: t("nav.groupDaily"), items: withBadges(daily) },
       { label: t("nav.groupOperations"), items: withBadges(operations) },
     ].filter((group) => group.items.length > 0),
-    footer: when(manager, [{ href: "/parametres", label: t("nav.settings"), icon: "settings" }]),
+    footer: [
+      // Catalogue commun de la marketplace : administrateurs de la plateforme (rôle admin).
+      ...when(role === "admin", [
+        { href: "/plateforme", label: t("nav.platform"), icon: "platform" },
+      ]),
+      ...when(manager, [{ href: "/parametres", label: t("nav.settings"), icon: "settings" }]),
+    ],
   };
 }

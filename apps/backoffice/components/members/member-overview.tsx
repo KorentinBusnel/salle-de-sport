@@ -112,16 +112,16 @@ export async function MemberOverview({
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
       <Block title={t("memberOverview.loyalty")}>
-        <p className="text-sm">
-          {t("memberOverview.since", { date: format.fullDate(loyalty.member_since) })}
+        <p className="text-sm" title={format.fullDate(loyalty.member_since)}>
+          {t("memberOverview.since", { date: format.monthYear(loyalty.member_since) })}
           <span className="text-muted-foreground"> · {tenure(loyalty.member_since, now)}</span>
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Figure
             value={loyalty.attended}
             label={t("memberOverview.attended", { count: loyalty.attended })}
           />
-          <div>
+          <div title={t("memberOverview.previous30", { count: loyalty.attended_prev_30d })}>
             <p className="flex items-center gap-1 text-2xl leading-tight font-medium tabular-nums">
               {loyalty.attended_30d}
               {change && change.direction !== "flat" ? (
@@ -132,39 +132,41 @@ export async function MemberOverview({
                 )
               ) : null}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {t("memberOverview.last30")}
-              {" · "}
-              {t("memberOverview.previous30", { count: loyalty.attended_prev_30d })}
-            </p>
+            <p className="text-xs text-muted-foreground">{t("memberOverview.last30")}</p>
           </div>
+          {counted > 0 ? (
+            <div title={t("memberOverview.noShows", { count: loyalty.no_shows })}>
+              <Figure
+                value={percent.format(loyalty.attended / counted)}
+                label={t("memberOverview.presence")}
+              />
+            </div>
+          ) : null}
         </div>
-        <ul className="grid gap-1 text-sm text-muted-foreground">
-          <li>
+        <p className="text-sm text-muted-foreground">
+          <span
+            title={
+              loyalty.last_visit
+                ? t("memberOverview.lastVisit", {
+                    date: format.longDayInline(loyalty.last_visit),
+                  })
+                : undefined
+            }
+          >
             {loyalty.last_visit
-              ? `${t("memberOverview.lastVisit", {
-                  date: format.longDayInline(loyalty.last_visit),
-                })} · ${t("memberOverview.daysAgo", {
+              ? t("memberOverview.seen", {
                   // Jours civils de la salle : une venue d'hier soir reste « hier ».
                   count: Math.round(
                     (Date.parse(zonedDateKey(now, timeZone)) -
                       Date.parse(zonedDateKey(new Date(loyalty.last_visit), timeZone))) /
                       DAY,
                   ),
-                })}`
+                })
               : t("memberOverview.neverCame")}
-          </li>
-          {counted > 0 ? (
-            <li>
-              {t("memberOverview.attendanceRate", {
-                rate: percent.format(loyalty.attended / counted),
-              })}
-              {" · "}
-              {t("memberOverview.noShows", { count: loyalty.no_shows })}
-            </li>
-          ) : null}
-          <li>{t("memberOverview.upcoming", { count: loyalty.upcoming })}</li>
-        </ul>
+          </span>
+          {" · "}
+          {t("memberOverview.upcoming", { count: loyalty.upcoming })}
+        </p>
       </Block>
 
       <Block title={t("memberOverview.offer")}>

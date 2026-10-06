@@ -245,3 +245,143 @@ Deno.test("webhook : erreur de la base → 500 (Stripe renverra l'événement)",
   );
   assertEquals(response.status, 500);
 });
+
+// ---------------------------------------------------------------------------
+// Marketplace : la salle paie la plateforme
+// ---------------------------------------------------------------------------
+
+const ORDER = "8a000000-0000-0000-0000-000000000001";
+const CAMPAIGN = "8b000000-0000-0000-0000-000000000001";
+const GYM = "8c000000-0000-0000-0000-000000000001";
+const RETURN = "https://bo.example/marketplace/commandes";
+
+Deno.test("marketplace : commande payée par Checkout, client de la salle créé", async () => {
+  const user = fakeSupabase({
+    userId: "u1",
+    rpc: {
+      mp_payment_context: {
+        data: {
+          order: { id: ORDER, gym_id: GYM, reference: "CMD-1", total_cents: 6960, currency: "eur" },
+          items: [{ name: "Boisson", unit: "carton de 24", quantity: 2, unit_price_cents: 3480 }],
+          gym: { id: GYM, name: "Atlas" },
+          customer_id: null,
+        },
+        error: null,
+      },
+    },
+  });
+  const admin = fakeSupabase({});
+  const response = await handleBilling(
+    post({ action: "mp_checkout", orderId: ORDER, returnUrl: RETURN }),
+    deps(user, admin),
+  );
+  assertEquals(response.status, 200);
+  assert((await response.json()).url, "URL de Checkout");
+  assertEquals(admin.calls.upserts[0]?.table, "gym_billing");
+});
+
+Deno.test("marketplace : commande déjà payée, code de la base renvoyé", async () => {
+  const user = fakeSupabase({
+    userId: "u1",
+    rpc: { mp_payment_context: { data: null, error: { message: "mp_invalid_status" } } },
+  });
+  const response = await handleBilling(
+    post({ action: "mp_checkout", orderId: ORDER, returnUrl: RETURN }),
+    deps(user, fakeSupabase({})),
+  );
+  assertEquals(response.status, 400);
+  assertEquals((await response.json()).error, "mp_invalid_status");
+});
+
+Deno.test("marketplace : retour vers une adresse non web refusé", async () => {
+  const user = fakeSupabase({ userId: "u1" });
+  const response = await handleBilling(
+    post({ action: "mp_checkout", orderId: ORDER, returnUrl: "javascript:alert(1)" }),
+    deps(user, user),
+  );
+  assertEquals(response.status, 400);
+  assertEquals((await response.json()).error, "invalid_input");
+});
+
+const commit = (status: string) => ({
+  commitment: { id: "8d000000-0000-0000-0000-000000000001", gym_id: GYM, quantity: 12, status },
+  campaign: { id: CAMPAIGN, title: "Whey" },
+  gym: { id: GYM, name: "Atlas" },
+  customer_id: "cus_123",
+});
+
+Deno.test("achat groupé : engagement sans carte → Checkout en mode enregistrement", async () => {
+  const user = fakeSupabase({
+    userId: "u1",
+    rpc: { mp_commit: { data: commit("pending_card"), error: null } },
+  });
+  const admin = fakeSupabase({});
+  const response = await handleBilling(
+    post({
+      action: "mp_commit",
+      campaignId: CAMPAIGN,
+      gymId: GYM,
+      quantity: 12,
+      returnUrl: RETURN,
+    }),
+    deps(user, admin),
+  );
+  assertEquals(response.status, 200);
+  assert((await response.json()).url, "URL d'enregistrement de la carte");
+  assertEquals(admin.calls.upserts.length, 0, "client déjà connu");
+});
+
+Deno.test("achat groupé : carte déjà enregistrée, la quantité suffit", async () => {
+  const user = fakeSupabase({
+    userId: "u1",
+    rpc: { mp_commit: { data: commit("committed"), error: null } },
+  });
+  const response = await handleBilling(
+    post({
+      action: "mp_commit",
+      campaignId: CAMPAIGN,
+      gymId: GYM,
+      quantity: 15,
+      returnUrl: RETURN,
+    }),
+    deps(user, fakeSupabase({})),
+  );
+  assertEquals(await response.json(), { url: null, status: "committed" });
+});
+
+Deno.test(
+  "achat groupé : clôture, chaque salle débitée, carte absente comptée en échec",
+  async () => {
+    const charge = (n: number, pm: string | null) => ({
+      order_id: `8e000000-0000-0000-0000-00000000000${n}`,
+      commitment_id: `8d000000-0000-0000-0000-00000000000${n}`,
+      gym_id: GYM,
+      amount_cents: 31200,
+      currency: "eur",
+      customer_id: "cus_123",
+      payment_method_id: pm,
+    });
+    const user = fakeSupabase({
+      userId: "u1",
+      rpc: {
+        mp_close_campaign: {
+          data: {
+            status: "closed",
+            total_qty: 24,
+            charges: [charge(1, "pm_card_visa"), charge(2, null)],
+          },
+          error: null,
+        },
+      },
+    });
+    const response = await handleBilling(
+      post({ action: "mp_close_campaign", campaignId: CAMPAIGN }),
+      deps(user, fakeSupabase({})),
+    );
+    assertEquals(response.status, 200);
+    const body = await response.json();
+    assertEquals(body.status, "closed");
+    assertEquals(body.charged + body.failed, 2);
+    assertEquals(body.failed >= 1, true, "carte absente : échec, commande à payer");
+  },
+);

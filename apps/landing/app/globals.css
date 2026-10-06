@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+/* Contenu partagé (classes construites dans content/ et lib/). */
+@source "../content";
+@source "../lib";
+
+/* Couleurs : uniquement les tokens de lib/tokens.ts (un test vérifie la concordance). */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-background: #fafaf9;
+  --color-foreground: #292524;
+  --color-card: #ffffff;
+  --color-border: #e7e5e4;
+  --color-muted: #f5f5f4;
+  --color-muted-foreground: #79716b;
+  --color-faint: #a6a09b;
+  --color-primary: #615fff;
+  --color-primary-hover: #4f39f6;
+  --color-primary-foreground: #ffffff;
+  --color-terracotta: #d97757;
+  --color-success: #5ea500;
+  --color-info: #22b8cd;
+  --color-night: #0c0a09;
+
+  --animate-fade-up: fade-up 0.7s ease-out both;
+  --animate-grow: grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+  --animate-draw: draw 1.2s ease-out 0.1s both;
+  --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* Polices auto-hébergées par next/font (variables posées sur <html> dans app/layout.tsx). */
+@theme inline {
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-geist), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes autoplay {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  /* L'en-tête collant ne masque pas la cible d'une ancre (#inscription, #faq). */
+  :target,
+  [id] {
+    scroll-margin-top: 88px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Entrée du hero : chaque bloc à la suite. */
+  .hero-in > * {
+    animation: var(--animate-fade-up);
+  }
+  .hero-in > :nth-child(2) {
+    animation-delay: 80ms;
+  }
+  .hero-in > :nth-child(3) {
+    animation-delay: 160ms;
+  }
+  .hero-in > :nth-child(4) {
+    animation-delay: 240ms;
+  }
+  .hero-in > :nth-child(5) {
+    animation-delay: 320ms;
+  }
+
+  /*
+   * Vues de l'aperçu : les animations ne tournent que sur la vue active ; retirer puis remettre
+   * data-active les relance quand l'étape revient.
+   */
+  [data-view][data-active] .stagger > * {
+    animation: fade-up 0.45s ease-out both;
+  }
+  [data-view][data-active] .stagger > :nth-child(2) {
+    animation-delay: 70ms;
+  }
+  [data-view][data-active] .stagger > :nth-child(3) {
+    animation-delay: 140ms;
+  }
+  [data-view][data-active] .stagger > :nth-child(4) {
+    animation-delay: 210ms;
+  }
+  [data-view][data-active] .stagger > :nth-child(5) {
+    animation-delay: 280ms;
+  }
+  [data-view][data-active] .stagger > :nth-child(6) {
+    animation-delay: 350ms;
+  }
+  [data-view][data-active] .bar {
+    transform-origin: left center;
+    animation: var(--animate-grow);
+  }
+  [data-view][data-active] .draw {
+    stroke-dasharray: 400;
+    animation: var(--animate-draw);
+  }
+
+  .autoplay-bar {
+    transform-origin: left center;
+    animation: autoplay 4s linear both;
+  }
+  .autoplay-bar[data-paused] {
+    animation-play-state: paused;
+  }
+}
+
+/* Réduire les animations : tout est coupé (le défilement automatique aussi, côté script). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

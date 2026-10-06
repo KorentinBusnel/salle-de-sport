@@ -1,3 +1,4 @@
+import { formatMoney } from "@salle/shared";
 /** Formats de date et d'heure dans le fuseau de la salle. */
 export function gymFormatters(timeZone: string) {
   const make = (options: Intl.DateTimeFormatOptions) =>
@@ -45,11 +46,9 @@ export function initials(name: string): string {
   );
 }
 
-const euroFormat = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-
-/** Montant en centimes → « 1 234,50 € ». */
+/** Montant en centimes → « 1 234,50 € » (formatMoney de packages/shared). */
 export function euros(cents: number): string {
-  return euroFormat.format(cents / 100);
+  return formatMoney(cents);
 }
 
 /** Durée en minutes → « 12 h 30 » (ou « 45 min »). */

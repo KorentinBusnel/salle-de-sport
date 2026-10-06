@@ -10,6 +10,7 @@ import {
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { CatalogSection } from "@/components/settings/catalog-section";
+import { OffersSection } from "@/components/settings/offers-section";
 import { ClosuresCard, IdentityCard, OpeningHoursCard } from "@/components/settings/gym-section";
 import { DeskSlotRow, RoleLayoutCard } from "@/components/settings/home-layout";
 import { IntegrationsSection } from "@/components/settings/integrations-section";
@@ -33,7 +34,8 @@ export const metadata: Metadata = { title: t("settings.title") };
 /**
  * Paramètres en sections, chaque valeur enregistrée sur place avec « Annuler » : Salle
  * (identité, logo, horaires, fermetures), Réservations, Stratégies, Accueil (permanences,
- * blocs et pastilles par rôle), Suivi (seuils), Catalogue, Équipe et Intégrations.
+ * blocs et pastilles par rôle), Suivi (seuils), Catalogue, Offres (et codes promo), Équipe et
+ * Intégrations.
  */
 const TABS = SETTINGS_SECTIONS;
 type Tab = SettingsSection;
@@ -150,6 +152,7 @@ export default async function SettingsPage({
             />
           ) : null}
           {tab === "catalogue" ? <CatalogSection gymId={context.gym.id} /> : null}
+          {tab === "offres" ? <OffersSection gymId={context.gym.id} /> : null}
           {tab === "equipe" ? <TeamSection context={context} /> : null}
           {tab === "integrations" ? (
             <IntegrationsSection gymId={context.gym.id} timezone={context.gym.timezone} />

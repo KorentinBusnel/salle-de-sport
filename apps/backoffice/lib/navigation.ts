@@ -11,6 +11,23 @@ import { t } from "@/lib/i18n";
 
 export type Navigation = { groups: NavGroup[]; footer: NavItem[] };
 
+/** Pages rangées sous l'entrée d'une autre (onglets Segments et Messages de l'emailing). */
+export const NAV_ALIASES: Record<string, string> = {
+  "/segments": "/emailing",
+  "/messages": "/emailing",
+};
+
+/** Entrée active : celle dont le chemin est le plus long préfixe (« Modèles » ≠ « Planning »). */
+export function activeHref(pathname: string, hrefs: string[]): string | undefined {
+  const alias = Object.entries(NAV_ALIASES).find(
+    ([from]) => pathname === from || pathname.startsWith(`${from}/`),
+  );
+  const path = alias ? `${alias[1]}${pathname.slice(alias[0].length)}` : pathname;
+  return hrefs
+    .filter((href) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`)))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
 /** Compteurs possibles d'une pastille (fonction SQL nav_counts). */
 export const BADGE_KEYS = NAV_BADGES;
 export type BadgeKey = NavBadge;
@@ -18,7 +35,7 @@ export type BadgeKey = NavBadge;
 /** Entrée qui porte chaque pastille. */
 export const BADGE_HREF: Record<BadgeKey, string> = {
   prospects: "/adherents",
-  unanswered: "/messages",
+  unanswered: "/emailing",
   trials_to_call: "/crm",
   unpaid: "/",
 };
@@ -55,9 +72,8 @@ export function buildNavigation(
     ...when(frontDesk, [{ href: "/adherents", label: t("nav.members"), icon: "members" }]),
     ...when(manager, [
       { href: "/crm", label: t("nav.crm"), icon: "crm" },
-      { href: "/segments", label: t("nav.segments"), icon: "segments" },
+      // Une seule entrée : campagnes, modèles, automatisations, segments et messages en onglets.
       { href: "/emailing", label: t("nav.emailing"), icon: "emailing" },
-      { href: "/messages", label: t("nav.messages"), icon: "messages" },
       { href: "/paiements", label: t("nav.payments"), icon: "payments" },
       { href: "/coachs", label: t("nav.coaches"), icon: "coaches" },
       { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" },

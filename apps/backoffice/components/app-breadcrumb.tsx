@@ -3,7 +3,7 @@
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { activeHref } from "@/components/app-sidebar";
+import { activeHref } from "@/lib/navigation";
 import { usePageCrumb } from "@/components/page-crumb";
 import {
   Breadcrumb,

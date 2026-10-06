@@ -3,6 +3,7 @@ import { MailCheckIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Flash } from "@/components/flash";
+import { EmailingNav } from "@/components/emailing-nav";
 import { PageHeader } from "@/components/page-header";
 import { SegmentFiltersForm } from "@/components/segments/segment-filters";
 import { PendingRegion, UrlStateProvider } from "@/hooks/use-url-state";
@@ -75,6 +76,7 @@ export default async function SegmentsPage({
             </Button>
           }
         />
+        <EmailingNav current="/segments" />
         <Flash
           ok={typeof params.ok === "string" ? params.ok : undefined}
           error={typeof params.erreur === "string" ? params.erreur : undefined}

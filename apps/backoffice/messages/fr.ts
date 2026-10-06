@@ -1067,11 +1067,13 @@ export const fr = {
   emailing: {
     title: "Emailing",
     noDelivery:
-      "Pas d'envoi réel pour l'instant : les emails sont mis en file et journalisés (page Messages), en attendant le branchement d'un service d'envoi.",
+      "Pas d'envoi réel pour l'instant : les emails sont mis en file et journalisés (onglet Messages), en attendant le branchement d'un service d'envoi.",
     tab: {
       campaigns: "Campagnes",
       templates: "Modèles",
       automations: "Automatisations",
+      segments: "Segments",
+      messages: "Messages",
     },
     status: {
       draft: "Brouillon",

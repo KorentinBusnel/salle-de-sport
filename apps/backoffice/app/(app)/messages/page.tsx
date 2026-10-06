@@ -3,6 +3,7 @@ import { MailIcon } from "lucide-react";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { MessagesFilters } from "@/components/messages/messages-filters";
 import { type MessageRow, MessagesList } from "@/components/messages/messages-list";
+import { EmailingNav } from "@/components/emailing-nav";
 import { PageHeader } from "@/components/page-header";
 import {
   Empty,
@@ -128,6 +129,7 @@ export default async function MessagesPage({
           title={t("messages.title")}
           description={t("messages.count", { count: total })}
         />
+        <EmailingNav current="/messages" />
         <p className="max-w-2xl text-sm text-muted-foreground">{t("messages.noDelivery")}</p>
 
         <MessagesFilters

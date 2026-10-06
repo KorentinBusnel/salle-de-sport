@@ -334,6 +334,7 @@ export function DateTimeField({
   min,
   max,
   step = 300,
+  clearable = false,
   ...props
 }: FieldProps & {
   value?: string | null | undefined;
@@ -343,6 +344,8 @@ export function DateTimeField({
   max?: string | undefined;
   /** Pas des minutes, en secondes (5 min par défaut). */
   step?: number | undefined;
+  /** « Effacer » sur la date : la valeur repasse à null. */
+  clearable?: boolean | undefined;
 }) {
   const generatedId = useId();
   const [current, set] = useFieldValue(value, defaultValue, onChange);
@@ -357,6 +360,7 @@ export function DateTimeField({
         onChange={(next) => set(next ? `${next}T${time || "09:00"}` : null)}
         min={min}
         max={max}
+        clearable={clearable}
         disabled={props.disabled}
         invalid={props.invalid}
         aria-label={props["aria-label"]}

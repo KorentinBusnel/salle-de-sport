@@ -21,6 +21,7 @@ import { t } from "@/lib/i18n";
  * supprimer) : le formulaire de la Server Action est dans la boîte de dialogue. `tone`
  * « destructive » pour l'irréversible ; `requireAck` exige de cocher « Je comprends ».
  * Les actions réversibles passent plutôt par un toast « Annuler » (lib/toast-undo.ts).
+ * Sans `trigger`, la boîte est contrôlée (`open` / `onOpenChange`) : ouverte depuis un menu.
  */
 export function ConfirmDialog({
   trigger,
@@ -32,26 +33,36 @@ export function ConfirmDialog({
   children,
   tone = "destructive",
   requireAck,
+  open,
+  onOpenChange,
 }: {
-  trigger: ReactNode;
+  trigger?: ReactNode;
   title: string;
   description: ReactNode;
   confirmLabel: string;
   action: (formData: FormData) => void | Promise<void>;
-  fields: Record<string, string>;
+  fields?: Record<string, string> | undefined;
   children?: ReactNode;
   tone?: "destructive" | "default" | undefined;
   /** Texte de la case à cocher obligatoire avant de confirmer (envois de masse…). */
   requireAck?: string | undefined;
+  open?: boolean | undefined;
+  onOpenChange?: ((open: boolean) => void) | undefined;
 }) {
   const ackId = useId();
   const [acknowledged, setAcknowledged] = useState(false);
   return (
-    <AlertDialog onOpenChange={(open) => !open && setAcknowledged(false)}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+    <AlertDialog
+      {...(open !== undefined ? { open } : {})}
+      onOpenChange={(next) => {
+        if (!next) setAcknowledged(false);
+        onOpenChange?.(next);
+      }}
+    >
+      {trigger ? <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger> : null}
       <AlertDialogContent>
         <form action={action} className="grid gap-4">
-          {Object.entries(fields).map(([name, value]) => (
+          {Object.entries(fields ?? {}).map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}
           <AlertDialogHeader>

@@ -1,14 +1,15 @@
 "use server";
 
 import { zonedInstant } from "@salle/shared";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isManagerRole, requireRole } from "@/lib/auth";
+import { currentTime } from "@/lib/clock";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import { createClient } from "@/lib/supabase/server";
 
-const CAMPAIGNS = "/emailing";
 const TEMPLATES = "/emailing/modeles";
 const AUTOMATIONS = "/emailing/automatisations";
 
@@ -63,101 +64,140 @@ export async function deleteTemplate(formData: FormData) {
 }
 
 const campaignSchema = z.object({
+  id: z.guid().optional(),
   name: z.string().trim().min(1).max(120),
-  segment_id: z.guid(),
-  template_id: z.guid(),
+  segmentId: z.guid(),
+  /** Nouveau modèle : son contenu est (re)copié dans la campagne. Absent : contenu gardé. */
+  templateId: z.guid().nullable().optional(),
+  /** Date et heure murales de la salle (« AAAA-MM-JJTHH:MM ») ; null : brouillon. */
+  schedule: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/)
+    .nullable(),
 });
 
-/** Nouvelle campagne (brouillon) : le contenu du modèle est copié, il pourra évoluer seul. */
-export async function createCampaign(formData: FormData) {
+/**
+ * Création ou modification d'une campagne (brouillon ou programmée) depuis le panneau latéral.
+ * Le contenu du modèle est copié : la campagne n'évolue plus avec lui.
+ */
+export async function saveCampaign(input: z.input<typeof campaignSchema>): Promise<ActionResult> {
   const context = await requireRole(isManagerRole);
-  const parsed = campaignSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) redirect(withFlash(CAMPAIGNS, { error: "emailing.errors.campaign" }));
-  const supabase = await createClient();
-  const { data: template } = await supabase
-    .from("email_templates")
-    .select("id, subject, body")
-    .eq("id", parsed.data.template_id)
-    .single();
-  if (!template) redirect(withFlash(CAMPAIGNS, { error: "emailing.errors.campaign" }));
-  const { error } = await supabase.from("campaigns").insert({
-    gym_id: context.gym.id,
-    name: parsed.data.name,
-    channel: "email",
-    segment: { segment_id: parsed.data.segment_id },
-    content: { template_id: template.id, subject: template.subject, body: template.body },
-    created_by: context.userId,
-  });
-  revalidatePath(CAMPAIGNS);
-  redirect(
-    withFlash(
-      CAMPAIGNS,
-      error ? { error: "common.unexpectedError" } : { ok: "emailing.campaignCreated" },
-    ),
-  );
-}
+  const parsed = campaignSchema.safeParse(input);
+  if (!parsed.success) return fail("emailing.errors.campaign");
+  const { id, name, segmentId, templateId, schedule } = parsed.data;
+  if (!id && !templateId) return fail("emailing.errors.campaign");
 
-export async function sendCampaign(formData: FormData) {
-  await requireRole(isManagerRole);
-  const id = z.guid().parse(formData.get("campaignId"));
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("send_campaign", { p_campaign_id: id });
-  revalidatePath(CAMPAIGNS);
-  const queued = Number((data?.stats as { queued?: number } | null)?.queued ?? 0);
-  redirect(
-    withFlash(
-      CAMPAIGNS,
-      error ? { error: errorMessageKey(error) } : { ok: "emailing.campaignSent", count: queued },
-    ),
-  );
-}
-
-/** Programmation (date et heure locales de la salle) ou retour en brouillon. */
-export async function scheduleCampaign(formData: FormData) {
-  const context = await requireRole(isManagerRole);
-  const id = z.guid().parse(formData.get("campaignId"));
-  const supabase = await createClient();
-  if (formData.get("unschedule") === "1") {
-    await supabase
-      .from("campaigns")
-      .update({ status: "draft", scheduled_at: null })
-      .eq("id", id)
-      .eq("status", "scheduled");
-    revalidatePath(CAMPAIGNS);
-    redirect(withFlash(CAMPAIGNS, { ok: "emailing.campaignUnscheduled" }));
+  let scheduledAt: string | null = null;
+  if (schedule) {
+    const [day = "", time = ""] = schedule.split("T");
+    const [h, m] = time.split(":").map(Number);
+    const at = zonedInstant(day, (h ?? 0) * 60 + (m ?? 0), context.gym.timezone);
+    if (at.getTime() <= currentTime().getTime()) return fail("emailing.errors.schedule");
+    scheduledAt = at.toISOString();
   }
-  const date = z.iso.date().safeParse(formData.get("date"));
-  const time = z
-    .string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-    .safeParse(formData.get("time"));
-  if (!date.success || !time.success)
-    redirect(withFlash(CAMPAIGNS, { error: "emailing.errors.schedule" }));
-  const [h, m] = time.data.split(":").map(Number);
-  const at = zonedInstant(date.data, (h ?? 0) * 60 + (m ?? 0), context.gym.timezone);
-  if (at.getTime() <= Date.now())
-    redirect(withFlash(CAMPAIGNS, { error: "emailing.errors.schedule" }));
+
+  const supabase = await createClient();
+  let content: { template_id: string; subject: string; body: string } | undefined;
+  if (templateId) {
+    const { data: template } = await supabase
+      .from("email_templates")
+      .select("id, subject, body")
+      .eq("id", templateId)
+      .eq("gym_id", context.gym.id)
+      .maybeSingle();
+    if (!template) return fail("emailing.errors.campaign");
+    content = { template_id: template.id, subject: template.subject, body: template.body };
+  }
+
+  const fields = {
+    name,
+    segment: { segment_id: segmentId },
+    status: scheduledAt ? ("scheduled" as const) : ("draft" as const),
+    scheduled_at: scheduledAt,
+    ...(content ? { content } : {}),
+  };
+  const { error } = id
+    ? await supabase
+        .from("campaigns")
+        .update(fields)
+        .eq("id", id)
+        .eq("gym_id", context.gym.id)
+        .in("status", ["draft", "scheduled"])
+    : await supabase.from("campaigns").insert({
+        ...fields,
+        content: content ?? {},
+        gym_id: context.gym.id,
+        channel: "email",
+        created_by: context.userId,
+      });
+  if (error) return fail("common.unexpectedError");
+  refresh();
+  return ok(
+    scheduledAt
+      ? "emailing.campaignScheduled"
+      : id
+        ? "emailing.campaignSaved"
+        : "emailing.campaignCreated",
+  );
+}
+
+/** Envoi immédiat, après confirmation (« Je comprends ») : audience recalculée en SQL. */
+export async function sendCampaignNow(id: string): Promise<ActionResult> {
+  await requireRole(isManagerRole);
+  const campaignId = z.guid().safeParse(id);
+  if (!campaignId.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("send_campaign", { p_campaign_id: campaignId.data });
+  if (error) return fail(errorMessageKey(error));
+  refresh();
+  return ok(
+    "emailing.campaignSent",
+    Number((data?.stats as { queued?: number } | null)?.queued ?? 0),
+  );
+}
+
+/** Retour en brouillon d'une campagne programmée (« Annuler » la reprogramme). */
+export async function setCampaignSchedule(
+  id: string,
+  scheduledAt: string | null,
+): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const campaignId = z.guid().safeParse(id);
+  const at = z.iso.datetime({ offset: true }).nullable().safeParse(scheduledAt);
+  if (!campaignId.success || !at.success) return fail("common.unexpectedError");
+  if (at.data && new Date(at.data).getTime() <= currentTime().getTime())
+    return fail("emailing.errors.schedule");
+  const supabase = await createClient();
   const { error } = await supabase
     .from("campaigns")
-    .update({ status: "scheduled", scheduled_at: at.toISOString() })
-    .eq("id", id)
+    .update(
+      at.data
+        ? { status: "scheduled", scheduled_at: at.data }
+        : { status: "draft", scheduled_at: null },
+    )
+    .eq("id", campaignId.data)
+    .eq("gym_id", context.gym.id)
     .in("status", ["draft", "scheduled"]);
-  revalidatePath(CAMPAIGNS);
-  redirect(
-    withFlash(
-      CAMPAIGNS,
-      error ? { error: "common.unexpectedError" } : { ok: "emailing.campaignScheduled" },
-    ),
-  );
+  if (error) return fail("common.unexpectedError");
+  refresh();
+  return ok(at.data ? "emailing.campaignScheduled" : "emailing.campaignUnscheduled");
 }
 
-export async function deleteCampaign(formData: FormData) {
-  await requireRole(isManagerRole);
-  const id = z.guid().parse(formData.get("campaignId"));
+/** Suppression d'un brouillon ou d'une campagne programmée (après confirmation). */
+export async function deleteCampaignQuick(id: string): Promise<ActionResult> {
+  const context = await requireRole(isManagerRole);
+  const campaignId = z.guid().safeParse(id);
+  if (!campaignId.success) return fail("common.unexpectedError");
   const supabase = await createClient();
-  await supabase.from("campaigns").delete().eq("id", id).in("status", ["draft", "scheduled"]);
-  revalidatePath(CAMPAIGNS);
-  redirect(withFlash(CAMPAIGNS, { ok: "emailing.campaignDeleted" }));
+  const { error } = await supabase
+    .from("campaigns")
+    .delete()
+    .eq("id", campaignId.data)
+    .eq("gym_id", context.gym.id)
+    .in("status", ["draft", "scheduled"]);
+  if (error) return fail("common.unexpectedError");
+  refresh();
+  return ok("emailing.campaignDeleted");
 }
 
 const automationSchema = z.object({

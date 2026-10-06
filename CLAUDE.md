@@ -156,6 +156,14 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `SETTINGS_META` (`packages/shared/src/settings.ts`, tirées des schémas Zod). Logo : bucket public
   `gym-assets`, dossier `<gym_id>/`, écrit par le gérant. Fermetures : `gym_closures`. Ordre des
   disciplines : `position`, `reorder_disciplines` (trier par `position` puis `name`).
+- **Marketplace** (`marketplace_catalog`) : catalogue **global** (sans `gym_id`) `mp_suppliers`,
+  `mp_categories`, `mp_products`, `mp_product_costs` (admins seuls), `mp_price_tiers`, lu par
+  l'équipe, écrit par les admins de plateforme (`private.is_platform_admin()` = rôle `admin` dans
+  une salle). Par salle (gérant) : `mp_cart_items`, `mp_quotes`, `mp_orders` / `mp_order_items`,
+  écrits **uniquement via** `mp_set_cart_item`, `mp_checkout_cart`, `mp_request_quote`,
+  `mp_accept_quote` / `mp_decline_quote`, `mp_cancel_order`, `mp_receive_order` ; côté admin
+  `mp_answer_quote`, `mp_set_order_status`. Prix par palier : `mp_unit_price` (miroir
+  `mpUnitPrice`, `packages/shared/src/marketplace.ts`). Images : bucket public `marketplace`.
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -231,7 +239,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   d'envoi : `SubmitButton` (état d'envoi). Action irréversible : `ConfirmDialog`. Actions rapides
   sans rechargement (pointage) : Server Action qui renvoie `{ error }` puis `refresh()`.
 - Coque : `components/app-sidebar.tsx`, entrées construites par `buildNavigation` (`lib/navigation.ts`,
-  testé par rôle) : blocs Quotidien / Opérations, **Paramètres en pied** (`footer`), pastilles
+  testé par rôle) : blocs Quotidien / Opérations / Clients / Marketplace, **Paramètres en pied** (`footer`), pastilles
   d'attente : `buildNavigation` ne place que des **clés** (`navBadgesFor`, réglables par rôle), les
   comptes arrivent à part (`NavBadge` sous `Suspense`, fonction SQL `nav_counts`) — le layout n'attend
   que `getTeamContext` et `getGymConfig`. Une fiche donne son titre au fil d'Ariane par
@@ -315,6 +323,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `RefundButton` ; « non configuré » = toast d'information (`stripeErrorKey`). Reçu PDF :
   `buildReceipt` (`lib/receipt.ts`, pdf-lib, polices standard : passer le texte par `pdfText`),
   route `app/api/paiements/[id]/recu` (gérant), lien `ReceiptLink`.
+- Marketplace (gérant) : `/marketplace` (catalogue, `?q=`, `?categorie=`), `/marketplace/commandes`,
+  `/marketplace/devis` (une entrée chacune du bloc Marketplace, sans onglets), `CartSheet`, `QuoteDialog`, `OrderActions`
+  (`components/marketplace/`). Espace **Plateforme** (`/plateforme?onglet=catalogue|fournisseurs|devis|commandes`,
+  rôle `admin`, dernière entrée du bloc Marketplace) : catalogue en `EditableCell` / `AddRow`,
+  `TiersDialog`, `ImageUpload`, `AnswerQuote`, `OrderStatusButtons` (`components/platform/`).
 - Impayés : `UnpaidActions` (`components/billing/unpaid-actions.tsx` : « Relancer » avec message
   modifiable, « Encaisser » si encaissable), actions `relances-actions.ts` ; bloc Finance de
   l'accueil ouvert à l'accueil (impayés seulement ; renouvellements et factures au gérant).

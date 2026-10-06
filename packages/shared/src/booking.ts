@@ -103,6 +103,13 @@ export const BOOKING_ERROR_CODES = [
   "not_settleable",
   "already_reminded",
   "payment_overdue",
+  // Marketplace
+  "mp_not_orderable",
+  "mp_cart_empty",
+  "mp_order_not_found",
+  "mp_quote_not_found",
+  "mp_quote_expired",
+  "mp_invalid_status",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

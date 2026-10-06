@@ -1402,6 +1402,421 @@ export type Database = {
           },
         ];
       };
+      mp_cart_items: {
+        Row: {
+          gym_id: string;
+          id: string;
+          product_id: string;
+          quantity: number;
+          updated_at: string;
+        };
+        Insert: {
+          gym_id: string;
+          id?: string;
+          product_id: string;
+          quantity: number;
+          updated_at?: string;
+        };
+        Update: {
+          gym_id?: string;
+          id?: string;
+          product_id?: string;
+          quantity?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_cart_items_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_cart_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      mp_categories: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          position: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          position?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          position?: number;
+        };
+        Relationships: [];
+      };
+      mp_order_items: {
+        Row: {
+          gym_id: string;
+          id: string;
+          line_total_cents: number;
+          name: string;
+          order_id: string;
+          product_id: string | null;
+          quantity: number;
+          unit: string | null;
+          unit_price_cents: number;
+        };
+        Insert: {
+          gym_id: string;
+          id?: string;
+          line_total_cents: number;
+          name: string;
+          order_id: string;
+          product_id?: string | null;
+          quantity: number;
+          unit?: string | null;
+          unit_price_cents: number;
+        };
+        Update: {
+          gym_id?: string;
+          id?: string;
+          line_total_cents?: number;
+          name?: string;
+          order_id?: string;
+          product_id?: string | null;
+          quantity?: number;
+          unit?: string | null;
+          unit_price_cents?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_order_items_order_id_gym_id_fkey";
+            columns: ["order_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_orders";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "mp_order_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      mp_orders: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          gym_id: string;
+          id: string;
+          quote_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          gym_id: string;
+          id?: string;
+          quote_id?: string | null;
+          reference: string;
+          status?: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          gym_id?: string;
+          id?: string;
+          quote_id?: string | null;
+          reference?: string;
+          status?: Database["public"]["Enums"]["mp_order_status"];
+          total_cents?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_orders_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_orders_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_orders_quote_id_gym_id_fkey";
+            columns: ["quote_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_quotes";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
+      mp_price_tiers: {
+        Row: {
+          id: string;
+          min_qty: number;
+          product_id: string;
+          unit_price_cents: number;
+        };
+        Insert: {
+          id?: string;
+          min_qty: number;
+          product_id: string;
+          unit_price_cents: number;
+        };
+        Update: {
+          id?: string;
+          min_qty?: number;
+          product_id?: string;
+          unit_price_cents?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_price_tiers_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      mp_product_costs: {
+        Row: {
+          cost_cents: number;
+          product_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          cost_cents: number;
+          product_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          cost_cents?: number;
+          product_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_product_costs_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: true;
+            referencedRelation: "mp_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      mp_products: {
+        Row: {
+          brand: string | null;
+          category_id: string | null;
+          created_at: string;
+          currency: string;
+          description: string | null;
+          id: string;
+          image_path: string | null;
+          is_active: boolean;
+          kind: Database["public"]["Enums"]["mp_item_kind"];
+          list_price_cents: number | null;
+          name: string;
+          position: number;
+          price_cents: number | null;
+          supplier_id: string | null;
+          unit: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          brand?: string | null;
+          category_id?: string | null;
+          created_at?: string;
+          currency?: string;
+          description?: string | null;
+          id?: string;
+          image_path?: string | null;
+          is_active?: boolean;
+          kind?: Database["public"]["Enums"]["mp_item_kind"];
+          list_price_cents?: number | null;
+          name: string;
+          position?: number;
+          price_cents?: number | null;
+          supplier_id?: string | null;
+          unit?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          brand?: string | null;
+          category_id?: string | null;
+          created_at?: string;
+          currency?: string;
+          description?: string | null;
+          id?: string;
+          image_path?: string | null;
+          is_active?: boolean;
+          kind?: Database["public"]["Enums"]["mp_item_kind"];
+          list_price_cents?: number | null;
+          name?: string;
+          position?: number;
+          price_cents?: number | null;
+          supplier_id?: string | null;
+          unit?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_products_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_products_supplier_id_fkey";
+            columns: ["supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_suppliers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      mp_quotes: {
+        Row: {
+          answer_note: string | null;
+          answered_at: string | null;
+          answered_by: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          message: string | null;
+          product_id: string | null;
+          quantity: number;
+          requested_by: string | null;
+          status: Database["public"]["Enums"]["mp_quote_status"];
+          title: string;
+          unit_price_cents: number | null;
+          updated_at: string;
+          valid_until: string | null;
+        };
+        Insert: {
+          answer_note?: string | null;
+          answered_at?: string | null;
+          answered_by?: string | null;
+          created_at?: string;
+          gym_id: string;
+          id?: string;
+          message?: string | null;
+          product_id?: string | null;
+          quantity: number;
+          requested_by?: string | null;
+          status?: Database["public"]["Enums"]["mp_quote_status"];
+          title: string;
+          unit_price_cents?: number | null;
+          updated_at?: string;
+          valid_until?: string | null;
+        };
+        Update: {
+          answer_note?: string | null;
+          answered_at?: string | null;
+          answered_by?: string | null;
+          created_at?: string;
+          gym_id?: string;
+          id?: string;
+          message?: string | null;
+          product_id?: string | null;
+          quantity?: number;
+          requested_by?: string | null;
+          status?: Database["public"]["Enums"]["mp_quote_status"];
+          title?: string;
+          unit_price_cents?: number | null;
+          updated_at?: string;
+          valid_until?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_quotes_answered_by_fkey";
+            columns: ["answered_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_quotes_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_quotes_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_quotes_requested_by_fkey";
+            columns: ["requested_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      mp_suppliers: {
+        Row: {
+          contact_name: string | null;
+          created_at: string;
+          email: string | null;
+          id: string;
+          name: string;
+          notes: string | null;
+          phone: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          contact_name?: string | null;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          name: string;
+          notes?: string | null;
+          phone?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          contact_name?: string | null;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string | null;
+          phone?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       outbound_messages: {
         Row: {
           body: string;
@@ -2406,6 +2821,205 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      mp_accept_quote: {
+        Args: { p_quote_id: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          gym_id: string;
+          id: string;
+          quote_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_orders";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_answer_quote: {
+        Args: {
+          p_note: string;
+          p_quote_id: string;
+          p_unit_price_cents: number;
+          p_valid_until: string;
+        };
+        Returns: {
+          answer_note: string | null;
+          answered_at: string | null;
+          answered_by: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          message: string | null;
+          product_id: string | null;
+          quantity: number;
+          requested_by: string | null;
+          status: Database["public"]["Enums"]["mp_quote_status"];
+          title: string;
+          unit_price_cents: number | null;
+          updated_at: string;
+          valid_until: string | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_cancel_order: {
+        Args: { p_order_id: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          gym_id: string;
+          id: string;
+          quote_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_orders";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_checkout_cart: {
+        Args: { p_gym_id: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          gym_id: string;
+          id: string;
+          quote_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_orders";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_decline_quote: {
+        Args: { p_quote_id: string };
+        Returns: {
+          answer_note: string | null;
+          answered_at: string | null;
+          answered_by: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          message: string | null;
+          product_id: string | null;
+          quantity: number;
+          requested_by: string | null;
+          status: Database["public"]["Enums"]["mp_quote_status"];
+          title: string;
+          unit_price_cents: number | null;
+          updated_at: string;
+          valid_until: string | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_receive_order: {
+        Args: { p_order_id: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          gym_id: string;
+          id: string;
+          quote_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_orders";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_request_quote: {
+        Args: {
+          p_gym_id: string;
+          p_message: string;
+          p_product_id: string;
+          p_quantity: number;
+          p_title: string;
+        };
+        Returns: {
+          answer_note: string | null;
+          answered_at: string | null;
+          answered_by: string | null;
+          created_at: string;
+          gym_id: string;
+          id: string;
+          message: string | null;
+          product_id: string | null;
+          quantity: number;
+          requested_by: string | null;
+          status: Database["public"]["Enums"]["mp_quote_status"];
+          title: string;
+          unit_price_cents: number | null;
+          updated_at: string;
+          valid_until: string | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_set_cart_item: {
+        Args: { p_gym_id: string; p_product_id: string; p_quantity: number };
+        Returns: number;
+      };
+      mp_set_order_status: {
+        Args: { p_order_id: string; p_status: Database["public"]["Enums"]["mp_order_status"] };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          gym_id: string;
+          id: string;
+          quote_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["mp_order_status"];
+          total_cents: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_orders";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_unit_price: { Args: { p_product_id: string; p_quantity: number }; Returns: number };
       nav_counts: {
         Args: { p_gym_id: string };
         Returns: {
@@ -2846,6 +3460,10 @@ export type Database = {
         | "direct"
         | "billing";
       message_status: "queued" | "logged" | "sent" | "failed";
+      mp_item_kind: "product" | "service";
+      mp_order_status:
+        "pending_payment" | "paid" | "ordered" | "shipped" | "delivered" | "received" | "cancelled";
+      mp_quote_status: "requested" | "answered" | "accepted" | "declined" | "expired";
       payment_method: "card" | "sepa_debit" | "cash" | "other";
       payment_status: "pending" | "succeeded" | "failed" | "refunded";
       plan_type: "recurring" | "pack" | "single";
@@ -3002,6 +3620,17 @@ export const Constants = {
         "billing",
       ],
       message_status: ["queued", "logged", "sent", "failed"],
+      mp_item_kind: ["product", "service"],
+      mp_order_status: [
+        "pending_payment",
+        "paid",
+        "ordered",
+        "shipped",
+        "delivered",
+        "received",
+        "cancelled",
+      ],
+      mp_quote_status: ["requested", "answered", "accepted", "declined", "expired"],
       payment_method: ["card", "sepa_debit", "cash", "other"],
       payment_status: ["pending", "succeeded", "failed", "refunded"],
       plan_type: ["recurring", "pack", "single"],

@@ -44,7 +44,9 @@ export const BADGE_HREF: Record<BadgeKey, string> = {
  * Barre latérale par rôle :
  * - Quotidien : ce qu'on ouvre chaque jour (accueil, Hub, planning, indicateurs ; fiche et
  *   heures pour un coach) ;
- * - Opérations : gestion des adhérents, de la relation client, des coachs et des cours ;
+ * - Opérations : faire tourner la salle (cours récurrents, coachs, paiements) ;
+ * - Clients : adhérents, pipeline et emailing ;
+ * - Marketplace (gérant) : catalogue, commandes, devis, et l'espace Plateforme pour un admin ;
  * - en pied, Paramètres (gérant) : la configuration sort du travail courant.
  * Les pastilles comptent ce qui attend une action (prospects, messages sans réponse…) : seule leur
  * place est décidée ici, les comptes arrivent à part (NavBadge, sous Suspense).
@@ -68,15 +70,30 @@ export function buildNavigation(
     ]),
   ];
 
-  const operations: NavItem[] = [
+  const operations: NavItem[] = when(manager, [
+    { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" },
+    { href: "/coachs", label: t("nav.coaches"), icon: "coaches" },
+    { href: "/paiements", label: t("nav.payments"), icon: "payments" },
+  ]);
+
+  const clients: NavItem[] = [
     ...when(frontDesk, [{ href: "/adherents", label: t("nav.members"), icon: "members" }]),
     ...when(manager, [
       { href: "/crm", label: t("nav.crm"), icon: "crm" },
       // Une seule entrée : campagnes, modèles, automatisations, segments et messages en onglets.
       { href: "/emailing", label: t("nav.emailing"), icon: "emailing" },
-      { href: "/paiements", label: t("nav.payments"), icon: "payments" },
-      { href: "/coachs", label: t("nav.coaches"), icon: "coaches" },
-      { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" },
+    ]),
+  ];
+
+  const marketplace: NavItem[] = [
+    ...when(manager, [
+      { href: "/marketplace", label: t("nav.catalog"), icon: "marketplace" },
+      { href: "/marketplace/commandes", label: t("nav.orders"), icon: "orders" },
+      { href: "/marketplace/devis", label: t("nav.quotes"), icon: "quotes" },
+    ]),
+    // Catalogue commun : administrateurs de la plateforme (rôle admin).
+    ...when(role === "admin", [
+      { href: "/plateforme", label: t("nav.platform"), icon: "platform" },
     ]),
   ];
 
@@ -92,7 +109,11 @@ export function buildNavigation(
     groups: [
       { label: t("nav.groupDaily"), items: withBadges(daily) },
       { label: t("nav.groupOperations"), items: withBadges(operations) },
+      { label: t("nav.groupClients"), items: withBadges(clients) },
+      { label: t("nav.groupMarketplace"), items: withBadges(marketplace) },
     ].filter((group) => group.items.length > 0),
-    footer: when(manager, [{ href: "/parametres", label: t("nav.settings"), icon: "settings" }]),
+    footer: [
+      ...when(manager, [{ href: "/parametres", label: t("nav.settings"), icon: "settings" }]),
+    ],
   };
 }

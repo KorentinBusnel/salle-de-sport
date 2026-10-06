@@ -8,11 +8,13 @@ const hrefs = (nav: ReturnType<typeof buildNavigation>) =>
   Object.fromEntries(nav.groups.map((g) => [g.label, g.items.map((i) => i.href)]));
 
 describe("buildNavigation", () => {
-  it("gérant : quotidien et opérations, Paramètres en pied", () => {
+  it("gérant : quotidien, opérations, clients et marketplace, Paramètres en pied", () => {
     const nav = buildNavigation("manager", none);
     expect(hrefs(nav)).toEqual({
       Quotidien: ["/", "/hub", "/planning", "/indicateurs"],
-      Opérations: ["/adherents", "/crm", "/emailing", "/paiements", "/coachs", "/planning/modeles"],
+      Opérations: ["/planning/modeles", "/coachs", "/paiements"],
+      Clients: ["/adherents", "/crm", "/emailing"],
+      Marketplace: ["/marketplace", "/marketplace/commandes", "/marketplace/devis"],
     });
     expect(nav.footer.map((i) => i.href)).toEqual(["/parametres"]);
     // Pastilles par défaut : prospects et messages sans réponse.
@@ -21,9 +23,16 @@ describe("buildNavigation", () => {
     expect(badge(nav, "/crm")).toBeUndefined();
   });
 
-  it("admin : comme le gérant, même s'il est aussi coach", () => {
+  it("admin : comme le gérant, même s'il est aussi coach, plus l'espace Plateforme", () => {
     const nav = buildNavigation("admin", { ownCoachId: "c" });
     expect(hrefs(nav)["Quotidien"]).toEqual(["/", "/hub", "/planning", "/indicateurs"]);
+    expect(hrefs(nav)["Marketplace"]).toEqual([
+      "/marketplace",
+      "/marketplace/commandes",
+      "/marketplace/devis",
+      "/plateforme",
+    ]);
+    expect(nav.footer.map((i) => i.href)).toEqual(["/parametres"]);
   });
 
   it("pastilles choisies : chacune sur l'entrée qui la porte", () => {
@@ -36,7 +45,7 @@ describe("buildNavigation", () => {
 
   it("accueil : planning et adhérents (pastille des prospects), pas de paramètres", () => {
     const nav = buildNavigation("staff", none);
-    expect(hrefs(nav)).toEqual({ Quotidien: ["/", "/planning"], Opérations: ["/adherents"] });
+    expect(hrefs(nav)).toEqual({ Quotidien: ["/", "/planning"], Clients: ["/adherents"] });
     expect(badge(nav, "/adherents")).toBe("prospects");
     expect(nav.footer).toEqual([]);
   });
@@ -56,6 +65,11 @@ describe("activeHref", () => {
     expect(activeHref("/planning/modeles/x", items)).toBe("/planning/modeles");
     expect(activeHref("/planning", items)).toBe("/planning");
     expect(activeHref("/", items)).toBe("/");
+  });
+  it("une commande de la marketplace n'allume que « Commandes »", () => {
+    const market = ["/marketplace", "/marketplace/commandes", "/marketplace/devis"];
+    expect(activeHref("/marketplace/commandes", market)).toBe("/marketplace/commandes");
+    expect(activeHref("/marketplace", market)).toBe("/marketplace");
   });
   it("Segments et Messages sont des onglets de l'emailing", () => {
     expect(activeHref("/segments", items)).toBe("/emailing");

@@ -1,23 +1,27 @@
 "use client";
 
 import {
+  BuildingIcon,
   CalendarDaysIcon,
   ChartColumnIcon,
   ChevronsUpDownIcon,
   ClockIcon,
   CreditCardIcon,
   DumbbellIcon,
+  FileTextIcon,
   FilterIcon,
-  KanbanIcon,
   HouseIcon,
+  KanbanIcon,
   LogOutIcon,
-  MailPlusIcon,
   MailIcon,
+  MailPlusIcon,
+  PackageIcon,
   RepeatIcon,
   SettingsIcon,
   SparklesIcon,
-  UsersIcon,
+  StoreIcon,
   type LucideIcon,
+  UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -66,6 +70,10 @@ const ICONS = {
   hub: SparklesIcon,
   settings: SettingsIcon,
   payments: CreditCardIcon,
+  marketplace: StoreIcon,
+  platform: BuildingIcon,
+  orders: PackageIcon,
+  quotes: FileTextIcon,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof ICONS;

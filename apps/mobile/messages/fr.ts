@@ -244,6 +244,12 @@ export const fr = {
     payment_not_found: "Paiement introuvable.",
     not_unpaid: "Aucun impayé sur votre compte.",
     not_settleable: "Ce paiement se règle depuis votre moyen de paiement.",
+    mp_not_orderable: "Produit indisponible.",
+    mp_cart_empty: "Le panier est vide.",
+    mp_order_not_found: "Commande introuvable.",
+    mp_quote_not_found: "Devis introuvable.",
+    mp_quote_expired: "Ce devis a expiré.",
+    mp_invalid_status: "Action impossible à ce stade.",
     payment_overdue:
       "Votre abonnement est en attente de paiement : réglez-le pour réserver (Compte).",
     already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",

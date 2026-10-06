@@ -64,6 +64,17 @@ type Common = {
   action: CellSave;
   /** Séance issue d'un cours récurrent : demander « cette séance » ou « et les suivantes ». */
   askScope?: boolean | undefined;
+  /**
+   * Aperçu avant d'enregistrer (Server Action) : un titre et un texte à confirmer, ou null si le
+   * changement est sans conséquence (ex. : séances à venir d'un cours récurrent).
+   */
+  confirmChange?:
+    | ((input: {
+        id: string;
+        field: string;
+        value: CellValue;
+      }) => Promise<{ title: string; description: string } | null>)
+    | undefined;
   disabled?: boolean | undefined;
   className?: string | undefined;
 };
@@ -119,15 +130,30 @@ export function EditableCell(props: Props) {
   // Sortie du champ au clavier (Entrée, Échap) : la cellule reprend le focus.
   const [refocus, setRefocus] = useState(false);
   const [scopeFor, setScopeFor] = useState<CellValue | undefined>(undefined);
+  const [confirmFor, setConfirmFor] = useState<{
+    value: CellValue;
+    scope: CellScope | undefined;
+    title: string;
+    description: string;
+  } | null>(null);
   // Choix multiple en cours : enregistré à la fermeture de la liste.
   const draft = useRef<string[] | null>(null);
   const escaped = useRef(false);
 
-  function commit(value: CellValue, scope?: CellScope) {
+  function commit(value: CellValue, scope?: CellScope, confirmed = false) {
     setEditing(false);
     if (JSON.stringify(value) === JSON.stringify(props.value)) return;
     if (props.askScope && !scope) {
       setScopeFor(value);
+      return;
+    }
+    if (props.confirmChange && !confirmed) {
+      const check = props.confirmChange;
+      startTransition(async () => {
+        const message = await check({ id: props.id, field: props.field, value });
+        if (message) setConfirmFor({ value, scope, ...message });
+        else commit(value, scope, true);
+      });
       return;
     }
     startTransition(async () => {
@@ -149,6 +175,29 @@ export function EditableCell(props: Props) {
     props.className,
   );
   const ariaLabel = `${props.label} : ${textValue(props, optimistic) || t("inline.empty")}${props.disabled ? "" : `, ${t("inline.edit")}`}`;
+
+  const confirmDialog = (
+    <AlertDialog open={confirmFor !== null} onOpenChange={(open) => !open && setConfirmFor(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{confirmFor?.title}</AlertDialogTitle>
+          <AlertDialogDescription>{confirmFor?.description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <Button
+            onClick={() => {
+              const pendingChange = confirmFor;
+              setConfirmFor(null);
+              if (pendingChange) commit(pendingChange.value, pendingChange.scope, true);
+            }}
+          >
+            {t("inline.apply")}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   const scopeDialog = (
     <AlertDialog
@@ -196,6 +245,7 @@ export function EditableCell(props: Props) {
           onCheckedChange={(checked) => commit(checked)}
         />
         {scopeDialog}
+        {confirmDialog}
       </>
     );
   }
@@ -238,6 +288,7 @@ export function EditableCell(props: Props) {
           />
         </button>
         {scopeDialog}
+        {confirmDialog}
       </>
     );
   }
@@ -335,6 +386,7 @@ export function EditableCell(props: Props) {
         </PopoverContent>
       </Popover>
       {scopeDialog}
+      {confirmDialog}
     </>
   );
 }

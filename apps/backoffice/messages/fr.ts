@@ -78,6 +78,10 @@ export const fr = {
       lastMonth: "Mois dernier",
       last90: "90 derniers jours",
       thisYear: "Cette année",
+      next7: "7 prochains jours",
+      next14: "2 prochaines semaines",
+      next28: "4 prochaines semaines",
+      nextMonth: "Mois prochain",
     },
     tagPlaceholder: "Ajouter une étiquette…",
     tagHint: "Entrée ou virgule pour ajouter, retour arrière pour retirer la dernière.",
@@ -87,6 +91,7 @@ export const fr = {
     charLeft:
       "{count, plural, =0 {Plus aucun caractère disponible} one {# caractère restant} other {# caractères restants}}",
     rowActions: "Actions pour {label}",
+    actions: "Actions",
     trendUp: "En hausse de {value} par rapport à la période précédente",
     trendDown: "En baisse de {value} par rapport à la période précédente",
     trendFlat: "Stable par rapport à la période précédente",
@@ -288,9 +293,9 @@ export const fr = {
     moveSessionHint: "Même durée ; réservations conservées et inscrits prévenus.",
     moveDate: "Date",
     moveTime: "Heure",
-    moveSubmit: "Déplacer",
+    moveCheck: "Vérifier",
+    moveTo: "Nouvel horaire : {when}",
     moveInvalid: "Date ou heure invalide.",
-    moved: "Séance déplacée, inscrits prévenus.",
     durationLabel: "Durée",
     disciplineLabel: "Discipline",
     updated: "Séance modifiée.",
@@ -332,7 +337,9 @@ export const fr = {
     addedToWaitlist: "Séance complète : adhérent ajouté en liste d'attente.",
     bookingCancelled: "Réservation annulée.",
     attendanceSaved: "Présence enregistrée.",
-    allAttendedSaved: "Tous les inscrits sont pointés présents.",
+    allAttendedCount:
+      "{count, plural, =0 {Personne à pointer.} one {# inscrit pointé présent.} other {# inscrits pointés présents.}}",
+    booking: "Ajout en cours…",
     sessionCancelled: "Séance annulée, inscrits prévenus.",
     notFound: "Séance introuvable.",
   },
@@ -368,7 +375,7 @@ export const fr = {
     startsOn: "À partir du",
     endsOn: "Jusqu'au (facultatif)",
     since: "depuis le {from}",
-    period: "du {from} au {to}",
+    periodLabel: "du {from} au {to}",
     active: "Actif",
     inactive: "Inactif",
     activeFor: "Cours {name} actif",
@@ -404,6 +411,19 @@ export const fr = {
     to: "Au",
     generated:
       "{count, plural, =0 {Aucune nouvelle séance : elles existent déjà.} one {# séance créée.} other {# séances créées.}}",
+    period: "Période",
+    duplicate: "Dupliquer",
+    duplicated: "Cours dupliqué, inactif : ajustez-le puis activez-le.",
+    rowLabel: "{day} {time}",
+    impact: {
+      title: "Changer le créneau des séances à venir ?",
+      deactivateTitle: "Désactiver ce cours récurrent ?",
+      replaced:
+        "{count, plural, =0 {Aucune séance à venir n'est recréée.} one {# séance à venir sera recréée au nouveau créneau.} other {# séances à venir seront recréées au nouveau créneau.}}",
+      removed:
+        "{count, plural, =0 {Aucune séance à venir n'est supprimée.} one {# séance à venir sans réservation sera supprimée.} other {# séances à venir sans réservation seront supprimées.}}",
+      kept: "{count, plural, one {# séance déjà réservée garde son créneau} other {# séances déjà réservées gardent leur créneau}} ({booked, plural, one {# inscrit} other {# inscrits}}) : à déplacer depuis le planning si besoin.",
+    },
   },
   members: {
     todo: {

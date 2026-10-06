@@ -1,13 +1,21 @@
-import { CAPACITY, DURATION, zonedDateKey } from "@salle/shared";
+import { CAPACITY, DURATION, dateRangePreset, zonedDateKey } from "@salle/shared";
+import { CalendarSyncIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { Flash } from "@/components/flash";
-import { AddRow } from "@/components/inline/add-row";
+import { AddButton, AddRow, FocusRow } from "@/components/inline/add-row";
 import { EditableCell } from "@/components/inline/editable-cell";
 import { PageHeader } from "@/components/page-header";
-import { SubmitButton } from "@/components/submit-button";
+import { GenerateSessionsForm } from "@/components/templates/generate-form";
+import { TemplateActions } from "@/components/templates/template-actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Table,
   TableBody,
@@ -21,7 +29,7 @@ import { currentTime } from "@/lib/clock";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { createTemplateRow, generateSessions, updateTemplateField } from "./actions";
+import { createTemplateRow, previewTemplateChange, updateTemplateField } from "./actions";
 
 export const metadata: Metadata = { title: t("templates.title") };
 
@@ -41,7 +49,6 @@ export default async function TemplatesPage({
   const supabase = await createClient();
   const now = currentTime();
   const today = zonedDateKey(now, context.gym.timezone);
-  const in4Weeks = zonedDateKey(new Date(now.getTime() + 28 * 86_400_000), context.gym.timezone);
 
   const [templates, disciplines, coaches, rooms] = await Promise.all([
     supabase
@@ -88,154 +95,191 @@ export default async function TemplatesPage({
     "templates.endsOn",
     "templates.active",
   ] as const;
+  const rows = templates.data ?? [];
+  const fresh = params.n && rows.some((row) => row.id === params.n) ? params.n : null;
 
   return (
     <div className="grid gap-6">
       <PageHeader title={t("templates.title")} description={t("templates.inlineHint")} />
       <Flash ok={params.ok} error={params.erreur} />
 
-      <div className="overflow-x-auto rounded-xl bg-card p-1 shadow-border">
-        <Table className="min-w-[72rem]">
-          <TableHeader>
-            <TableRow>
-              {columns.map((key) => (
-                <TableHead key={key} className="px-3">
-                  {t(key)}
+      {rows.length === 0 ? (
+        <Empty className="rounded-xl border border-dashed">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarSyncIcon aria-hidden />
+            </EmptyMedia>
+            <EmptyTitle>{t("templates.empty")}</EmptyTitle>
+            <EmptyDescription>{t("templates.emptyHint")}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <AddButton label={t("templates.create")} action={createTemplateRow} />
+          </EmptyContent>
+        </Empty>
+      ) : (
+        <div className="max-h-[calc(100dvh-16rem)] overflow-auto rounded-xl bg-card p-1 shadow-border">
+          <Table className="min-w-[72rem]">
+            <TableHeader sticky>
+              <TableRow>
+                {columns.map((key, index) => (
+                  <TableHead key={key} sticky={index === 0} className="px-3">
+                    {t(key)}
+                  </TableHead>
+                ))}
+                <TableHead className="w-12">
+                  <span className="sr-only">{t("forms.actions")}</span>
                 </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(templates.data ?? []).map((tpl) => {
-              const cell = { id: tpl.id, action: updateTemplateField };
-              return (
-                <TableRow
-                  key={tpl.id}
-                  className={cn("hover:bg-transparent", !tpl.is_active && "text-muted-foreground")}
-                >
-                  <TableCell className="w-32 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="select"
-                      field="weekday"
-                      label={t("templates.weekday")}
-                      value={String(tpl.weekday)}
-                      options={weekdayOptions}
-                    />
-                  </TableCell>
-                  <TableCell className="w-28 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="time"
-                      field="start_time"
-                      label={t("templates.startTime")}
-                      value={tpl.start_time.slice(0, 5)}
-                    />
-                  </TableCell>
-                  <TableCell className="w-40 p-1">
-                    <span className="flex items-center gap-1">
-                      <span
-                        aria-hidden
-                        className="ml-2 size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: colorOf.get(tpl.discipline_id) }}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((tpl) => {
+                const cell = { id: tpl.id, action: updateTemplateField };
+                // Jour, heure, période, activation : aperçu des séances à venir avant d'appliquer.
+                const slot = { ...cell, confirmChange: previewTemplateChange };
+                return (
+                  <TableRow
+                    key={tpl.id}
+                    data-row-id={tpl.id}
+                    className={cn(
+                      "hover:bg-transparent",
+                      !tpl.is_active && "text-muted-foreground",
+                      tpl.id === fresh && "bg-accent/40",
+                    )}
+                  >
+                    <TableCell sticky className="w-32 p-1">
+                      <EditableCell
+                        {...slot}
+                        kind="select"
+                        field="weekday"
+                        label={t("templates.weekday")}
+                        value={String(tpl.weekday)}
+                        options={weekdayOptions}
                       />
+                    </TableCell>
+                    <TableCell className="w-28 p-1">
+                      <EditableCell
+                        {...slot}
+                        kind="time"
+                        field="start_time"
+                        label={t("templates.startTime")}
+                        value={tpl.start_time.slice(0, 5)}
+                      />
+                    </TableCell>
+                    <TableCell className="w-40 p-1">
+                      <span className="flex items-center gap-1">
+                        <span
+                          aria-hidden
+                          className="ml-2 size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: colorOf.get(tpl.discipline_id) }}
+                        />
+                        <EditableCell
+                          {...cell}
+                          kind="select"
+                          field="discipline_id"
+                          label={t("templates.discipline")}
+                          value={tpl.discipline_id}
+                          options={disciplineOptions}
+                        />
+                      </span>
+                    </TableCell>
+                    <TableCell className="w-28 p-1">
+                      <EditableCell
+                        {...cell}
+                        kind="number"
+                        field="duration_minutes"
+                        label={t("templates.duration")}
+                        value={tpl.duration_minutes}
+                        unit={t("catalog.minutes")}
+                        min={DURATION.min}
+                        max={DURATION.max}
+                        step={DURATION.step}
+                      />
+                    </TableCell>
+                    <TableCell className="w-28 p-1">
+                      <EditableCell
+                        {...cell}
+                        kind="number"
+                        field="capacity"
+                        label={t("templates.capacity")}
+                        value={tpl.capacity}
+                        unit={t("catalog.places")}
+                        min={CAPACITY.min}
+                        max={CAPACITY.max}
+                      />
+                    </TableCell>
+                    <TableCell className="min-w-48 p-1">
+                      <EditableCell
+                        {...cell}
+                        kind="multi"
+                        field="coach_ids"
+                        label={t("templates.coaches")}
+                        value={[...tpl.template_coaches]
+                          .sort((a, b) => a.position - b.position)
+                          .map((c) => c.coach_id)}
+                        options={coachOptions}
+                      />
+                    </TableCell>
+                    <TableCell className="w-36 p-1">
                       <EditableCell
                         {...cell}
                         kind="select"
-                        field="discipline_id"
-                        label={t("templates.discipline")}
-                        value={tpl.discipline_id}
-                        options={disciplineOptions}
+                        field="room_id"
+                        label={t("templates.room")}
+                        value={tpl.room_id}
+                        options={roomOptions}
+                        clearable
                       />
-                    </span>
-                  </TableCell>
-                  <TableCell className="w-28 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="number"
-                      field="duration_minutes"
-                      label={t("templates.duration")}
-                      value={tpl.duration_minutes}
-                      unit={t("catalog.minutes")}
-                      min={DURATION.min}
-                      max={DURATION.max}
-                      step={DURATION.step}
-                    />
-                  </TableCell>
-                  <TableCell className="w-28 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="number"
-                      field="capacity"
-                      label={t("templates.capacity")}
-                      value={tpl.capacity}
-                      unit={t("catalog.places")}
-                      min={CAPACITY.min}
-                      max={CAPACITY.max}
-                    />
-                  </TableCell>
-                  <TableCell className="min-w-48 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="multi"
-                      field="coach_ids"
-                      label={t("templates.coaches")}
-                      value={[...tpl.template_coaches]
-                        .sort((a, b) => a.position - b.position)
-                        .map((c) => c.coach_id)}
-                      options={coachOptions}
-                    />
-                  </TableCell>
-                  <TableCell className="w-36 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="select"
-                      field="room_id"
-                      label={t("templates.room")}
-                      value={tpl.room_id}
-                      options={roomOptions}
-                      clearable
-                    />
-                  </TableCell>
-                  <TableCell className="w-36 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="date"
-                      field="starts_on"
-                      label={t("templates.startsOn")}
-                      value={tpl.starts_on}
-                    />
-                  </TableCell>
-                  <TableCell className="w-36 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="date"
-                      field="ends_on"
-                      label={t("templates.endsOn")}
-                      value={tpl.ends_on}
-                      clearable
-                    />
-                  </TableCell>
-                  <TableCell className="w-16 p-1">
-                    <EditableCell
-                      {...cell}
-                      kind="switch"
-                      field="is_active"
-                      label={t("templates.active")}
-                      value={tpl.is_active}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            <AddRow
-              label={t("templates.newRow")}
-              action={createTemplateRow}
-              colSpan={columns.length}
-            />
-          </TableBody>
-        </Table>
-      </div>
+                    </TableCell>
+                    <TableCell className="w-36 p-1">
+                      <EditableCell
+                        {...slot}
+                        kind="date"
+                        field="starts_on"
+                        label={t("templates.startsOn")}
+                        value={tpl.starts_on}
+                      />
+                    </TableCell>
+                    <TableCell className="w-36 p-1">
+                      <EditableCell
+                        {...slot}
+                        kind="date"
+                        field="ends_on"
+                        label={t("templates.endsOn")}
+                        value={tpl.ends_on}
+                        clearable
+                      />
+                    </TableCell>
+                    <TableCell className="w-16 p-1">
+                      <EditableCell
+                        {...slot}
+                        kind="switch"
+                        field="is_active"
+                        label={t("templates.active")}
+                        value={tpl.is_active}
+                      />
+                    </TableCell>
+                    <TableCell className="w-12 p-1">
+                      <TemplateActions
+                        id={tpl.id}
+                        label={t("templates.rowLabel", {
+                          day: t(`weekdays.${String(tpl.weekday) as (typeof WEEKDAYS)[number]}`),
+                          time: tpl.start_time.slice(0, 5),
+                        })}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              <AddRow
+                label={t("templates.newRow")}
+                action={createTemplateRow}
+                colSpan={columns.length + 1}
+              />
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      {fresh ? <FocusRow id={fresh} /> : null}
 
       <Card className="max-w-md">
         <CardHeader>
@@ -243,19 +287,7 @@ export default async function TemplatesPage({
           <CardDescription>{t("templates.generateHint")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={generateSessions} className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="from">{t("templates.from")}</FieldLabel>
-                <Input id="from" name="from" type="date" defaultValue={today} required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="to">{t("templates.to")}</FieldLabel>
-                <Input id="to" name="to" type="date" defaultValue={in4Weeks} required />
-              </Field>
-            </div>
-            <SubmitButton variant="outline">{t("templates.generate")}</SubmitButton>
-          </form>
+          <GenerateSessionsForm todayKey={today} defaultRange={dateRangePreset("next28", today)} />
         </CardContent>
       </Card>
     </div>

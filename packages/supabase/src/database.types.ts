@@ -2382,6 +2382,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      set_attendance_many: { Args: { p_session_id: string }; Returns: string[] };
       set_member_status: {
         Args: { p_member_id: string; p_status: Database["public"]["Enums"]["member_status"] };
         Returns: {
@@ -2423,6 +2424,14 @@ export type Database = {
           last_name: string;
           profile_id: string;
           roles: Database["public"]["Enums"]["gym_role"][];
+        }[];
+      };
+      template_change_preview: {
+        Args: { p_template_id: string };
+        Returns: {
+          booked: number;
+          kept: number;
+          sessions: number;
         }[];
       };
       today_trials: {

@@ -10,7 +10,7 @@ import {
   promoSchema,
 } from "./billing.ts";
 
-const nbsp = (s: string) => s.replace(/[  ]/g, " ");
+const nbsp = (s: string) => s.replace(/[\u202f\u00a0]/g, " ");
 
 describe("formatMoney / formatPrice", () => {
   it("sans décimales inutiles", () => {

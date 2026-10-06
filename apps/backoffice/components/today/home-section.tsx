@@ -14,8 +14,9 @@ export function HomeSection({
 }: {
   id: string;
   title: string;
-  href: string;
-  link: string;
+  /** Lien en haut à droite (absent : titre seul). */
+  href?: string | undefined;
+  link?: string | undefined;
   children: ReactNode;
 }) {
   return (
@@ -24,9 +25,11 @@ export function HomeSection({
         <h2 id={id} className="text-lg font-semibold">
           {title}
         </h2>
-        <Link href={href} className="text-sm font-medium text-primary hover:underline">
-          {link}
-        </Link>
+        {href && link ? (
+          <Link href={href} className="text-sm font-medium text-primary hover:underline">
+            {link}
+          </Link>
+        ) : null}
       </div>
       {children}
     </section>

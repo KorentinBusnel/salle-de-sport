@@ -102,6 +102,7 @@ export const BOOKING_ERROR_CODES = [
   "not_unpaid",
   "not_settleable",
   "already_reminded",
+  "payment_overdue",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

@@ -27,6 +27,7 @@ import { CreditsDialog } from "@/components/members/credits-dialog";
 import { MemberOverview } from "@/components/members/member-overview";
 import { SectionError } from "@/components/section-error";
 import { ReceiptLink } from "@/components/payments/receipt-link";
+import { UnpaidActions } from "@/components/billing/unpaid-actions";
 import { ConsentSwitches } from "@/components/members/profile/consent-switches";
 import { MemberTags } from "@/components/members/profile/member-tags";
 import { StatusButton } from "@/components/members/profile/status-button";
@@ -252,7 +253,7 @@ export default async function MemberProfilePage({
         {tab === "historique" ? (
           <HistoryTab context={context} memberId={member.id} path={path} tab={tab} />
         ) : tab === "paiements" ? (
-          <BillingTab context={context} memberId={member.id} />
+          <BillingTab context={context} memberId={member.id} memberName={name} />
         ) : tab === "reservations" ? (
           <BookingsTab
             context={context}
@@ -279,7 +280,15 @@ export default async function MemberProfilePage({
  * Abonnement et paiements (gérant) : abonnement en cours (période, engagement, renouvellement
  * d'un abonnement suivi à la main), crédits par lot avec leur date d'expiration, paiements.
  */
-async function BillingTab({ context, memberId }: { context: TeamContext; memberId: string }) {
+async function BillingTab({
+  context,
+  memberId,
+  memberName,
+}: {
+  context: TeamContext;
+  memberId: string;
+  memberName: string;
+}) {
   const supabase = await createClient();
   const format = gymFormatters(context.gym.timezone);
   const [{ data: subs }, { data: ledger }, { data: payments }] = await Promise.all([
@@ -394,7 +403,20 @@ async function BillingTab({ context, memberId }: { context: TeamContext; memberI
                 <p className="text-xs text-muted-foreground">
                   {t(manual ? "billing.manualSubscription" : "billing.stripeSubscription")}
                 </p>
-                {manual ? (
+                {current.status === "past_due" ? (
+                  <UnpaidActions
+                    memberId={memberId}
+                    name={memberName}
+                    amount={
+                      current.plans
+                        ? formatMoney(current.plans.price_cents, current.plans.currency)
+                        : ""
+                    }
+                    subscriptionId={current.id}
+                    settleable={Boolean(manual)}
+                  />
+                ) : null}
+                {manual && current.status !== "past_due" ? (
                   <SubscriptionActions
                     subscriptionId={current.id}
                     price={current.plans ? formatPrice(current.plans) : ""}

@@ -58,10 +58,16 @@ export default async function DashboardPage() {
           ),
         }
       : null,
-    finance: frame.manager
+    // Impayés : gérant et accueil (relancer, encaisser) ; le reste de la finance au gérant.
+    finance: frame.frontDesk
       ? {
           content: <FinanceSection context={context} />,
-          fallback: <HomeSectionSkeleton cards={2} className="lg:grid-cols-2" />,
+          fallback: (
+            <HomeSectionSkeleton
+              cards={frame.manager ? 2 : 1}
+              className={frame.manager ? "lg:grid-cols-2" : undefined}
+            />
+          ),
         }
       : null,
   };

@@ -1354,6 +1354,31 @@ export const fr = {
     consentNo: "emails marketing refusés",
     allMessages: "Tous ses messages",
   },
+  unpaid: {
+    remind: "Relancer",
+    remindOf: "Relancer {name}",
+    remindTitle: "Relancer {name}",
+    remindHint:
+      "Message préparé selon l'impayé, modifiable avant l'envoi. Une relance par jour au plus ; elle est inscrite au journal.",
+    subject: "Objet",
+    body: "Message",
+    send: "Envoyer la relance",
+    reminded: "Relance envoyée.",
+    settle: "Encaisser",
+    settleOf: "Encaisser l'impayé de {name}",
+    settleHint:
+      "{name} règle sur place {amount} : la période due est payée et l'abonnement repart.",
+    confirmSettle: "Encaisser {amount}",
+    settled: "Impayé réglé : l'abonnement est de nouveau actif.",
+    online: "payé en ligne",
+    onSite: "à régler sur place",
+    reminders: "{count, plural, one {Relancé # fois} other {Relancé # fois}}",
+    lastReminder: "{count, plural, =0 {aujourd'hui} one {hier} other {il y a # j}}",
+    neverReminded: "Pas encore relancé",
+    errors: {
+      invalid: "Objet et message sont obligatoires.",
+    },
+  },
   receipt: {
     title: "Reçu de paiement",
     number: "N° {number}",
@@ -1585,6 +1610,7 @@ export const fr = {
       members: "Recherche des adhérents…",
       timeline: "Lecture de la fiche…",
       kpis: "Calcul des indicateurs…",
+      financials: "Lecture des finances…",
       sessions: "Statistiques des séances…",
       churn: "Repérage des adhérents à risque…",
       planning: "Lecture du planning…",
@@ -1745,6 +1771,8 @@ export const fr = {
     payment_not_found: "Paiement introuvable.",
     not_unpaid: "Cet adhérent n'a pas d'impayé.",
     not_settleable: "Cet impayé se règle en ligne par l'adhérent (abonnement payé en ligne).",
+    payment_overdue:
+      "L'abonnement de l'adhérent est en impayé : réservation suspendue jusqu'au règlement.",
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",
   },
   roles: {

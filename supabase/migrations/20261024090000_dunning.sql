@@ -360,6 +360,41 @@ $$;
 select cron.schedule('dunning-daily', '30 8 * * *', 'select private.run_dunning();');
 
 -- ---------------------------------------------------------------------------
+-- Réservation refusée pour impayé : même refus, motif explicite (payment_overdue)
+-- ---------------------------------------------------------------------------
+
+create or replace function private.seat_denial(p_member_id uuid, p_session_id uuid)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_discipline uuid;
+begin
+  if not exists (select 1 from public.members where id = p_member_id and status = 'active') then
+    return 'member_not_active';
+  end if;
+  select discipline_id into v_discipline from public.class_sessions where id = p_session_id;
+  if private.subscription_covers(p_member_id, v_discipline)
+    or private.credits_for(p_member_id, v_discipline) >= 1 then
+    return null;
+  end if;
+  -- Un abonnement ou des crédits existent, mais pour d'autres disciplines.
+  if private.has_active_subscription(p_member_id) or private.credit_balance(p_member_id) >= 1 then
+    return 'plan_discipline';
+  end if;
+  -- Abonnement suspendu faute de paiement : l'adhérent sait quoi faire.
+  if exists (select 1 from public.subscriptions
+             where member_id = p_member_id and status in ('past_due', 'unpaid')) then
+    return 'payment_overdue';
+  end if;
+  return 'no_credit';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Droits
 -- ---------------------------------------------------------------------------
 

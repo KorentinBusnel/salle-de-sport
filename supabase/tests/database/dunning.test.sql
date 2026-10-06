@@ -1,7 +1,7 @@
 -- Impayés et relances : droits (accueil et gérant), carnet échoué exclu, relance manuelle
 -- dédupliquée, relances automatiques J+3 / J+7, réglage à 0, encaissement sur place.
 begin;
-select plan(20);
+select plan(21);
 
 insert into auth.users (id, email) values
   ('a1100000-0000-0000-0000-000000000001', 'du-gerant@test.local'),
@@ -92,6 +92,9 @@ insert into public.gym_private_settings (gym_id, settings) values ('a1a00000-000
   on conflict (gym_id) do update set settings = excluded.settings;
 delete from public.outbound_messages where dedupe_key like 'dunning:%';
 select is(private.run_dunning(), 0, 'paliers à 0 : aucune relance');
+
+-- Réservation refusée pour impayé : motif explicite
+select is(private.seat_denial('a1200000-0000-0000-0000-000000000001', null), 'payment_overdue', 'impayé : refus explicite');
 
 -- Encaissement sur place (accueil, sans la stratégie de vente)
 select pg_temp.login_as('a1100000-0000-0000-0000-000000000002');

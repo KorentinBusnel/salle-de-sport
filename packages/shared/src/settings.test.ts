@@ -49,7 +49,7 @@ describe("accueil et pastilles par rôle", () => {
   it("ordre réglé, blocs non permis au rôle ignorés, défaut sans réglage", () => {
     expect(homeBlocksFor("manager", settings)).toEqual(["finance", "operations"]);
     expect(homeBlocksFor("admin", settings)).toEqual(["finance", "operations"]);
-    expect(homeBlocksFor("staff", settings)).toEqual(["clients"]);
+    expect(homeBlocksFor("staff", settings)).toEqual(["clients", "finance"]);
     expect(homeBlocksFor("coach", settings)).toEqual(["operations"]);
   });
 

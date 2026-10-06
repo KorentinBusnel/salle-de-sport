@@ -399,7 +399,39 @@ export const assistantTools: AgentTool<ToolContext>[] = [
         amount_eur: row.amount_cents / 100,
         failures: row.failures,
         first_failed_at: row.first_failed_at,
+        online: row.online,
+        reminders: row.reminders,
+        last_reminded_at: row.last_reminded_at,
       }));
+    },
+  }),
+
+  defineTool({
+    name: "get_financials",
+    description:
+      "Finances de la salle sur une période : chiffre d'affaires encaissé, revenu mensuel récurrent (abonnements en cours, tarif annuel ramené au mois), abonnements actifs, paiements échoués, et impayés en cours (nombre, total).",
+    schema: z.object({ from: date, to: date }),
+    step: t("assistant.steps.financials"),
+    async run(ctx, input) {
+      const [kpis, unpaid] = await Promise.all([
+        ctx.supabase.rpc("gym_kpis", { p_gym_id: ctx.gymId, p_from: input.from, p_to: input.to }),
+        ctx.supabase.rpc("unpaid_members", { p_gym_id: ctx.gymId }),
+      ]);
+      fail(kpis.error);
+      fail(unpaid.error);
+      const k = (kpis.data ?? {}) as Record<string, unknown>;
+      const cents = (key: string) => (typeof k[key] === "number" ? (k[key] as number) / 100 : null);
+      const rows = unpaid.data ?? [];
+      return {
+        from: input.from,
+        to: input.to,
+        revenue_eur: cents("revenue_cents"),
+        mrr_eur: cents("mrr_cents"),
+        active_subscriptions: k.active_subscriptions ?? null,
+        failed_payments: k.failed_payments ?? null,
+        unpaid_members: rows.length,
+        unpaid_total_eur: rows.reduce((sum, row) => sum + row.amount_cents, 0) / 100,
+      };
     },
   }),
 
@@ -462,7 +494,7 @@ export function systemPrompt(gymName: string, today: string, timezone: string, e
     `Tu es l'assistant du back office de la salle de sport « ${gymName} ». Tu réponds au gérant en français, de façon concise et chiffrée.`,
     `Aujourd'hui : ${today} (fuseau ${timezone}). Les semaines vont du lundi au dimanche.`,
     "Utilise les outils pour toute donnée : n'invente jamais un chiffre, un nom ni une date. Si un outil ne couvre pas la question, dis-le.",
-    "Finances : seuls les impayés clients sont disponibles (get_unpaid). Chiffre d'affaires, trésorerie et factures fournisseurs attendent Stripe, Qonto et Pennylane : dis-le si on te les demande.",
+    "Finances : chiffre d'affaires, revenu mensuel récurrent, paiements échoués et impayés (get_financials), détail des impayés (get_unpaid). Trésorerie et factures fournisseurs attendent Qonto et Pennylane : dis-le si on te les demande.",
     "Liens internes en Markdown : adhérent [Prénom Nom](/adherents/<id>), séance [CrossFit du 12/10 18h30](/planning/<id>), pages /indicateurs, /segments, /messages.",
     "Tu ne peux rien envoyer ni modifier toi-même : pour un message ou un segment, utilise propose_message ou propose_segment ; le gérant valide dans l'interface.",
     "Ne cite téléphone ou email que si on te les demande. Mise en forme : phrases courtes, listes à puces, gras pour les chiffres clés.",

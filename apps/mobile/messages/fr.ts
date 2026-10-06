@@ -121,6 +121,10 @@ export const fr = {
     noShows: "Absences",
     upcomingLimit: "Jusqu'à {count} réservations à venir.",
     pastDue: "Impayé",
+    pastDueOnline:
+      "Votre dernier paiement n'a pas abouti : la réservation des séances est suspendue. Mettez à jour votre moyen de paiement ci-dessous, le prélèvement sera relancé.",
+    pastDueOnSite:
+      "Votre abonnement est à régler : la réservation des séances est suspendue. Passez à l'accueil lors de votre prochaine venue.",
     paidUntil: "Payé jusqu'au {date}",
     endsOn: "Se termine le {date}",
     commitmentUntil: "Engagé jusqu'au {date}",
@@ -240,6 +244,8 @@ export const fr = {
     payment_not_found: "Paiement introuvable.",
     not_unpaid: "Aucun impayé sur votre compte.",
     not_settleable: "Ce paiement se règle depuis votre moyen de paiement.",
+    payment_overdue:
+      "Votre abonnement est en attente de paiement : réglez-le pour réserver (Compte).",
     already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",
   },
 } as const;

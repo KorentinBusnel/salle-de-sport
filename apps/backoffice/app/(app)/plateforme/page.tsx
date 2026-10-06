@@ -1,9 +1,16 @@
-import { formatMoney, MP_ORDER_STATUS_TONE, MP_QUOTE_STATUS_TONE } from "@salle/shared";
+import {
+  formatMoney,
+  MP_CAMPAIGN_STATUS_TONE,
+  MP_ORDER_STATUS_TONE,
+  MP_QUOTE_STATUS_TONE,
+  zonedDateKey,
+} from "@salle/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AddRow } from "@/components/inline/add-row";
 import { EditableCell } from "@/components/inline/editable-cell";
 import { PageHeader } from "@/components/page-header";
+import { CampaignActions, NewCampaign } from "@/components/platform/campaign-controls";
 import {
   AnswerQuote,
   ImageUpload,
@@ -37,13 +44,14 @@ import {
 
 export const metadata: Metadata = { title: t("platform.title") };
 
-const TABS = ["catalogue", "fournisseurs", "devis", "commandes"] as const;
+const TABS = ["catalogue", "fournisseurs", "devis", "commandes", "achats-groupes"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL = {
   catalogue: "platform.tab.catalogue",
   fournisseurs: "platform.tab.suppliers",
   devis: "platform.tab.quotes",
   commandes: "platform.tab.orders",
+  "achats-groupes": "platform.tab.campaigns",
 } as const;
 
 /**
@@ -88,6 +96,8 @@ export default async function PlatformPage({
         <SuppliersTab />
       ) : tab === "devis" ? (
         <QuotesTab timeZone={context.gym.timezone} />
+      ) : tab === "achats-groupes" ? (
+        <CampaignsTab timeZone={context.gym.timezone} />
       ) : (
         <OrdersTab timeZone={context.gym.timezone} />
       )}
@@ -589,5 +599,87 @@ async function OrdersTab({ timeZone }: { timeZone: string }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+async function CampaignsTab({ timeZone }: { timeZone: string }) {
+  const supabase = await createClient();
+  const format = gymFormatters(timeZone);
+  const [{ data: campaigns }, { data: products }] = await Promise.all([
+    supabase.rpc("mp_campaign_progress"),
+    supabase
+      .from("mp_products")
+      .select("id, name")
+      .eq("kind", "product")
+      .eq("is_active", true)
+      .not("price_cents", "is", null)
+      .order("name"),
+  ]);
+  const inTwoWeeks = zonedDateKey(new Date(currentTime().getTime() + 14 * 86_400_000), timeZone);
+
+  return (
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("platform.campaigns.new")}</CardTitle>
+          <CardDescription>{t("platform.campaigns.hint")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NewCampaign products={products ?? []} defaultEndsOn={inTwoWeeks} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="overflow-x-auto px-2">
+          {!campaigns?.length ? (
+            <p className="px-2 text-sm text-muted-foreground">{t("platform.campaigns.empty")}</p>
+          ) : (
+            <Table className="min-w-[56rem]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-2">{t("platform.campaigns.titleField")}</TableHead>
+                  <TableHead>{t("platform.campaigns.endsOn")}</TableHead>
+                  <TableHead className="text-right">{t("platform.campaigns.total")}</TableHead>
+                  <TableHead className="text-right">{t("platform.campaigns.price")}</TableHead>
+                  <TableHead>{t("platform.campaigns.status")}</TableHead>
+                  <TableHead className="pr-2 text-right">
+                    <span className="sr-only">{t("marketplace.orders.actions")}</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {campaigns.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="pl-2">
+                      <span className="block font-medium">{c.title}</span>
+                      <span className="text-xs text-muted-foreground">{c.product_name}</span>
+                    </TableCell>
+                    <TableCell className="tabular-nums">{format.fullDate(c.ends_at)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <span className="block">
+                        {c.total_qty} / {c.min_qty}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {t("marketplace.groupBuy.gyms", { count: c.gyms })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(c.unit_price_cents)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill tone={MP_CAMPAIGN_STATUS_TONE[c.status]}>
+                        {t(`platform.campaigns.statusLabel.${c.status}`)}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell className="pr-2">
+                      {c.status === "open" ? <CampaignActions id={c.id} title={c.title} /> : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

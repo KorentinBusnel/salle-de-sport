@@ -68,3 +68,13 @@ export const MP_QUOTE_STATUS_TONE: Record<MpQuoteStatus, Tone> = {
   declined: "neutral",
   expired: "neutral",
 };
+
+export const MP_CAMPAIGN_STATUSES = ["open", "closed", "cancelled"] as const;
+export type MpCampaignStatus = (typeof MP_CAMPAIGN_STATUSES)[number];
+
+/** Ton de la pastille d'un achat groupé. */
+export const MP_CAMPAIGN_STATUS_TONE: Record<MpCampaignStatus, Tone> = {
+  open: "brand",
+  closed: "success",
+  cancelled: "neutral",
+};

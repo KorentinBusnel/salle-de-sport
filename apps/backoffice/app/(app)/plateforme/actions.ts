@@ -1,14 +1,16 @@
 "use server";
 
-import { MP_ORDER_STATUSES } from "@salle/shared";
+import { MP_ORDER_STATUSES, zonedInstant } from "@salle/shared";
 import type { TablesUpdate } from "@salle/supabase";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import type { CellValue } from "@/components/inline/editable-cell";
 import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { requireRole } from "@/lib/auth";
+import { callBilling } from "@/lib/billing";
 import { errorMessageKey } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
+import { stripeErrorKey } from "@/lib/stripe-errors";
 import { createClient } from "@/lib/supabase/server";
 
 type Result = { error: MessageKey | null };
@@ -272,4 +274,58 @@ export async function setOrderStatus(input: { id: string; status: string }): Pro
   if (error) return fail(errorMessageKey(error));
   refresh();
   return ok("platform.orderUpdated");
+}
+
+const campaignSchema = z.object({
+  productId: z.guid(),
+  endsOn: z.iso.date(),
+  minQty: z.number().int().min(1).max(100000),
+  title: z.string().trim().max(120),
+});
+
+/** Nouvel achat groupé : clôture le soir du jour choisi (fuseau de la salle de l'admin). */
+export async function createCampaign(input: z.input<typeof campaignSchema>): Promise<ActionResult> {
+  const context = await requireAdmin();
+  const parsed = campaignSchema.safeParse(input);
+  if (!parsed.success) return fail("common.unexpectedError");
+  const endsAt = zonedInstant(parsed.data.endsOn, 23 * 60 + 59, context.gym.timezone);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mp_create_campaign", {
+    p_product_id: parsed.data.productId,
+    p_ends_at: endsAt.toISOString(),
+    p_min_qty: parsed.data.minQty,
+    p_title: parsed.data.title,
+  });
+  if (error) return fail(errorMessageKey(error));
+  refresh();
+  return ok("platform.campaigns.created");
+}
+
+/** Annulation d'un achat groupé ouvert : rien n'est débité. */
+export async function cancelCampaign(input: { id: string }): Promise<ActionResult> {
+  await requireAdmin();
+  const id = z.guid().safeParse(input.id);
+  if (!id.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mp_cancel_campaign", { p_campaign_id: id.data });
+  if (error) return fail(errorMessageKey(error));
+  refresh();
+  return ok("platform.campaigns.cancelled");
+}
+
+/**
+ * Clôture d'un achat groupé : commandes au palier atteint et débit des cartes enregistrées
+ * (Edge Function). Sous le minimum, la base annule la campagne sans rien débiter.
+ */
+export async function closeCampaign(input: { id: string }): Promise<ActionResult> {
+  await requireAdmin();
+  const id = z.guid().safeParse(input.id);
+  if (!id.success) return fail("common.unexpectedError");
+  const result = await callBilling({ action: "mp_close_campaign", campaignId: id.data });
+  if (!result.ok) return fail(stripeErrorKey(result.error));
+  refresh();
+  const data = result.data as { status?: string; charged?: number; failed?: number } | null;
+  if (data?.status === "cancelled") return ok("platform.campaigns.belowMinimum");
+  if (data?.failed) return ok("platform.campaigns.closedWithFailures", data.failed);
+  return ok("platform.campaigns.closed", data?.charged ?? 0);
 }

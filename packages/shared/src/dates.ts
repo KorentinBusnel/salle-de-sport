@@ -138,3 +138,42 @@ export function monthRange(monthKey: string): {
     next: month === 12 ? key(year + 1, 1) : key(year, month + 1),
   };
 }
+
+/** Date civile « AAAA-MM-JJ » décalée de `days` jours (négatif : en arrière). */
+export function shiftDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, (day ?? 1) + days))
+    .toISOString()
+    .slice(0, 10);
+}
+
+export type DateRangePreset =
+  "last7" | "last30" | "thisMonth" | "lastMonth" | "last90" | "thisYear";
+
+/**
+ * Raccourcis de période (champ de période, indicateurs), bornes incluses, relatifs au jour
+ * de la salle `todayKey`.
+ */
+export function dateRangePreset(
+  preset: DateRangePreset,
+  todayKey: string,
+): { from: string; to: string } {
+  const month = todayKey.slice(0, 7);
+  switch (preset) {
+    case "last7":
+      return { from: shiftDateKey(todayKey, -6), to: todayKey };
+    case "last30":
+      return { from: shiftDateKey(todayKey, -29), to: todayKey };
+    case "last90":
+      return { from: shiftDateKey(todayKey, -89), to: todayKey };
+    case "thisMonth":
+      return { from: `${month}-01`, to: todayKey };
+    case "lastMonth": {
+      const range = monthRange(month);
+      const previous = range ? monthRange(range.previous) : null;
+      return previous ? { from: previous.from, to: previous.to } : { from: todayKey, to: todayKey };
+    }
+    case "thisYear":
+      return { from: `${todayKey.slice(0, 4)}-01-01`, to: todayKey };
+  }
+}

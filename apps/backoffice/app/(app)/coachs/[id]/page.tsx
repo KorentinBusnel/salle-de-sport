@@ -7,14 +7,6 @@ import { Flash } from "@/components/flash";
 import { PageHeader } from "@/components/page-header";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { PageCrumb } from "@/components/page-crumb";
 import { isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { getOwnCoachId } from "@/lib/coaches";
@@ -75,6 +68,7 @@ export default async function CoachPage({
         .from("disciplines")
         .select("id, name, color")
         .eq("gym_id", context.gym.id)
+        .order("position")
         .order("name"),
       supabase
         .from("coach_availabilities")
@@ -101,22 +95,8 @@ export default async function CoachPage({
 
   return (
     <div className="grid gap-6">
+      <PageCrumb label={coach.display_name} />
       <PageHeader
-        breadcrumb={
-          manager ? (
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href="/coachs">{t("coaches.title")}</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbPage>{coach.display_name}</BreadcrumbPage>
-              </BreadcrumbList>
-            </Breadcrumb>
-          ) : undefined
-        }
         title={coach.display_name}
         description={
           <>

@@ -112,6 +112,15 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `private.gym_setting_int` / `gym_setting_bool`, désactivées par défaut. Le back office masque
   une action désactivée (`getGymSettings`, `lib/settings.ts`), la base la refuse
   (`strategy_disabled`).
+- **Réglages internes** (seuils, accueil, pastilles) : `gym_private_settings` (équipe en lecture,
+  miroir `gymPrivateSettingsSchema`), lus en SQL par `private.gym_private_int(gym, clé, défaut,
+min, max)` — défauts identiques des deux côtés. Écriture des deux familles de réglages
+  **uniquement par** `update_gym_settings` (fusion `||`, `null` = défaut). `gyms` (lisible sans
+  compte) ne garde que l'identité, les horaires (`opening_hours`, `openingHoursSchema`) et les
+  règles publiques ; fuseau et slug non modifiables. Bornes et unités de l'écran Paramètres :
+  `SETTINGS_META` (`packages/shared/src/settings.ts`, tirées des schémas Zod). Logo : bucket public
+  `gym-assets`, dossier `<gym_id>/`, écrit par le gérant. Fermetures : `gym_closures`. Ordre des
+  disciplines : `position`, `reorder_disciplines` (trier par `position` puis `name`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -167,7 +176,14 @@ En session cloud, démarrer Supabase sans les services inutiles :
   `app/globals.css`. Ajouter un composant : `pnpm dlx shadcn@latest add <nom>` dans
   `apps/backoffice`.
 - `typecheck` lance `next typegen` (génère `next-env.d.ts`, ignoré par git) avant `tsc`.
-- Mutations : Server Actions + Zod, appel des fonctions SQL, puis `redirect(withFlash(...))`
+- Mutations appelées depuis un composant client : Server Action qui renvoie un `ActionResult`
+  (`lib/action-result.ts`, `ok()` / `fail()`), puis toast et `refresh()` ciblé ; action réversible :
+  `toastUndo` (`lib/toast-undo.ts`, 10 s, modes « inverse » ou « différé », `id` pour remplacer le
+  toast d'un même réglage) plutôt qu'une confirmation. Confirmation (`ConfirmDialog`, `requireAck`)
+  gardée pour annuler une séance, envoyer une campagne, résilier un adhérent, supprimer. Réglage
+  enregistré sur place : `useAutosave` et les lignes `SettingNumberRow` / `SettingSwitchRow` /
+  `SettingTextRow` (`components/settings/setting-rows.tsx`).
+- Formulaires de page : Server Actions + Zod, appel des fonctions SQL, puis `redirect(withFlash(...))`
   (`lib/flash.ts`, `count` pour un pluriel) : `FlashToast` l'affiche en toast puis le retire de
   l'URL (`Flash` ne sert plus que de repli `<noscript>`). Formulaires à erreurs par champ :
   `useActionState` + `Field`/`FieldError`, `noValidate` pour des messages en français. Boutons
@@ -175,16 +191,34 @@ En session cloud, démarrer Supabase sans les services inutiles :
   sans rechargement (pointage) : Server Action qui renvoie `{ error }` puis `refresh()`.
 - Coque : `components/app-sidebar.tsx`, entrées construites par `buildNavigation` (`lib/navigation.ts`,
   testé par rôle) : blocs Quotidien / Opérations, **Paramètres en pied** (`footer`), pastilles
-  d'attente. Barre du haut : fil d'Ariane (`AppBreadcrumb`), **un seul champ ⌘K / « / »**
+  d'attente : `buildNavigation` ne place que des **clés** (`navBadgesFor`, réglables par rôle), les
+  comptes arrivent à part (`NavBadge` sous `Suspense`, fonction SQL `nav_counts`) — le layout n'attend
+  que `getTeamContext` et `getGymConfig`. Une fiche donne son titre au fil d'Ariane par
+  `<PageCrumb label=… />` (pas de fil d'Ariane dans la page). Chaque route a un `loading.tsx` de sa
+  forme (`components/skeletons`) ; erreur de section : `SectionError` (`catchError`). Transition
+  entre sections : `template.tsx` (ViewTransition, liens `transitionTypes={["nav"]}` seulement).
+  Barre du haut : fil d'Ariane (`AppBreadcrumb`), **un seul champ ⌘K / « / »**
   (`CommandPalette` : adhérents, et assistant pour le gérant ; `openAssistant(prompt)` l'ouvre sur une
   demande préparée), « + Nouveau » (`NewMenu`). `PageHeader`, `metadata` par page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
   (`isManagerRole`, `isFrontDeskRole`) dans `lib/auth-roles.ts` (testables, sans `server-only`).
-- Paramètres : une page à sections (`/parametres?onglet=general|strategies|catalogue|equipe|integrations`,
+- Paramètres : une page à sections (`/parametres?onglet=salle|reservations|strategies|accueil|suivi|catalogue|equipe|integrations`,
   navigation verticale `SettingsNav` avec une phrase d'aide) ; une nouvelle section de réglages y
-  devient une section, pas une entrée de menu.
+  devient une section, pas une entrée de menu. Configuration lue par `getGymConfig`
+  (`lib/settings.ts` : identité, logo, règles, réglages internes, horaires), mémorisée par requête.
+- **Kit de champs** (Watermelon recomposé sur Radix, jamais installé depuis son registre) :
+  `components/forms/` — `Combobox` (simple ou multiple, groupes, pastille ou avatar, « Créer »,
+  recherche sans accents), `DateField` / `DateRangeField` (raccourcis `dateRangePreset`) /
+  `DateTimeField` / `MonthPicker` (dates civiles « AAAA-MM-JJ » de la salle), `TagInput`
+  (`tag_suggestions`), `TextareaWithCount`, `WeeklySlotsEditor` ; `RowActionsMenu`, `SegmentMeter`,
+  `CoachStack`, `KpiCard` (tendance `trendChange`, `KpiCardSkeleton`). Recherche d'adhérents au fil
+  de la frappe : `useMemberSearch`. Règles de reprise : imports `@/components/ui/*`, icônes lucide
+  `aria-hidden`, rôles sémantiques (ni couleur brute ni `dark:`), textes par `t()`, focus visible,
+  cibles de 40 px en `pointer-coarse:`, `tabular-nums`, jamais `transition-all`.
 - Accueil (`app/(app)/page.tsx`) orienté action, par rôle : brief du jour (gérant), Opérations,
-  Clients, Finance. Lectures `today_trials`, `crm_todo`, `unpaid_members` ; trous de permanence par
-  `deskWindow` / `uncoveredIntervals` (`packages/shared/src/desk.ts`).
+  Clients, Finance — blocs affichés et ordonnés par rôle (`homeBlocksFor`). Lectures `today_trials`,
+  `crm_todo` (`getCrmTodo`, mémorisé), `unpaid_members` ; trous de permanence par `deskWindows`
+  (horaires d'ouverture du jour, sinon séances ± marge) / `uncoveredIntervals`
+  (`packages/shared/src/desk.ts`).
 - **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
   faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
   de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
@@ -241,6 +275,11 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Vercel : le framework est fixé dans `apps/backoffice/vercel.json` ; les variables
   `NEXT_PUBLIC_*` ne doivent pas être marquées « Sensitive ».
 - `BRIEF.md` est exclu de Prettier (document rédigé à la main).
+- Deux versions de `@types/react` coexistent (19.3 pour le back office, 19.2 imposée par Expo pour
+  le mobile) et pnpm remonte l'une ou l'autre dans `node_modules/.pnpm/node_modules`, d'où les
+  types de `next` lisent `react`. `apps/backoffice/tsconfig.json` fixe donc `react` / `react-dom`
+  sur les types du back office (`paths`) : sans cela, la CI peut échouer (« Two different types
+  with this name exist ») alors que le poste local passe.
 - Docker en session cloud : `pnpm docker:start` gère le `docker.pid` périmé laissé par un
   redémarrage du conteneur. Après un redémarrage, certains conteneurs Supabase (Realtime) peuvent
   manquer : `supabase stop` puis `supabase start`.

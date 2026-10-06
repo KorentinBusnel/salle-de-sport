@@ -928,6 +928,7 @@ export type Database = {
           id: string;
           is_active: boolean;
           name: string;
+          position: number;
           updated_at: string;
         };
         Insert: {
@@ -940,6 +941,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name: string;
+          position?: number;
           updated_at?: string;
         };
         Update: {
@@ -952,6 +954,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name?: string;
+          position?: number;
           updated_at?: string;
         };
         Relationships: [
@@ -1012,6 +1015,64 @@ export type Database = {
           },
         ];
       };
+      gym_closures: {
+        Row: {
+          created_at: string;
+          day: string;
+          gym_id: string;
+          id: string;
+          label: string;
+        };
+        Insert: {
+          created_at?: string;
+          day: string;
+          gym_id: string;
+          id?: string;
+          label: string;
+        };
+        Update: {
+          created_at?: string;
+          day?: string;
+          gym_id?: string;
+          id?: string;
+          label?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_closures_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gym_private_settings: {
+        Row: {
+          gym_id: string;
+          settings: NonNullable<Json>;
+          updated_at: string;
+        };
+        Insert: {
+          gym_id: string;
+          settings?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Update: {
+          gym_id?: string;
+          settings?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_private_settings_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: true;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gym_roles: {
         Row: {
           created_at: string;
@@ -1055,8 +1116,12 @@ export type Database = {
         Row: {
           address: string | null;
           created_at: string;
+          email: string | null;
           id: string;
+          logo_path: string | null;
           name: string;
+          opening_hours: NonNullable<Json>;
+          phone: string | null;
           settings: NonNullable<Json>;
           slug: string;
           timezone: string;
@@ -1065,8 +1130,12 @@ export type Database = {
         Insert: {
           address?: string | null;
           created_at?: string;
+          email?: string | null;
           id?: string;
+          logo_path?: string | null;
           name: string;
+          opening_hours?: NonNullable<Json>;
+          phone?: string | null;
           settings?: NonNullable<Json>;
           slug: string;
           timezone?: string;
@@ -1075,8 +1144,12 @@ export type Database = {
         Update: {
           address?: string | null;
           created_at?: string;
+          email?: string | null;
           id?: string;
+          logo_path?: string | null;
           name?: string;
+          opening_hours?: NonNullable<Json>;
+          phone?: string | null;
           settings?: NonNullable<Json>;
           slug?: string;
           timezone?: string;
@@ -2118,6 +2191,15 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      nav_counts: {
+        Args: { p_gym_id: string };
+        Returns: {
+          prospects: number;
+          trials_to_call: number;
+          unanswered: number;
+          unpaid: number;
+        }[];
+      };
       preview_template: {
         Args: { p_body: string; p_gym_id: string; p_member_id?: string; p_subject: string };
         Returns: {
@@ -2134,6 +2216,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      reorder_disciplines: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
       reset_attendance: {
         Args: { p_booking_id: string };
         Returns: {
@@ -2325,6 +2408,13 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      tag_suggestions: {
+        Args: { p_gym_id: string; p_limit?: number; p_query?: string };
+        Returns: {
+          tag: string;
+          uses: number;
+        }[];
+      };
       team_members: {
         Args: { p_gym_id: string };
         Returns: {
@@ -2362,6 +2452,10 @@ export type Database = {
           member_id: string;
           plan: string;
         }[];
+      };
+      update_gym_settings: {
+        Args: { p_gym_id: string; p_private?: Json; p_settings?: Json };
+        Returns: undefined;
       };
       update_session: {
         Args: { p_changes: Json; p_scope?: string; p_session_id: string };

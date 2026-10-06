@@ -23,11 +23,14 @@ export function DeskDay({
   gaps,
   team,
   manager,
+  defaultSlot,
   compact = false,
 }: {
   dayKey: string;
   shifts: DeskShiftView[];
   gaps: DeskGapView[];
+  /** Créneau proposé pour une nouvelle permanence (réglage de la salle). */
+  defaultSlot: { start: string; end: string };
   team: TeamOption[];
   manager: boolean;
   compact?: boolean | undefined;
@@ -115,7 +118,7 @@ export function DeskDay({
         <li>
           <DeskShiftDialog
             team={team}
-            draft={{ date: dayKey, start: "09:00", end: "12:00" }}
+            draft={{ date: dayKey, ...defaultSlot }}
             trigger={
               <button
                 type="button"

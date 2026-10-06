@@ -64,6 +64,7 @@ export const BOOKING_ERROR_CODES = [
   "strategy_disabled",
   "invalid_amount",
   "reason_required",
+  "invalid_settings",
   "insufficient_credits",
   "invalid_transition",
   "invalid_input",

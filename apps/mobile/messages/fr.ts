@@ -153,6 +153,7 @@ export const fr = {
     not_team_member: "Personne hors de l'équipe.",
     invalid_amount: "Montant invalide.",
     reason_required: "Motif obligatoire.",
+    invalid_settings: "Réglages invalides.",
     insufficient_credits: "Crédits insuffisants.",
     invalid_transition: "Changement de statut impossible.",
     invalid_input: "Informations incomplètes.",

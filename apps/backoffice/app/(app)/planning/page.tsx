@@ -1,6 +1,8 @@
 import {
   coachesLabel,
-  deskWindow,
+  deskWindows,
+  openingIntervals,
+  openingSpan,
   sessionPhase,
   uncoveredIntervals,
   zonedDateKey,
@@ -35,6 +37,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTeamOptions } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import { layoutDay } from "@/lib/week-layout";
+import { getGymConfig } from "@/lib/settings";
 import { updateSessionField } from "./[id]/actions";
 import { createSessionAt, moveSession, previewMove } from "./move-actions";
 
@@ -112,7 +115,7 @@ export default async function PlanningPage({
 
   // Permanences à l'accueil de la semaine (toute l'équipe les voit, le gérant les planifie).
   const manager = isManagerRole(context.role);
-  const [{ data: shiftRows }, team] = await Promise.all([
+  const [{ data: shiftRows }, team, config] = await Promise.all([
     supabase
       .from("desk_shifts")
       .select(
@@ -123,6 +126,7 @@ export default async function PlanningPage({
       .gt("ends_at", week.start.toISOString())
       .order("starts_at"),
     manager ? getTeamOptions(context) : [],
+    getGymConfig(context.gym.id),
   ]);
   const clock = (date: Date | string) => format.time(date);
   const deskFor = (dayKey: string) => {
@@ -141,10 +145,22 @@ export default async function PlanningPage({
         end: clock(row.ends_at),
         note: row.note,
       })),
-      gaps: uncoveredIntervals(deskWindow(scheduledThatDay), dayShifts).map((gap) => ({
+      // Présence attendue : horaires d'ouverture du jour, sinon séances ± marge (réglages).
+      gaps: uncoveredIntervals(
+        deskWindows(scheduledThatDay, {
+          opening: openingIntervals(config.openingHours, dayKey, tz),
+          marginMinutes: config.private.desk_margin_minutes,
+        }),
+        dayShifts,
+        config.private.desk_min_gap_minutes,
+      ).map((gap) => ({
         start: clock(gap.start),
         end: clock(gap.end),
       })),
+      defaultSlot: {
+        start: config.private.desk_default_start,
+        end: config.private.desk_default_end,
+      },
     };
   };
 
@@ -182,8 +198,16 @@ export default async function PlanningPage({
       ),
     ),
   ];
-  const firstHour = Math.min(7, ...sessions.map((s) => Math.floor(s.startMinute / 60)));
-  const lastHour = Math.max(21, ...sessions.map((s) => Math.ceil(s.endMinute / 60)));
+  // Grille : horaires d'ouverture de la semaine (7 h – 21 h sans horaires), étendue aux séances.
+  const span = openingSpan(config.openingHours);
+  const firstHour = Math.min(
+    span ? Math.floor(span.first / 60) : 7,
+    ...sessions.map((s) => Math.floor(s.startMinute / 60)),
+  );
+  const lastHour = Math.max(
+    span ? Math.ceil(span.last / 60) : 21,
+    ...sessions.map((s) => Math.ceil(s.endMinute / 60)),
+  );
   const gridHeight = (lastHour - firstHour) * 60 * PX_PER_MINUTE;
   const hours = Array.from({ length: lastHour - firstHour }, (_, i) => firstHour + i);
   const nowMinute = zonedMinutesOfDay(now, tz);
@@ -241,6 +265,7 @@ export default async function PlanningPage({
             .select("id, name")
             .eq("gym_id", context.gym.id)
             .eq("is_active", true)
+            .order("position")
             .order("name")
         ).data ?? []
       ).map((d) => ({ value: d.id, label: d.name }))

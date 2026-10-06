@@ -30,9 +30,10 @@ import {
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import { getGymSettings } from "@/lib/settings";
+import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+import { getCrmTodo } from "@/lib/nav-counts";
 import { adjustCredits, createMember, setMemberStatus } from "./actions";
 
 export const metadata: Metadata = { title: t("members.title") };
@@ -59,7 +60,9 @@ export default async function MembersPage({
   const params = await searchParams;
   const context = await requireRole(isFrontDeskRole);
   const manager = isManagerRole(context.role);
-  const settings = await getGymSettings(context.gym.id);
+  const config = await getGymConfig(context.gym.id);
+  const settings = config.settings;
+  const creditLimit = config.private.credit_adjust_max;
   // Stratégies de la salle : les actions désactivées ne sont pas proposées (la base refuse aussi).
   const canCreate = manager || settings.staff_can_create_members;
   const canSuspend = manager || settings.staff_can_suspend_members;
@@ -78,9 +81,7 @@ export default async function MembersPage({
       .eq("status", s);
   const todoKind = manager ? TODO_KINDS.find((k) => k === params.a_faire) : undefined;
   const todoIds = todoKind
-    ? ((await supabase.rpc("crm_todo", { p_gym_id: context.gym.id })).data?.find(
-        (row) => row.kind === todoKind,
-      )?.member_ids ?? [])
+    ? ((await getCrmTodo(context.gym.id)).find((row) => row.kind === todoKind)?.member_ids ?? [])
     : null;
   const [result, ...counts] = await Promise.all([
     todoIds
@@ -175,41 +176,44 @@ export default async function MembersPage({
       />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <nav
-          aria-label={t("members.status")}
-          className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1"
-        >
-          {filters.map((filter) => {
-            const active = filter.value === status;
-            return (
-              <Link
-                key={filter.label}
-                href={href({ statut: filter.value ?? "" })}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors pointer-coarse:py-2.5",
-                  active
-                    ? "bg-card font-medium text-foreground shadow-border"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {filter.label}
-                {filter.count !== undefined ? (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 text-xs tabular-nums",
-                      filter.value === "prospect" && filter.count > 0
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background",
-                    )}
-                  >
-                    {filter.count}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Défilement des onglets au téléphone sans élargir la colonne. */}
+        <div className="w-full min-w-0 overflow-x-auto lg:w-auto">
+          <nav
+            aria-label={t("members.status")}
+            className="flex w-fit gap-1 rounded-xl bg-muted p-1"
+          >
+            {filters.map((filter) => {
+              const active = filter.value === status;
+              return (
+                <Link
+                  key={filter.label}
+                  href={href({ statut: filter.value ?? "" })}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors pointer-coarse:py-2.5",
+                    active
+                      ? "bg-card font-medium text-foreground shadow-border"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {filter.label}
+                  {filter.count !== undefined ? (
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 text-xs tabular-nums",
+                        filter.value === "prospect" && filter.count > 0
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background",
+                      )}
+                    >
+                      {filter.count}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
         <form role="search" className="w-full lg:max-w-sm">
           {status ? <input type="hidden" name="statut" value={status} /> : null}
@@ -385,6 +389,7 @@ export default async function MembersPage({
                             balance={balance}
                             returnQuery={returnQuery}
                             canRemove={settings.manager_can_remove_credits}
+                            limit={creditLimit}
                             action={adjustCredits}
                           />
                         ) : null}

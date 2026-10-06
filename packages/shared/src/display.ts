@@ -57,3 +57,16 @@ export function occupancy(capacity: number, booked: number): number {
   if (capacity <= 0) return 0;
   return Math.min(1, Math.max(0, booked / capacity));
 }
+
+export type Trend = { direction: "up" | "down" | "flat"; ratio: number } | null;
+
+/**
+ * Variation d'un indicateur par rapport à la période précédente (`ratio` : 0,12 = +12 %).
+ * Pas de comparaison sans période précédente ou depuis zéro. Sous 0,5 % : stable.
+ */
+export function trendChange(current: number, previous: number | null | undefined): Trend {
+  if (previous === null || previous === undefined || previous === 0) return null;
+  const ratio = (current - previous) / Math.abs(previous);
+  if (Math.abs(ratio) < 0.005) return { direction: "flat", ratio: 0 };
+  return { direction: ratio > 0 ? "up" : "down", ratio };
+}

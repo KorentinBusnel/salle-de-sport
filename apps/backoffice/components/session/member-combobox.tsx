@@ -1,8 +1,8 @@
 "use client";
 
-import { MEMBER_STATUS_TONE, TONE_CLASSES, type MemberStatus } from "@salle/shared";
+import { MEMBER_STATUS_TONE, TONE_CLASSES } from "@salle/shared";
 import { CheckIcon, SearchIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Command,
@@ -13,18 +13,10 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Spinner } from "@/components/ui/spinner";
+import { useMemberSearch, type MemberHit } from "@/hooks/use-member-search";
 import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-export type MemberHit = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  status: MemberStatus;
-};
 
 /**
  * Recherche d'adhérent au fil de la frappe (nom complet, sans accents, téléphone) puis
@@ -42,42 +34,16 @@ export function MemberCombobox({
   full: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<MemberHit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { hits, loading, short } = useMemberSearch(query);
   const form = useRef<HTMLFormElement>(null);
   const memberInput = useRef<HTMLInputElement>(null);
   const excluded = new Set(excludeIds);
-
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) return;
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/adherents/recherche?q=${encodeURIComponent(q)}`, {
-          signal: controller.signal,
-        });
-        if (response.ok) setHits(((await response.json()) as { members: MemberHit[] }).members);
-      } catch {
-        // Requête annulée par une frappe plus récente.
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, 200);
-    return () => {
-      controller.abort();
-      window.clearTimeout(timer);
-    };
-  }, [query]);
 
   function book(member: MemberHit) {
     if (!memberInput.current || !form.current) return;
     memberInput.current.value = member.id;
     form.current.requestSubmit();
   }
-
-  const short = query.trim().length < 2;
 
   return (
     <div className="grid gap-2">

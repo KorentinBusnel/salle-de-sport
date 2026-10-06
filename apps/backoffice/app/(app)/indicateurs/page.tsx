@@ -117,7 +117,7 @@ export default async function KpisPage({
                 </Button>
               ))}
             </ButtonGroup>
-            <form className="flex items-center gap-2" aria-label={t("kpis.custom")}>
+            <form className="flex flex-wrap items-center gap-2" aria-label={t("kpis.custom")}>
               <Input
                 type="date"
                 name="du"

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  dateRangePreset,
+  shiftDateKey,
   monthRange,
   zonedInstant,
   zonedDateKey,
@@ -125,5 +127,38 @@ describe("zonedInstant", () => {
     expect(zonedInstant("2026-03-29", 9 * 60, PARIS).toISOString()).toBe(
       "2026-03-29T07:00:00.000Z",
     );
+  });
+});
+
+describe("shiftDateKey / dateRangePreset", () => {
+  it("décale une date civile, y compris d'un mois et d'une année à l'autre", () => {
+    expect(shiftDateKey("2026-10-05", -6)).toBe("2026-09-29");
+    expect(shiftDateKey("2026-12-31", 1)).toBe("2027-01-01");
+    expect(shiftDateKey("2028-03-01", -1)).toBe("2028-02-29");
+    // Changement d'heure : sans effet sur une date civile.
+    expect(shiftDateKey("2026-10-24", 2)).toBe("2026-10-26");
+  });
+
+  it("raccourcis bornes incluses", () => {
+    expect(dateRangePreset("last7", "2026-10-05")).toEqual({
+      from: "2026-09-29",
+      to: "2026-10-05",
+    });
+    expect(dateRangePreset("last30", "2026-10-05")).toEqual({
+      from: "2026-09-06",
+      to: "2026-10-05",
+    });
+    expect(dateRangePreset("thisMonth", "2026-10-05")).toEqual({
+      from: "2026-10-01",
+      to: "2026-10-05",
+    });
+    expect(dateRangePreset("lastMonth", "2026-01-15")).toEqual({
+      from: "2025-12-01",
+      to: "2025-12-31",
+    });
+    expect(dateRangePreset("thisYear", "2026-10-05")).toEqual({
+      from: "2026-01-01",
+      to: "2026-10-05",
+    });
   });
 });

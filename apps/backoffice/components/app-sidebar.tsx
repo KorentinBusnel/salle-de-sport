@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useTransition, type ReactNode } from "react";
+import { LinkPending } from "@/components/link-pending";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,13 +40,14 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
 import { initials } from "@/lib/format";
+import type { BadgeKey } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
 
 const ICONS = {
@@ -64,7 +67,7 @@ const ICONS = {
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof ICONS;
-export type NavItem = { href: string; label: string; icon: NavIcon; badge?: number };
+export type NavItem = { href: string; label: string; icon: NavIcon; badge?: BadgeKey };
 export type NavGroup = { label: string; items: NavItem[] };
 
 /** Entrée active : celle dont le chemin est le plus long préfixe (« Modèles » ≠ « Planning »). */
@@ -78,13 +81,18 @@ export function activeHref(pathname: string, hrefs: string[]): string | undefine
 
 export function AppSidebar({
   gymName,
+  gymLogoUrl,
   displayName,
   roleLabel,
   groups,
   footer,
+  badges,
   signOut,
 }: {
+  /** Pastilles rendues côté serveur (sous Suspense), par compteur. */
+  badges: Partial<Record<BadgeKey, ReactNode>>;
   gymName: string;
+  gymLogoUrl: string | null;
   displayName: string;
   roleLabel: string;
   groups: NavGroup[];
@@ -98,6 +106,7 @@ export function AppSidebar({
     ...footer.map((item) => item.href),
   ]);
   const close = () => isMobile && setOpenMobile(false);
+  const [signingOut, startSignOut] = useTransition();
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -106,9 +115,18 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/" onClick={close}>
-                <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-                  {initials(gymName)}
-                </span>
+                <Avatar className="size-8 rounded-lg">
+                  {gymLogoUrl ? (
+                    <AvatarImage
+                      src={gymLogoUrl}
+                      alt=""
+                      className="rounded-[inherit] object-contain"
+                    />
+                  ) : null}
+                  <AvatarFallback className="rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
+                    {initials(gymName)}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{gymName}</span>
                   <span className="truncate text-xs text-muted-foreground">{t("app.title")}</span>
@@ -131,6 +149,7 @@ export function AppSidebar({
                     item={item}
                     active={item.href === active}
                     onNavigate={close}
+                    badge={item.badge ? badges[item.badge] : null}
                   />
                 ))}
               </SidebarMenu>
@@ -140,8 +159,6 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Formulaire hors du menu : la fermeture du menu ne le démonte pas. */}
-        <form id="signout" action={signOut} />
         {footer.length ? (
           <SidebarMenu className="border-t pt-2">
             {footer.map((item) => (
@@ -184,11 +201,17 @@ export function AppSidebar({
                   <span className="block truncate text-xs text-muted-foreground">{roleLabel}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" asChild>
-                  <button type="submit" form="signout" className="w-full">
-                    <LogOutIcon />
-                    {t("nav.signOut")}
-                  </button>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={signingOut}
+                  onSelect={(event) => {
+                    // Menu gardé ouvert : l'état d'attente reste visible jusqu'à la redirection.
+                    event.preventDefault();
+                    startSignOut(() => signOut());
+                  }}
+                >
+                  {signingOut ? <Spinner /> : <LogOutIcon />}
+                  {signingOut ? t("nav.signingOut") : t("nav.signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -204,10 +227,12 @@ function NavLink({
   item,
   active,
   onNavigate,
+  badge,
 }: {
   item: NavItem;
   active: boolean;
   onNavigate: () => void;
+  badge?: ReactNode;
 }) {
   const Icon = ICONS[item.icon];
   return (
@@ -218,19 +243,18 @@ function NavLink({
         tooltip={item.label}
         className="pointer-coarse:h-10"
       >
-        <Link href={item.href} aria-current={active ? "page" : undefined} onClick={onNavigate}>
+        <Link
+          href={item.href}
+          aria-current={active ? "page" : undefined}
+          onClick={onNavigate}
+          transitionTypes={["nav"]}
+        >
           <Icon />
           <span>{item.label}</span>
+          <LinkPending className="ml-auto size-1.5 shrink-0" />
         </Link>
       </SidebarMenuButton>
-      {item.badge ? (
-        <SidebarMenuBadge
-          className="bg-primary text-primary-foreground tabular-nums peer-data-active/menu-button:text-primary-foreground"
-          aria-label={t("nav.badge", { count: item.badge })}
-        >
-          {item.badge}
-        </SidebarMenuBadge>
-      ) : null}
+      {badge}
     </SidebarMenuItem>
   );
 }

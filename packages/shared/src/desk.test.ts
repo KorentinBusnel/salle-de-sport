@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deskShiftInputSchema, deskWindow, uncoveredIntervals } from "./desk.ts";
+import { deskShiftInputSchema, deskWindow, deskWindows, uncoveredIntervals } from "./desk.ts";
 
 const iso = (h: number, m = 0) => new Date(Date.UTC(2030, 0, 15, h, m)).toISOString();
 const hours = (intervals: { start: Date; end: Date }[]) =>
@@ -32,6 +32,23 @@ describe("permanences à l'accueil", () => {
   it("toute la plage est un trou sans permanence ; rien sans séance", () => {
     expect(hours(uncoveredIntervals(deskWindow(sessions), []))).toEqual(["06:30-19:00"]);
     expect(uncoveredIntervals(null, [])).toEqual([]);
+  });
+
+  it("horaires d'ouverture : plages du jour ; marge et écart minimal réglables", () => {
+    const sessions = [{ starts_at: iso(9), ends_at: iso(10) }];
+    const opening = [
+      { start: new Date(iso(16)), end: new Date(iso(21)) },
+      { start: new Date(iso(7)), end: new Date(iso(13)) },
+    ];
+    expect(hours(deskWindows(sessions, { opening }))).toEqual(["07:00-13:00", "16:00-21:00"]);
+    // Jour sans horaire mais avec séances : plage des séances, marge réglée.
+    expect(hours(deskWindows(sessions, { marginMinutes: 60 }))).toEqual(["08:00-11:00"]);
+    expect(deskWindows([], {})).toEqual([]);
+    const shifts = [{ starts_at: iso(7), ends_at: iso(12, 40) }];
+    const windows = deskWindows(sessions, { opening });
+    // Trou de 20 min : signalé avec l'écart par défaut (15 min), ignoré à 30 min.
+    expect(hours(uncoveredIntervals(windows, shifts))).toEqual(["12:40-13:00", "16:00-21:00"]);
+    expect(hours(uncoveredIntervals(windows, shifts, 30))).toEqual(["16:00-21:00"]);
   });
 
   it("valide la saisie : fin après le début", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { occupancy, sessionPhase } from "./display.ts";
+import { occupancy, sessionPhase, trendChange } from "./display.ts";
 
 describe("sessionPhase", () => {
   const start = new Date("2026-10-05T16:30:00Z");
@@ -18,5 +18,15 @@ describe("occupancy", () => {
     expect(occupancy(16, 8)).toBe(0.5);
     expect(occupancy(16, 20)).toBe(1);
     expect(occupancy(0, 3)).toBe(0);
+  });
+});
+
+describe("trendChange", () => {
+  it("variation relative, stable sous 0,5 %, rien sans référence", () => {
+    expect(trendChange(112, 100)).toEqual({ direction: "up", ratio: 0.12 });
+    expect(trendChange(80, 100)).toEqual({ direction: "down", ratio: -0.2 });
+    expect(trendChange(1002, 1000)).toEqual({ direction: "flat", ratio: 0 });
+    expect(trendChange(5, 0)).toBeNull();
+    expect(trendChange(5, null)).toBeNull();
   });
 });

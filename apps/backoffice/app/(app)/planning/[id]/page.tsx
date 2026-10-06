@@ -16,7 +16,6 @@ import {
   XIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -29,18 +28,11 @@ import { MemberCombobox } from "@/components/session/member-combobox";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageCrumb } from "@/components/page-crumb";
 import { isFrontDeskRole, isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters, initials } from "@/lib/format";
@@ -168,6 +160,7 @@ export default async function SessionPage({
           .select("id, name")
           .eq("gym_id", context.gym.id)
           .eq("is_active", true)
+          .order("position")
           .order("name")
           .then(({ data }) => (data ?? []).map((d) => ({ value: d.id, label: d.name }))),
       ])
@@ -210,22 +203,8 @@ export default async function SessionPage({
 
   return (
     <div className="grid gap-6">
+      <PageCrumb label={format.longDay(session.starts_at)} parentHref={backHref} />
       <PageHeader
-        breadcrumb={
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href={backHref}>{t("nav.planning")}</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{format.longDay(session.starts_at)}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        }
         title={t("session.heading", {
           discipline: session.disciplines?.name ?? "",
           start: format.time(session.starts_at),

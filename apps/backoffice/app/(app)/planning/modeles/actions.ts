@@ -75,6 +75,7 @@ export async function createTemplateRow(): Promise<{ error: MessageKey | null }>
     .select("id, default_duration_minutes, default_capacity")
     .eq("gym_id", context.gym.id)
     .eq("is_active", true)
+    .order("position")
     .order("name")
     .limit(1)
     .maybeSingle();

@@ -4,6 +4,7 @@ import { ArrowRightIcon, SearchIcon, SparklesIcon, UserIcon } from "lucide-react
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useMemberSearch } from "@/hooks/use-member-search";
 import { AssistantChat } from "@/components/assistant/assistant-chat";
 import {
   Command,
@@ -37,8 +38,6 @@ const SUGGESTIONS = [
   "assistant.suggestions.noShows",
 ] as const satisfies readonly MessageKey[];
 
-type Found = { id: string; first_name: string; last_name: string; email: string | null };
-
 /**
  * Champ unique de la barre du haut (⌘K / Ctrl+K ou « / ») : recherche d'adhérent au fil de la
  * frappe (accueil et gérant) et, pour le gérant, question à l'assistant dans la même palette.
@@ -47,7 +46,6 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [found, setFound] = useState<Found[]>([]);
   const [question, setQuestion] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const term = query.trim();
@@ -81,26 +79,12 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
     };
   }, [assistant]);
 
-  useEffect(() => {
-    if (!members || term.length < 2) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      fetch(`/api/adherents/recherche?q=${encodeURIComponent(term)}`, { signal: controller.signal })
-        .then((response) => response.json() as Promise<{ members: Found[] }>)
-        .then((data) => setFound(data.members))
-        .catch(() => {});
-    }, 180);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [members, term]);
+  const { hits: results } = useMemberSearch(query, { enabled: members && open });
 
   function reset(next: boolean) {
     setOpen(next);
     if (!next) {
       setQuery("");
-      setFound([]);
       setQuestion(null);
       setConversationId(null);
     }
@@ -111,7 +95,6 @@ export function CommandPalette({ members, assistant }: { members: boolean; assis
   }
 
   const placeholder = t(assistant ? "topbar.searchOrAsk" : "topbar.searchPlaceholder");
-  const results = term.length >= 2 ? found : [];
 
   return (
     <>

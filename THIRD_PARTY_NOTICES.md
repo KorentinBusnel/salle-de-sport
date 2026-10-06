@@ -8,6 +8,12 @@ Le langage visuel du back office et de l'app mobile s'inspire de
 - compositions de dashboards (barre latérale « inset », cartes KPI, listes, pastilles de
   statut) recopiées puis adaptées dans `apps/backoffice/components` et `apps/backoffice/app` ;
 - guide de finitions `.claude/skills/make-interfaces-feel-better/` (copie sans modification).
+- composants du registre Watermelon (écrits pour Base UI) **recomposés à la main** sur les
+  primitives Radix, sans copie de fichier : `components/forms/` (combobox-1/3/4/6/8/10/11,
+  date-picker-2/3/10/11/12 et calendar-25, textarea-18, slot-picker), `components/settings/`
+  (switch-19), `components/data-table/row-actions-menu.tsx` (dropdown-menu-4),
+  `components/segment-meter.tsx` (widget-2), `components/kpi-card.tsx` (widget-9),
+  `components/coach-stack.tsx` (avatar-13/18), `lib/toast-undo.ts` (sonner-6, timed undo).
 
 Les primitives `apps/backoffice/components/ui` viennent du registre officiel shadcn/ui (MIT).
 

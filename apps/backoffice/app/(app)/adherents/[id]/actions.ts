@@ -1,9 +1,10 @@
 "use server";
 
 import { normalizeTags } from "@salle/shared";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
@@ -141,21 +142,42 @@ export async function bookFromProfile(formData: FormData) {
   done(path, error, data?.status === "waitlisted" ? "session.addedToWaitlist" : "session.booked");
 }
 
+const careNoteSchema = z.string().trim().max(500);
+
+async function writeCareNote(gymId: string, memberId: string, note: string) {
+  const supabase = await createClient();
+  const { error } = note
+    ? await supabase.from("member_care_notes").upsert({ member_id: memberId, gym_id: gymId, note })
+    : await supabase
+        .from("member_care_notes")
+        .delete()
+        .eq("member_id", memberId)
+        .eq("gym_id", gymId);
+  return error;
+}
+
 /** Note « à savoir » (santé, blessure…) : accueil et gérant ; vide = supprimée. */
 export async function saveCareNote(formData: FormData) {
   const context = await requireRole(isFrontDeskRole);
   const { id, path } = target(formData);
-  const note = z
-    .string()
-    .trim()
-    .max(500)
-    .safeParse(formData.get("careNote") ?? "");
+  const note = careNoteSchema.safeParse(formData.get("careNote") ?? "");
   if (!note.success) redirect(withFlash(path, { error: "memberProfile.careNoteTooLong" }));
-  const supabase = await createClient();
-  const { error } = note.data
-    ? await supabase
-        .from("member_care_notes")
-        .upsert({ member_id: id, gym_id: context.gym.id, note: note.data })
-    : await supabase.from("member_care_notes").delete().eq("member_id", id);
+  const error = await writeCareNote(context.gym.id, id, note.data);
   done(path, error, note.data ? "memberProfile.careNoteSaved" : "memberProfile.careNoteCleared");
+}
+
+/** Même note, modifiée sur place (accueil du jour) : pas de redirection. */
+export async function updateCareNote(input: {
+  memberId: string;
+  note: string;
+}): Promise<ActionResult> {
+  const context = await requireRole(isFrontDeskRole);
+  const memberId = z.guid().safeParse(input.memberId);
+  if (!memberId.success) return fail("common.unexpectedError");
+  const note = careNoteSchema.safeParse(input.note);
+  if (!note.success) return fail("memberProfile.careNoteTooLong");
+  const error = await writeCareNote(context.gym.id, memberId.data, note.data);
+  if (error) return fail(errorMessageKey(error));
+  refresh();
+  return ok(note.data ? "memberProfile.careNoteSaved" : "memberProfile.careNoteCleared");
 }

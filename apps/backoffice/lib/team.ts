@@ -1,9 +1,10 @@
 import "server-only";
+import { cache } from "react";
 import type { TeamContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 /** Équipe de la salle (coach, accueil, gérant) pour les permanences : gérant uniquement. */
-export async function getTeamOptions(context: TeamContext) {
+export const getTeamOptions = cache(async (context: TeamContext) => {
   const supabase = await createClient();
   const { data } = await supabase.rpc("team_members", { p_gym_id: context.gym.id });
   return (data ?? [])
@@ -13,4 +14,4 @@ export async function getTeamOptions(context: TeamContext) {
       name: [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email || "—",
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "fr"));
-}
+});

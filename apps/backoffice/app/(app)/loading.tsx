@@ -1,12 +1,12 @@
-import { CardsSkeleton, HeaderSkeleton, PageSkeleton } from "@/components/skeletons";
+import { HeaderSkeleton, PageSkeleton } from "@/components/skeletons";
+import { HomeSectionSkeleton } from "@/components/today/home-section";
 
-/** Accueil : brief, quatre compteurs, trois colonnes d'actions. */
+/** Accueil : titre, puis le bloc Opérations (indicateurs, deux cartes, séances du jour). */
 export default function Loading() {
   return (
     <PageSkeleton>
-      <HeaderSkeleton />
-      <CardsSkeleton />
-      <CardsSkeleton count={3} className="xl:grid-cols-3" height="h-72" />
+      <HeaderSkeleton actions={1} />
+      <HomeSectionSkeleton kpis={4} cards={2} list className="lg:grid-cols-2" />
     </PageSkeleton>
   );
 }

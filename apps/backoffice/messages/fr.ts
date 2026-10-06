@@ -51,6 +51,8 @@ export const fr = {
     loading: "Chargement",
     commandTitle: "Recherche",
     commandDescription: "Tapez pour rechercher.",
+    showMore: "{count, plural, one {Voir 1 autre} other {Voir les # autres}}",
+    showLess: "Réduire",
   },
   forms: {
     choose: "Choisir…",
@@ -1299,6 +1301,7 @@ export const fr = {
   },
   today: {
     greeting: "Bonjour {name}, {actions}",
+    greetingShort: "Bonjour {name}",
     actions:
       "{count, plural, =0 {rien d'urgent aujourd'hui} one {# action vous attend} other {# actions vous attendent}}",
     openPlanning: "Ouvrir le planning",
@@ -1309,17 +1312,19 @@ export const fr = {
     operations: "Opérations",
     dayPlanning: "Planning du jour",
     fill: "Taux de remplissage",
-    emptiest: "{discipline} {time} : {booked} / {capacity} places réservées.",
-    fillPrompt:
-      "Prépare une relance pour remplir la séance de {discipline} de {time} (id {id}, {booked} inscrits sur {capacity}) auprès des habitués de cette discipline qui n'ont pas réservé cette semaine.",
-    fillAction: "Relancer les habitués",
-    openSession: "Voir la séance",
+    lowFill: "Peu remplie",
+    newcomersKpi: "Nouveaux venus",
+    newcomersKpiHint: "Essais et premières séances du jour.",
     trials: "Focus cours d'essai",
     trialsCount: "{count, plural, one {# nouveau} other {# nouveaux}}",
     trialsEmpty: "Aucun essai ni nouveau venu aujourd'hui.",
     trial: "essai",
     visit: "{count, plural, one {1re séance} other {#e séance}}",
     noteVisible: "visible du coach",
+    careNoteAdd: "Ajouter une note « à savoir » pour {name}",
+    careNoteEdit: "Modifier la note « à savoir » de {name}",
+    careNoteTitle: "À savoir sur {name}",
+    careNoteClear: "Supprimer la note",
     desk: "Permanence à l'accueil",
     deskEmpty: "Aucune séance aujourd'hui : pas de permanence attendue.",
     deskGap: "À couvrir",
@@ -1357,6 +1362,26 @@ export const fr = {
     billsHint:
       "Les factures fournisseurs et leurs échéances apparaîtront ici une fois Pennylane branché.",
     connect: "Voir les intégrations",
+    closures: {
+      title:
+        "{count, plural, one {Des séances sont prévues un jour de fermeture} other {Des séances sont prévues des jours de fermeture}}",
+      sessions: "{count, plural, one {# séance prévue} other {# séances prévues}}",
+      hint: "Rien n'est bloqué : annulez ou déplacez ces séances depuis le planning si la salle reste fermée.",
+    },
+    setup: {
+      title: "Mise en route de la salle",
+      hint: "Quelques réglages pour que l'équipe et les adhérents aient tout ce qu'il faut.",
+      progress: "{done} sur {total}",
+      done: "fait",
+      steps: {
+        identity: "Renseigner l'adresse et un contact",
+        logo: "Ajouter le logo",
+        hours: "Saisir les horaires d'ouverture",
+        disciplines: "Créer les disciplines",
+        templates: "Programmer les cours récurrents",
+        team: "Ajouter les membres de l'équipe",
+      },
+    },
   },
   desk: {
     addTitle: "Ajouter une permanence",
@@ -1406,6 +1431,5 @@ export const fr = {
     },
     places: "{booked} / {capacity}",
     waitlist: "+{count} en attente",
-    loadError: "Impossible de charger les séances du jour. Réessayez dans un instant.",
   },
 } as const;

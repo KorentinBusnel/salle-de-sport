@@ -13,6 +13,12 @@ export function gymFormatters(timeZone: string) {
     month: "short",
     year: "numeric",
   });
+  const civilDay = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
   return {
     time: (date: Date | string) => time.format(new Date(date)),
     longDay: (date: Date | string) => capitalize(longDay.format(new Date(date))),
@@ -22,6 +28,8 @@ export function gymFormatters(timeZone: string) {
     dateTime: (date: Date | string) => dateTime.format(new Date(date)),
     /** Date civile « AAAA-MM-JJ » (sans heure) : « 5 oct. 2026 ». */
     dateKey: (key: string) => civil.format(new Date(`${key}T12:00:00Z`)),
+    /** Date civile « AAAA-MM-JJ » en toutes lettres : « lundi 12 octobre ». */
+    dayKey: (key: string) => civilDay.format(new Date(`${key}T12:00:00Z`)),
   };
 }
 

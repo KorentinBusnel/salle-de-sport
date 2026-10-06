@@ -25,7 +25,7 @@ export function TagFilter({
       onChange={(next) => set({ tag: next })}
       clearable
       placeholder={t("members.tagFilter")}
-      className="w-full sm:w-48"
+      className="min-w-0 flex-1 sm:w-48 sm:flex-none"
     />
   );
 }

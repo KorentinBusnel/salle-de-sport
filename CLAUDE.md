@@ -108,6 +108,18 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - De même, créer une fiche, changer son statut, ajouter ou retirer des crédits : **uniquement via**
   `create_member`, `set_member_status`, `adjust_credits` (pas d'insert sur `members` ni
   `credit_ledger`, `update` limité aux colonnes de coordonnées).
+- **Facturation** (`billing_core`) : ventes et abonnements suivis à la main **uniquement via**
+  `record_manual_sale`, `renew_manual_subscription`, `cancel_manual_subscription` (droits :
+  `private.can_sell`, gérant ou accueil avec la stratégie `staff_can_sell`) ; prix par
+  `price_quote` / `private.resolve_promo` (codes `promo_codes`, offres `promo_code_plans`).
+  **Crédits par lots** : `credit_ledger.lot_id` (= `id` pour un lot) posé par le trigger
+  `credit_ledger_assign_lot` ; restant `private.lot_remaining`, crédits utilisables pour une
+  discipline `private.credits_for`, accès `private.seat_denial` / `can_take_seat(member, session)`
+  (`plan_discipline` si l'offre ne couvre pas la discipline, `plans.all_disciplines` sinon
+  `plan_disciplines`) ; expiration et échéances manuelles par le job `billing-daily`. Paiements :
+  `payments.plan_id` / `promo_code_id` / `recorded_by`, export `export_payments` (journalisé).
+  Affichage des prix : `formatMoney` / `formatPrice` (`packages/shared/src/billing.ts`), tons
+  `PAYMENT_STATUS_TONE`.
 - **Stratégies** de la salle (`gyms.settings`, miroir `gymSettingsSchema`) : lues en SQL par
   `private.gym_setting_int` / `gym_setting_bool`, désactivées par défaut. Le back office masque
   une action désactivée (`getGymSettings`, `lib/settings.ts`), la base la refuse
@@ -271,6 +283,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `SelectionProvider` / `RowCheckbox` / `AllCheckbox` (remise à zéro par `resetKey`). Filtres
   portés par l'URL : `useUrlState` ; sous `UrlStateProvider`, les filtres d'une page partagent
   l'attente et `PendingRegion` grise le contenu périmé.
+- Facturation : section Paramètres › Offres (`OffersSection`, actions `offres-actions.ts`,
+  `EditableCell` `money` / `decimals` / `zeroLabel` / `emptyLabel`), fiche adhérent onglet
+  « Paiements » et `SaleSheet` (prix au fil de la saisie par `app/api/ventes/devis`),
+  `SubscriptionActions`, page `/paiements` (`PaymentsFilters`, export `app/api/paiements/export`).
 - Emailing : `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
   `trigger`), actions `saveCampaign` / `sendCampaignNow` / `setCampaignSchedule` /
   `deleteCampaignQuick` (`ActionResult`) ; audience par `app/api/segments/[id]/audience`, aperçu

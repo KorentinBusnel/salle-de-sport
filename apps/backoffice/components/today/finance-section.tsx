@@ -15,14 +15,17 @@ import type { TeamContext } from "@/lib/auth";
 import { aiEnv } from "@/lib/env.server";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import { getTodayFrame, getUnpaid } from "@/lib/today";
+import { getRenewals, getTodayFrame, getUnpaid } from "@/lib/today";
 
 const money = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
-/** Finance (gérant) : impayés clients, factures à payer (Pennylane, à brancher). */
+/**
+ * Finance (gérant) : impayés clients, abonnements suivis à la main à renouveler sous 7 jours,
+ * factures à payer (Pennylane, à brancher).
+ */
 export async function FinanceSection({ context }: { context: TeamContext }) {
   const frame = getTodayFrame(context);
-  const unpaid = await getUnpaid(context);
+  const [unpaid, renewals] = await Promise.all([getUnpaid(context), getRenewals(context)]);
   const configured = aiEnv().apiKey !== null;
   const format = gymFormatters(frame.tz);
   return (
@@ -90,6 +93,34 @@ export async function FinanceSection({ context }: { context: TeamContext }) {
             />
           )}
         </HomeCard>
+        {renewals.length ? (
+          <HomeCard title={t("today.renewals")}>
+            <ShowMore
+              label={t("today.renewals")}
+              className="grid gap-1"
+              items={renewals.map((row) => (
+                <li key={row.id} className="flex items-center gap-3 py-1.5">
+                  <span className="grid min-w-0 flex-1">
+                    <Link
+                      href={`/adherents/${row.member_id}?onglet=paiements`}
+                      className="truncate font-medium hover:underline"
+                    >
+                      {row.members?.first_name} {row.members?.last_name}
+                    </Link>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {row.plans?.name}
+                    </span>
+                  </span>
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {t("today.renewBy", {
+                      date: format.longDayInline(row.current_period_end ?? ""),
+                    })}
+                  </span>
+                </li>
+              ))}
+            />
+          </HomeCard>
+        ) : null}
         <HomeCard title={t("today.bills")}>
           <Empty className="rounded-lg border border-dashed p-6">
             <EmptyHeader>

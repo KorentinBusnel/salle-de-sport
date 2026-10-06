@@ -1,5 +1,6 @@
 "use client";
 
+import { formatMoney } from "@salle/shared";
 import { disciplineColors } from "@salle/ui";
 import { CalendarIcon, CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon } from "lucide-react";
 import {
@@ -77,6 +78,8 @@ type Common = {
     | undefined;
   disabled?: boolean | undefined;
   className?: string | undefined;
+  /** Texte d'une valeur vide (« Toutes » pour une liste sans choix). */
+  emptyLabel?: string | undefined;
 };
 
 type Props = Common &
@@ -96,6 +99,12 @@ type Props = Common &
         min: number;
         max: number;
         step?: number | undefined;
+        /** Décimales gardées (prix en euros : 2) ; entier par défaut. */
+        decimals?: number | undefined;
+        /** Montant en euros, affiché « 79 € » ou « 32,50 € » (l'unité suit). */
+        money?: boolean | undefined;
+        /** Libellé de la valeur 0 (« Sans » pour un engagement ou une limite). */
+        zeroLabel?: string | undefined;
       }
     | { kind: "time"; value: string }
     | { kind: "date"; value: string | null; clearable?: boolean | undefined }
@@ -174,7 +183,7 @@ export function EditableCell(props: Props) {
     pending && "opacity-70",
     props.className,
   );
-  const ariaLabel = `${props.label} : ${textValue(props, optimistic) || t("inline.empty")}${props.disabled ? "" : `, ${t("inline.edit")}`}`;
+  const ariaLabel = `${props.label} : ${textValue(props, optimistic) || props.emptyLabel || t("inline.empty")}${props.disabled ? "" : `, ${t("inline.edit")}`}`;
 
   const confirmDialog = (
     <AlertDialog open={confirmFor !== null} onOpenChange={(open) => !open && setConfirmFor(null)}>
@@ -403,6 +412,10 @@ const PALETTE = [
   "#9333ea",
 ] as const;
 
+function numberText(money: boolean | undefined, value: CellValue): string {
+  return money ? formatMoney(Math.round(Number(value) * 100)) : String(value);
+}
+
 /** Valeur lue par les lecteurs d'écran (nom accessible de la cellule). */
 function textValue(props: Props, value: CellValue): string {
   switch (props.kind) {
@@ -416,7 +429,8 @@ function textValue(props: Props, value: CellValue): string {
     case "date":
       return typeof value === "string" && value ? formatDateKey(value) : "";
     case "number":
-      return `${String(value)}${props.unit ? ` ${props.unit}` : ""}`;
+      if (props.zeroLabel && Number(value) === 0) return props.zeroLabel;
+      return `${numberText(props.money, value)}${props.unit ? ` ${props.unit}` : ""}`;
     default:
       return value === null ? "" : String(value);
   }
@@ -425,9 +439,11 @@ function textValue(props: Props, value: CellValue): string {
 function renderValue(props: Props, value: CellValue): ReactNode {
   switch (props.kind) {
     case "number":
+      if (props.zeroLabel && Number(value) === 0)
+        return <span className="text-muted-foreground">{props.zeroLabel}</span>;
       return (
         <span className="tabular-nums">
-          {String(value)}
+          {numberText(props.money, value)}
           {props.unit ? ` ${props.unit}` : ""}
         </span>
       );
@@ -455,7 +471,10 @@ function renderValue(props: Props, value: CellValue): ReactNode {
     }
     case "multi": {
       const values = (value as string[]) ?? [];
-      if (!values.length) return <span className="text-muted-foreground">{t("inline.none")}</span>;
+      if (!values.length)
+        return (
+          <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.none")}</span>
+        );
       return (
         <span className="flex flex-wrap gap-1">
           {values.map((v) => {
@@ -487,7 +506,7 @@ function renderValue(props: Props, value: CellValue): ReactNode {
       );
     default:
       return value === "" || value === null ? (
-        <span className="text-muted-foreground">{t("inline.empty")}</span>
+        <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.empty")}</span>
       ) : props.kind === "text" && props.multiline ? (
         <span className="line-clamp-2 whitespace-pre-line">{String(value)}</span>
       ) : (
@@ -521,7 +540,8 @@ function InlineInput({
         onCancel(byKeyboard);
         return;
       }
-      onCommit(Math.round(value), byKeyboard);
+      const factor = 10 ** (props.decimals ?? 0);
+      onCommit(Math.round(value * factor) / factor, byKeyboard);
       return;
     }
     if (props.kind === "text" && text.trim() === "") {
@@ -564,8 +584,11 @@ function InlineInput({
     <input
       autoFocus
       aria-label={props.label}
-      type={props.kind === "text" ? "text" : props.kind}
-      inputMode={props.kind === "number" ? "numeric" : undefined}
+      // Montant décimal : champ texte (la virgule est refusée par un champ « number » en anglais).
+      type={
+        props.kind === "text" || (props.kind === "number" && props.decimals) ? "text" : props.kind
+      }
+      inputMode={props.kind === "number" ? (props.decimals ? "decimal" : "numeric") : undefined}
       min={props.kind === "number" ? props.min : undefined}
       max={props.kind === "number" ? props.max : undefined}
       step={props.kind === "number" ? (props.step ?? 1) : props.kind === "time" ? 300 : undefined}

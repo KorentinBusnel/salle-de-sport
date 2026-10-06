@@ -1,4 +1,10 @@
-import { BOOKING_STATUS_TONE, MEMBER_STATUS_TONE } from "@salle/shared";
+import {
+  BOOKING_STATUS_TONE,
+  formatMoney,
+  formatPrice,
+  MEMBER_STATUS_TONE,
+  PAYMENT_STATUS_TONE,
+} from "@salle/shared";
 import {
   CalendarCheckIcon,
   MailIcon,
@@ -10,6 +16,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { SaleSheet } from "@/components/billing/sale-sheet";
+import { SubscriptionActions } from "@/components/billing/subscription-actions";
 import { Flash } from "@/components/flash";
 import { MemberSummary } from "@/components/assistant/member-summary";
 import { EditableCell } from "@/components/inline/editable-cell";
@@ -39,7 +47,7 @@ import { addNote, bookFromProfile, saveCareNote, updateMemberField } from "./act
 
 export const metadata: Metadata = { title: t("memberProfile.title") };
 
-const TABS = ["historique", "reservations", "profil"] as const;
+const TABS = ["historique", "reservations", "paiements", "profil"] as const;
 type Tab = (typeof TABS)[number];
 
 const CHANNEL_ICON = {
@@ -69,29 +77,46 @@ export default async function MemberProfilePage({
 
   const supabase = await createClient();
   // En-tête : fiche, note « à savoir », solde et abonnement (gérant), chargés ensemble.
-  const [{ data: member }, { data: careNote }, ledgerRes, subscriptionRes] = await Promise.all([
-    supabase
-      .from("members")
-      .select(
-        "id, first_name, last_name, email, phone, status, tags, acquisition_source, created_at, marketing_email_consent_at, marketing_whatsapp_consent_at, profiles(birth_date)",
-      )
-      .eq("id", id)
-      .eq("gym_id", context.gym.id)
-      .maybeSingle(),
-    supabase.from("member_care_notes").select("note, updated_at").eq("member_id", id).maybeSingle(),
-    manager
-      ? supabase.from("credit_ledger").select("delta, reason").eq("member_id", id)
-      : Promise.resolve({ data: [] as { delta: number; reason: string }[] }),
-    manager
-      ? supabase
-          .from("subscriptions")
-          .select("status, plans(name)")
-          .eq("member_id", id)
-          .in("status", ["active", "trialing", "past_due"])
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const canSell = manager || settings.staff_can_sell;
+  const [{ data: member }, { data: careNote }, ledgerRes, subscriptionRes, plansRes] =
+    await Promise.all([
+      supabase
+        .from("members")
+        .select(
+          "id, first_name, last_name, email, phone, status, tags, acquisition_source, created_at, marketing_email_consent_at, marketing_whatsapp_consent_at, profiles(birth_date)",
+        )
+        .eq("id", id)
+        .eq("gym_id", context.gym.id)
+        .maybeSingle(),
+      supabase
+        .from("member_care_notes")
+        .select("note, updated_at")
+        .eq("member_id", id)
+        .maybeSingle(),
+      manager
+        ? supabase.from("credit_ledger").select("delta, reason").eq("member_id", id)
+        : Promise.resolve({ data: [] as { delta: number; reason: string }[] }),
+      manager
+        ? supabase
+            .from("subscriptions")
+            .select("status, plans(name)")
+            .eq("member_id", id)
+            .in("status", ["active", "trialing", "past_due"])
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      canSell
+        ? supabase
+            .from("plans")
+            .select(
+              "id, name, type, price_cents, currency, billing_interval, audience, requires_proof",
+            )
+            .eq("gym_id", context.gym.id)
+            .eq("is_active", true)
+            .order("position")
+            .order("name")
+        : Promise.resolve({ data: [] }),
+    ]);
   if (!member) notFound();
   const name = `${member.first_name} ${member.last_name}`;
   const ledger = ledgerRes.data ?? [];
@@ -132,6 +157,21 @@ export default async function MemberProfilePage({
             ) : null}
             {member.status === "suspended" && canSuspend ? (
               <StatusButton memberId={member.id} name={name} to="active" />
+            ) : null}
+            {canSell ? (
+              <SaleSheet
+                memberId={member.id}
+                memberName={name}
+                hasSubscription={Boolean(subscription && subscription.status !== "past_due")}
+                plans={(plansRes.data ?? []).map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  price: formatPrice(p),
+                  type: p.type,
+                  audience: p.audience,
+                  requiresProof: p.requires_proof,
+                }))}
+              />
             ) : null}
             {manager ? (
               <CreditsDialog
@@ -195,6 +235,8 @@ export default async function MemberProfilePage({
       <Suspense key={tab} fallback={<TabSkeleton />}>
         {tab === "historique" ? (
           <HistoryTab context={context} memberId={member.id} path={path} tab={tab} />
+        ) : tab === "paiements" ? (
+          <BillingTab context={context} memberId={member.id} />
         ) : tab === "reservations" ? (
           <BookingsTab
             context={context}
@@ -213,6 +255,178 @@ export default async function MemberProfilePage({
           />
         )}
       </Suspense>
+    </div>
+  );
+}
+
+const SUBSCRIPTION_TONE = {
+  active: "success",
+  trialing: "brand",
+  past_due: "danger",
+  unpaid: "danger",
+  canceled: "neutral",
+  incomplete: "warning",
+  incomplete_expired: "neutral",
+  paused: "neutral",
+} as const;
+
+/**
+ * Abonnement et paiements (gérant) : abonnement en cours (période, engagement, renouvellement
+ * d'un abonnement suivi à la main), crédits par lot avec leur date d'expiration, paiements.
+ */
+async function BillingTab({ context, memberId }: { context: TeamContext; memberId: string }) {
+  const supabase = await createClient();
+  const format = gymFormatters(context.gym.timezone);
+  const [{ data: subs }, { data: ledger }, { data: payments }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select(
+        "id, status, started_at, current_period_end, commitment_ends_at, cancel_at, stripe_subscription_id, plans(name, price_cents, currency, billing_interval)",
+      )
+      .eq("member_id", memberId)
+      .order("started_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("credit_ledger")
+      .select("id, lot_id, delta, reason, expires_at, created_at, plans(name)")
+      .eq("member_id", memberId)
+      .order("created_at"),
+    supabase
+      .from("payments")
+      .select("id, amount_cents, currency, status, method, description, paid_at, created_at")
+      .eq("member_id", memberId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
+  const now = currentTime().getTime();
+  const lots = (ledger ?? [])
+    .filter((row) => row.lot_id === row.id)
+    .map((lot) => ({
+      ...lot,
+      remaining: (ledger ?? [])
+        .filter((row) => row.lot_id === lot.id)
+        .reduce((sum, row) => sum + row.delta, 0),
+    }))
+    .filter((lot) => lot.remaining > 0 && (!lot.expires_at || Date.parse(lot.expires_at) > now));
+  const current = (subs ?? []).find((s) => ["active", "trialing", "past_due"].includes(s.status));
+  const manual = current && !current.stripe_subscription_id;
+
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("billing.payments")}</CardTitle>
+          <CardDescription>{t("billing.paymentsHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="px-2">
+          {payments?.length ? (
+            <ul className="divide-y">
+              {payments.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-2 text-sm"
+                >
+                  <span className="w-28 text-muted-foreground tabular-nums">
+                    {format.dateTime(p.paid_at ?? p.created_at)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{p.description ?? "—"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t(`billing.methodLabel.${p.method}`)}
+                  </span>
+                  <StatusPill tone={PAYMENT_STATUS_TONE[p.status]}>
+                    {t(`billing.paymentStatus.${p.status}`)}
+                  </StatusPill>
+                  <span className="w-24 text-right font-medium tabular-nums">
+                    {formatMoney(p.amount_cents, p.currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-2 text-sm text-muted-foreground">{t("billing.noPayments")}</p>
+          )}
+        </CardContent>
+      </Card>
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("billing.subscription")}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm">
+            {current ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{current.plans?.name}</span>
+                  <StatusPill tone={SUBSCRIPTION_TONE[current.status]}>
+                    {t(`billing.subscriptionStatus.${current.status}`)}
+                  </StatusPill>
+                </div>
+                {current.plans ? (
+                  <p className="text-muted-foreground">{formatPrice(current.plans)}</p>
+                ) : null}
+                {current.current_period_end ? (
+                  <p>
+                    {t(current.cancel_at ? "billing.endsOn" : "billing.periodEnd", {
+                      date: format.longDayInline(current.current_period_end),
+                    })}
+                  </p>
+                ) : null}
+                {current.commitment_ends_at && Date.parse(current.commitment_ends_at) > now ? (
+                  <p className="text-muted-foreground">
+                    {t("billing.commitmentUntil", {
+                      date: format.longDayInline(current.commitment_ends_at),
+                    })}
+                  </p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {t(manual ? "billing.manualSubscription" : "billing.stripeSubscription")}
+                </p>
+                {manual ? (
+                  <SubscriptionActions
+                    subscriptionId={current.id}
+                    price={current.plans ? formatPrice(current.plans) : ""}
+                    canRenew={!current.cancel_at}
+                    canCancel={!current.cancel_at}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <p className="text-muted-foreground">{t("memberProfile.noSubscription")}</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("billing.lots")}</CardTitle>
+            <CardDescription>{t("billing.lotsHint")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {lots.length ? (
+              <ul className="grid gap-2 text-sm">
+                {lots.map((lot) => (
+                  <li key={lot.id} className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 truncate">
+                      {lot.plans?.name ?? t("billing.manualCredits")}
+                    </span>
+                    <span className="text-right tabular-nums">
+                      <span className="font-medium">
+                        {t("memberProfile.credits", { count: lot.remaining })}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {lot.expires_at
+                          ? t("billing.expiresOn", { date: format.longDayInline(lot.expires_at) })
+                          : t("billing.noExpiry")}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("billing.noLots")}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -146,6 +146,23 @@ export const getUnpaid = cache(async (context: TeamContext) => {
   return { rows, total: rows.reduce((sum, row) => sum + row.amount_cents, 0) };
 });
 
+/** Abonnements suivis à la main dont la période payée se termine dans les 7 jours (gérant). */
+export const getRenewals = cache(async (context: TeamContext) => {
+  const supabase = await createClient();
+  const now = currentTime();
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("id, member_id, current_period_end, members(first_name, last_name), plans(name)")
+    .eq("gym_id", context.gym.id)
+    .is("stripe_subscription_id", null)
+    .is("cancel_at", null)
+    .in("status", ["active", "trialing"])
+    .gt("current_period_end", now.toISOString())
+    .lte("current_period_end", new Date(now.getTime() + 7 * 86_400_000).toISOString())
+    .order("current_period_end");
+  return data ?? [];
+});
+
 /** Actions qui attendent l'utilisateur (titre de l'accueil). */
 export async function getActionCount(context: TeamContext): Promise<number> {
   const frame = getTodayFrame(context);

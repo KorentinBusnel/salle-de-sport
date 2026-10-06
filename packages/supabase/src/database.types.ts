@@ -758,9 +758,11 @@ export type Database = {
           expires_at: string | null;
           gym_id: string;
           id: string;
+          lot_id: string | null;
           member_id: string;
           note: string | null;
           payment_id: string | null;
+          plan_id: string | null;
           reason: Database["public"]["Enums"]["credit_reason"];
         };
         Insert: {
@@ -771,9 +773,11 @@ export type Database = {
           expires_at?: string | null;
           gym_id: string;
           id?: string;
+          lot_id?: string | null;
           member_id: string;
           note?: string | null;
           payment_id?: string | null;
+          plan_id?: string | null;
           reason: Database["public"]["Enums"]["credit_reason"];
         };
         Update: {
@@ -784,9 +788,11 @@ export type Database = {
           expires_at?: string | null;
           gym_id?: string;
           id?: string;
+          lot_id?: string | null;
           member_id?: string;
           note?: string | null;
           payment_id?: string | null;
+          plan_id?: string | null;
           reason?: Database["public"]["Enums"]["credit_reason"];
         };
         Relationships: [
@@ -805,6 +811,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "credit_ledger_lot_id_fkey";
+            columns: ["lot_id"];
+            isOneToOne: false;
+            referencedRelation: "credit_ledger";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "credit_ledger_member_id_gym_id_fkey";
             columns: ["member_id", "gym_id"];
             isOneToOne: false;
@@ -816,6 +829,13 @@ export type Database = {
             columns: ["payment_id", "gym_id"];
             isOneToOne: false;
             referencedRelation: "payments";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "credit_ledger_plan_id_gym_id_fkey";
+            columns: ["plan_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "plans";
             referencedColumns: ["id", "gym_id"];
           },
         ];
@@ -1456,6 +1476,9 @@ export type Database = {
           member_id: string;
           method: Database["public"]["Enums"]["payment_method"];
           paid_at: string | null;
+          plan_id: string | null;
+          promo_code_id: string | null;
+          recorded_by: string | null;
           status: Database["public"]["Enums"]["payment_status"];
           stripe_invoice_id: string | null;
           stripe_payment_intent_id: string | null;
@@ -1471,6 +1494,9 @@ export type Database = {
           member_id: string;
           method: Database["public"]["Enums"]["payment_method"];
           paid_at?: string | null;
+          plan_id?: string | null;
+          promo_code_id?: string | null;
+          recorded_by?: string | null;
           status: Database["public"]["Enums"]["payment_status"];
           stripe_invoice_id?: string | null;
           stripe_payment_intent_id?: string | null;
@@ -1486,6 +1512,9 @@ export type Database = {
           member_id?: string;
           method?: Database["public"]["Enums"]["payment_method"];
           paid_at?: string | null;
+          plan_id?: string | null;
+          promo_code_id?: string | null;
+          recorded_by?: string | null;
           status?: Database["public"]["Enums"]["payment_status"];
           stripe_invoice_id?: string | null;
           stripe_payment_intent_id?: string | null;
@@ -1498,6 +1527,27 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "members";
             referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "payments_plan_id_gym_id_fkey";
+            columns: ["plan_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "plans";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "payments_promo_code_id_gym_id_fkey";
+            columns: ["promo_code_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "promo_codes";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "payments_recorded_by_fkey";
+            columns: ["recorded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -1536,6 +1586,8 @@ export type Database = {
       };
       plans: {
         Row: {
+          all_disciplines: boolean;
+          audience: string | null;
           billing_interval: Database["public"]["Enums"]["billing_interval"] | null;
           commitment_months: number | null;
           created_at: string;
@@ -1546,7 +1598,9 @@ export type Database = {
           id: string;
           is_active: boolean;
           name: string;
+          position: number;
           price_cents: number;
+          requires_proof: boolean;
           stripe_price_id: string | null;
           stripe_product_id: string | null;
           type: Database["public"]["Enums"]["plan_type"];
@@ -1554,6 +1608,8 @@ export type Database = {
           validity_days: number | null;
         };
         Insert: {
+          all_disciplines?: boolean;
+          audience?: string | null;
           billing_interval?: Database["public"]["Enums"]["billing_interval"] | null;
           commitment_months?: number | null;
           created_at?: string;
@@ -1564,7 +1620,9 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name: string;
+          position?: number;
           price_cents: number;
+          requires_proof?: boolean;
           stripe_price_id?: string | null;
           stripe_product_id?: string | null;
           type: Database["public"]["Enums"]["plan_type"];
@@ -1572,6 +1630,8 @@ export type Database = {
           validity_days?: number | null;
         };
         Update: {
+          all_disciplines?: boolean;
+          audience?: string | null;
           billing_interval?: Database["public"]["Enums"]["billing_interval"] | null;
           commitment_months?: number | null;
           created_at?: string;
@@ -1582,7 +1642,9 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name?: string;
+          position?: number;
           price_cents?: number;
+          requires_proof?: boolean;
           stripe_price_id?: string | null;
           stripe_product_id?: string | null;
           type?: Database["public"]["Enums"]["plan_type"];
@@ -1643,6 +1705,92 @@ export type Database = {
           waiver_accepted_at?: string | null;
         };
         Relationships: [];
+      };
+      promo_code_plans: {
+        Row: {
+          gym_id: string;
+          plan_id: string;
+          promo_code_id: string;
+        };
+        Insert: {
+          gym_id: string;
+          plan_id: string;
+          promo_code_id: string;
+        };
+        Update: {
+          gym_id?: string;
+          plan_id?: string;
+          promo_code_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "promo_code_plans_plan_id_gym_id_fkey";
+            columns: ["plan_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "plans";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "promo_code_plans_promo_code_id_gym_id_fkey";
+            columns: ["promo_code_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "promo_codes";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
+      promo_codes: {
+        Row: {
+          code: string;
+          created_at: string;
+          ends_on: string | null;
+          gym_id: string;
+          id: string;
+          is_active: boolean;
+          kind: Database["public"]["Enums"]["promo_kind"];
+          max_redemptions: number | null;
+          starts_on: string | null;
+          stripe_coupon_id: string | null;
+          updated_at: string;
+          value: number;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          ends_on?: string | null;
+          gym_id: string;
+          id?: string;
+          is_active?: boolean;
+          kind: Database["public"]["Enums"]["promo_kind"];
+          max_redemptions?: number | null;
+          starts_on?: string | null;
+          stripe_coupon_id?: string | null;
+          updated_at?: string;
+          value: number;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          ends_on?: string | null;
+          gym_id?: string;
+          id?: string;
+          is_active?: boolean;
+          kind?: Database["public"]["Enums"]["promo_kind"];
+          max_redemptions?: number | null;
+          starts_on?: string | null;
+          stripe_coupon_id?: string | null;
+          updated_at?: string;
+          value?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "promo_codes_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       rooms: {
         Row: {
@@ -1945,6 +2093,31 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      cancel_manual_subscription: {
+        Args: { p_subscription_id: string };
+        Returns: {
+          cancel_at: string | null;
+          canceled_at: string | null;
+          commitment_ends_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          plan_id: string;
+          started_at: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          stripe_subscription_id: string | null;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "subscriptions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       cancel_session: {
         Args: { p_reason?: string; p_session_id: string };
         Returns: {
@@ -2089,6 +2262,20 @@ export type Database = {
           whatsapp_consent: boolean;
         }[];
       };
+      export_payments: {
+        Args: { p_from: string; p_gym_id: string; p_to: string };
+        Returns: {
+          amount_cents: number;
+          currency: string;
+          description: string;
+          member_name: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          paid_on: string;
+          plan_name: string;
+          promo_code: string;
+          status: Database["public"]["Enums"]["payment_status"];
+        }[];
+      };
       filter_members: {
         Args: { p_filters: Json; p_gym_id: string };
         Returns: {
@@ -2227,6 +2414,46 @@ export type Database = {
           subject: string;
         }[];
       };
+      price_quote: {
+        Args: { p_plan_id: string; p_promo_code?: string };
+        Returns: {
+          final_cents: number;
+          price_cents: number;
+          promo_code_id: string;
+        }[];
+      };
+      record_manual_sale: {
+        Args: {
+          p_member_id: string;
+          p_method: Database["public"]["Enums"]["payment_method"];
+          p_plan_id: string;
+          p_promo_code?: string;
+        };
+        Returns: {
+          amount_cents: number;
+          created_at: string;
+          currency: string;
+          description: string | null;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          paid_at: string | null;
+          plan_id: string | null;
+          promo_code_id: string | null;
+          recorded_by: string | null;
+          status: Database["public"]["Enums"]["payment_status"];
+          stripe_invoice_id: string | null;
+          stripe_payment_intent_id: string | null;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "payments";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       remove_team_role: {
         Args: {
           p_gym_id: string;
@@ -2234,6 +2461,34 @@ export type Database = {
           p_role: Database["public"]["Enums"]["gym_role"];
         };
         Returns: undefined;
+      };
+      renew_manual_subscription: {
+        Args: {
+          p_method: Database["public"]["Enums"]["payment_method"];
+          p_subscription_id: string;
+        };
+        Returns: {
+          cancel_at: string | null;
+          canceled_at: string | null;
+          commitment_ends_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          gym_id: string;
+          id: string;
+          member_id: string;
+          plan_id: string;
+          started_at: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          stripe_subscription_id: string | null;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "subscriptions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       reorder_disciplines: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
       reset_attendance: {
@@ -2520,6 +2775,7 @@ export type Database = {
       payment_method: "card" | "sepa_debit" | "cash" | "other";
       payment_status: "pending" | "succeeded" | "failed" | "refunded";
       plan_type: "recurring" | "pack" | "single";
+      promo_kind: "percent" | "amount";
       session_status: "scheduled" | "cancelled";
       shift_status: "planned" | "done" | "cancelled";
       subscription_status:
@@ -2674,6 +2930,7 @@ export const Constants = {
       payment_method: ["card", "sepa_debit", "cash", "other"],
       payment_status: ["pending", "succeeded", "failed", "refunded"],
       plan_type: ["recurring", "pack", "single"],
+      promo_kind: ["percent", "amount"],
       session_status: ["scheduled", "cancelled"],
       shift_status: ["planned", "done", "cancelled"],
       subscription_status: [

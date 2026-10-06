@@ -8,3 +8,4 @@ export * from "./display.ts";
 export * from "./digest.ts";
 export * from "./desk.ts";
 export * from "./settings.ts";
+export * from "./billing.ts";

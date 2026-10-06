@@ -1,7 +1,7 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,17 @@ function useCreate(action: CreateAction) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useSearchParams();
   const run = () =>
     startTransition(async () => {
       const result = await action();
       if (result.error) toast.error(t(result.error), { closeButton: true });
-      else if (result.id) router.replace(`${pathname}?n=${result.id}`, { scroll: false });
+      else if (result.id) {
+        // Les autres paramètres (section des Paramètres, filtres) sont gardés.
+        const next = new URLSearchParams(params.toString());
+        next.set("n", result.id);
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+      }
     });
   return { pending, run };
 }

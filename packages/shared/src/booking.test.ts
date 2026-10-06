@@ -18,6 +18,7 @@ describe("parseGymSettings", () => {
       manager_can_remove_credits: false,
       staff_can_suspend_members: false,
       staff_can_create_members: false,
+      staff_can_sell: false,
     });
     expect(parseGymSettings(null).max_upcoming_bookings).toBe(5);
   });

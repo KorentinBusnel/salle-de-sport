@@ -223,18 +223,21 @@ from seed_members;
 -- Offres (exemples)
 -- ---------------------------------------------------------------------------
 
-insert into public.plans (id, gym_id, name, description, type, price_cents, billing_interval, commitment_months, credits, validity_days) values
-  (pg_temp.sid('p:unlimited_12'), pg_temp.sid('gym'), 'Illimité 12 mois', 'Accès illimité à tous les cours, engagement 12 mois.', 'recurring', 7900, 'month', 12, null, null),
-  (pg_temp.sid('p:unlimited'), pg_temp.sid('gym'), 'Illimité sans engagement', 'Accès illimité à tous les cours, résiliable chaque mois.', 'recurring', 9900, 'month', null, null, null),
-  (pg_temp.sid('p:student'), pg_temp.sid('gym'), 'Étudiant', 'Accès illimité sur justificatif, engagement 6 mois.', 'recurring', 5900, 'month', 6, null, null),
-  (pg_temp.sid('p:pack'), pg_temp.sid('gym'), 'Carnet 10 séances', '10 séances valables 4 mois.', 'pack', 18000, null, null, 10, 120),
-  (pg_temp.sid('p:single'), pg_temp.sid('gym'), 'Séance découverte', 'Une séance d''essai.', 'single', 1500, null, null, 1, 30);
+insert into public.plans (id, gym_id, name, description, type, price_cents, billing_interval, commitment_months, credits, validity_days, audience, requires_proof, position, all_disciplines) values
+  (pg_temp.sid('p:unlimited_12'), pg_temp.sid('gym'), 'Illimité 12 mois', 'Accès illimité à tous les cours, engagement 12 mois.', 'recurring', 7900, 'month', 12, null, null, null, false, 0, true),
+  (pg_temp.sid('p:unlimited'), pg_temp.sid('gym'), 'Illimité sans engagement', 'Accès illimité à tous les cours, résiliable chaque mois.', 'recurring', 9900, 'month', null, null, null, null, false, 1, true),
+  (pg_temp.sid('p:student'), pg_temp.sid('gym'), 'Étudiant', 'Accès illimité, engagement 6 mois.', 'recurring', 5900, 'month', 6, null, null, 'Étudiants', true, 2, true),
+  (pg_temp.sid('p:run'), pg_temp.sid('gym'), 'Run club', 'Les sorties du running club, sans engagement.', 'recurring', 3900, 'month', null, null, null, null, false, 3, false),
+  (pg_temp.sid('p:pack'), pg_temp.sid('gym'), 'Carnet 10 séances', '10 séances valables 4 mois.', 'pack', 18000, null, null, 10, 120, null, false, 4, true),
+  (pg_temp.sid('p:single'), pg_temp.sid('gym'), 'Séance découverte', 'Une séance d''essai.', 'single', 1500, null, null, 1, 30, null, false, 5, true);
 
-insert into public.plan_disciplines (gym_id, plan_id, discipline_id)
-select pg_temp.sid('gym'), pg_temp.sid('p:' || p), d.id
-from unnest(array['unlimited_12','unlimited','student','pack','single']) as p
-cross join public.disciplines d
-where d.gym_id = pg_temp.sid('gym');
+-- Le Run club ne couvre que la course à pied.
+insert into public.plan_disciplines (gym_id, plan_id, discipline_id) values
+  (pg_temp.sid('gym'), pg_temp.sid('p:run'), pg_temp.sid('d:run'));
+
+insert into public.promo_codes (id, gym_id, code, kind, value, ends_on, max_redemptions) values
+  (pg_temp.sid('promo:rentree'), pg_temp.sid('gym'), 'RENTREE', 'percent', 20, (now() + interval '30 days')::date, 50),
+  (pg_temp.sid('promo:parrain'), pg_temp.sid('gym'), 'PARRAIN', 'amount', 1500, null, null);
 
 -- ---------------------------------------------------------------------------
 -- Planning : modèles hebdomadaires, puis séances de J-91 à J+13
@@ -429,7 +432,7 @@ cross join lateral (
 where m.plan_key in ('unlimited_12', 'unlimited', 'student');
 
 -- Une échéance par mois ; la dernière échéance des adhérents suspendus a échoué.
-insert into public.payments (id, gym_id, member_id, amount_cents, status, method, description, paid_at, created_at)
+insert into public.payments (id, gym_id, member_id, amount_cents, status, method, description, paid_at, created_at, plan_id)
 select
   pg_temp.sid('pay:' || m.n || ':' || due),
   pg_temp.sid('gym'), m.id, p.price_cents,
@@ -445,7 +448,8 @@ select
     when m.status = 'suspended' and due = max(due) over (partition by m.n) then null
     else due
   end,
-  due
+  due,
+  p.id
 from seed_members m
 join public.plans p on p.id = pg_temp.sid('p:' || m.plan_key)
 cross join lateral generate_series(m.created_at, coalesce(m.canceled_at, now()), interval '1 month') as due
@@ -465,24 +469,25 @@ from seed_bookings b
 join seed_members m on m.id = b.member_id
 where m.plan_key = 'pack' and b.status <> 'waitlisted';
 
-insert into public.payments (id, gym_id, member_id, amount_cents, status, method, description, paid_at, created_at)
+insert into public.payments (id, gym_id, member_id, amount_cents, status, method, description, paid_at, created_at, plan_id)
 select
   pg_temp.sid('pack-pay:' || u.n || ':' || u.use_rank),
   pg_temp.sid('gym'), u.member_id, 18000, 'succeeded', 'card', 'Carnet 10 séances',
-  u.booked_at - interval '1 day', u.booked_at - interval '1 day'
+  u.booked_at - interval '1 day', u.booked_at - interval '1 day', pg_temp.sid('p:pack')
 from seed_pack_usage u
 where (u.use_rank - 1) % 10 = 0;
 
-insert into public.credit_ledger (gym_id, member_id, delta, reason, payment_id, expires_at, created_at)
+insert into public.credit_ledger (gym_id, member_id, delta, reason, payment_id, plan_id, expires_at, created_at)
 select
   pg_temp.sid('gym'), u.member_id, 10, 'purchase', pg_temp.sid('pack-pay:' || u.n || ':' || u.use_rank),
-  u.booked_at - interval '1 day' + interval '120 days', u.booked_at - interval '1 day'
+  pg_temp.sid('p:pack'), u.booked_at - interval '1 day' + interval '120 days', u.booked_at - interval '1 day'
 from seed_pack_usage u
 where (u.use_rank - 1) % 10 = 0;
 
 insert into public.credit_ledger (gym_id, member_id, delta, reason, booking_id, created_at)
 select pg_temp.sid('gym'), member_id, -1, 'booking', id, booked_at
-from seed_pack_usage;
+from seed_pack_usage
+order by booked_at, id;
 
 insert into public.credit_ledger (gym_id, member_id, delta, reason, booking_id, created_at)
 select pg_temp.sid('gym'), member_id, 1, 'booking_refund', id, least(now() - interval '1 minute', starts_at - interval '3 hours')

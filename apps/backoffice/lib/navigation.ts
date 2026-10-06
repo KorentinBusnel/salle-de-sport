@@ -58,6 +58,7 @@ export function buildNavigation(
       { href: "/segments", label: t("nav.segments"), icon: "segments" },
       { href: "/emailing", label: t("nav.emailing"), icon: "emailing" },
       { href: "/messages", label: t("nav.messages"), icon: "messages" },
+      { href: "/paiements", label: t("nav.payments"), icon: "payments" },
       { href: "/coachs", label: t("nav.coaches"), icon: "coaches" },
       { href: "/planning/modeles", label: t("nav.templates"), icon: "templates" },
     ]),

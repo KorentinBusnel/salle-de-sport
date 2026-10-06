@@ -161,4 +161,19 @@ describe("shiftDateKey / dateRangePreset", () => {
       to: "2026-10-05",
     });
   });
+
+  it("raccourcis vers l'avenir, à partir d'aujourd'hui", () => {
+    expect(dateRangePreset("next7", "2026-10-05")).toEqual({
+      from: "2026-10-05",
+      to: "2026-10-11",
+    });
+    expect(dateRangePreset("next28", "2026-10-05")).toEqual({
+      from: "2026-10-05",
+      to: "2026-11-01",
+    });
+    expect(dateRangePreset("nextMonth", "2026-12-15")).toEqual({
+      from: "2027-01-01",
+      to: "2027-01-31",
+    });
+  });
 });

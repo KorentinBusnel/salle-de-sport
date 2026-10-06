@@ -5,42 +5,37 @@ import {
   MessageCircleIcon,
   NotebookPenIcon,
   PhoneIcon,
-  XIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Suspense } from "react";
 import { Flash } from "@/components/flash";
 import { MemberSummary } from "@/components/assistant/member-summary";
+import { EditableCell } from "@/components/inline/editable-cell";
+import { ActivateButton } from "@/components/members/activate-button";
 import { CreditsDialog } from "@/components/members/credits-dialog";
+import { ConsentSwitches } from "@/components/members/profile/consent-switches";
+import { MemberTags } from "@/components/members/profile/member-tags";
+import { StatusButton } from "@/components/members/profile/status-button";
+import { SegmentMeter } from "@/components/segment-meter";
+import { TextareaWithCount } from "@/components/forms/textarea-with-count";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { Textarea } from "@/components/ui/textarea";
 import { PageCrumb } from "@/components/page-crumb";
-import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
+import { isFrontDeskRole, isManagerRole, requireRole, type TeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { adjustCredits, setMemberStatus } from "../actions";
-import {
-  addNote,
-  addTag,
-  bookFromProfile,
-  removeTag,
-  saveCareNote,
-  setConsent,
-  updateContact,
-} from "./actions";
+import { adjustCredits } from "../actions";
+import { addNote, bookFromProfile, saveCareNote, updateMemberField } from "./actions";
 
 export const metadata: Metadata = { title: t("memberProfile.title") };
 
@@ -68,115 +63,44 @@ export default async function MemberProfilePage({
   const settings = config.settings;
   const creditLimit = config.private.credit_adjust_max;
   const format = gymFormatters(context.gym.timezone);
-  const now = currentTime();
   const tabs: Tab[] = manager ? [...TABS] : ["reservations", "profil"];
   const tab = tabs.find((x) => x === query.onglet) ?? tabs[0] ?? "profil";
   const path = `/adherents/${id}?onglet=${tab}`;
 
   const supabase = await createClient();
-  const { data: member } = await supabase
-    .from("members")
-    .select(
-      "id, first_name, last_name, email, phone, status, tags, acquisition_source, created_at, marketing_email_consent_at, marketing_whatsapp_consent_at, profiles(birth_date)",
-    )
-    .eq("id", id)
-    .eq("gym_id", context.gym.id)
-    .maybeSingle();
+  // En-tête : fiche, note « à savoir », solde et abonnement (gérant), chargés ensemble.
+  const [{ data: member }, { data: careNote }, ledgerRes, subscriptionRes] = await Promise.all([
+    supabase
+      .from("members")
+      .select(
+        "id, first_name, last_name, email, phone, status, tags, acquisition_source, created_at, marketing_email_consent_at, marketing_whatsapp_consent_at, profiles(birth_date)",
+      )
+      .eq("id", id)
+      .eq("gym_id", context.gym.id)
+      .maybeSingle(),
+    supabase.from("member_care_notes").select("note, updated_at").eq("member_id", id).maybeSingle(),
+    manager
+      ? supabase.from("credit_ledger").select("delta, reason").eq("member_id", id)
+      : Promise.resolve({ data: [] as { delta: number; reason: string }[] }),
+    manager
+      ? supabase
+          .from("subscriptions")
+          .select("status, plans(name)")
+          .eq("member_id", id)
+          .in("status", ["active", "trialing", "past_due"])
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
   if (!member) notFound();
   const name = `${member.first_name} ${member.last_name}`;
-
-  const { data: careNote } = await supabase
-    .from("member_care_notes")
-    .select("note, updated_at")
-    .eq("member_id", id)
-    .maybeSingle();
-
-  const [bookingsRes, ledgerRes, subscriptionRes, interactionsRes, upcomingRes] = await Promise.all(
-    [
-      supabase
-        .from("bookings")
-        .select(
-          "id, status, booked_at, class_sessions(id, starts_at, ends_at, status, disciplines(name, color))",
-        )
-        .eq("member_id", id)
-        .order("booked_at", { ascending: false })
-        .limit(100),
-      manager
-        ? supabase.from("credit_ledger").select("delta").eq("member_id", id)
-        : Promise.resolve({ data: [] as { delta: number }[] }),
-      manager
-        ? supabase
-            .from("subscriptions")
-            .select("status, plans(name)")
-            .eq("member_id", id)
-            .in("status", ["active", "trialing", "past_due"])
-            .limit(1)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-      manager
-        ? supabase
-            .from("interactions")
-            .select("id, channel, direction, subject, summary, occurred_at")
-            .eq("member_id", id)
-            .order("occurred_at", { ascending: false })
-            .limit(50)
-        : Promise.resolve({ data: [] }),
-      tab === "reservations"
-        ? supabase
-            .from("class_sessions")
-            .select("id, starts_at, booked_count, capacity, disciplines(name)")
-            .eq("gym_id", context.gym.id)
-            .eq("status", "scheduled")
-            .gt("starts_at", now.toISOString())
-            .lt("starts_at", new Date(now.getTime() + 8 * 86_400_000).toISOString())
-            .order("starts_at")
-        : Promise.resolve({ data: [] }),
-    ],
-  );
-  const bookings = (bookingsRes.data ?? [])
-    .filter((b) => b.class_sessions)
-    .sort((a, b) =>
-      (b.class_sessions?.starts_at ?? "").localeCompare(a.class_sessions?.starts_at ?? ""),
-    );
-  const upcoming = bookings.filter(
-    (b) =>
-      (b.status === "confirmed" || b.status === "waitlisted") &&
-      Date.parse(b.class_sessions?.starts_at ?? "") > now.getTime(),
-  );
-  const past = bookings.filter((b) => !upcoming.includes(b));
-  const balance = (ledgerRes.data ?? []).reduce((sum, row) => sum + row.delta, 0);
+  const ledger = ledgerRes.data ?? [];
+  const balance = ledger.reduce((sum, row) => sum + row.delta, 0);
+  const used = ledger
+    .filter((row) => row.reason === "booking" || row.reason === "expiration")
+    .reduce((sum, row) => sum - row.delta, 0);
   const subscription = subscriptionRes.data;
-  const bookedIds = new Set(
-    bookings.filter((b) => b.status !== "cancelled").map((b) => b.class_sessions?.id),
-  );
-
-  // Historique : interactions (messages, notes, échanges) et séances suivies, par date.
-  type Entry = { key: string; at: string; icon: typeof MailIcon; title: string; body?: string };
-  const timeline: Entry[] = [
-    ...(interactionsRes.data ?? []).map((i) => ({
-      key: `i-${i.id}`,
-      at: i.occurred_at,
-      icon: CHANNEL_ICON[i.channel],
-      title:
-        i.subject ??
-        t(i.channel === "note" ? "memberProfile.note" : `memberProfile.channel.${i.channel}`),
-      ...(i.summary ? { body: i.summary } : {}),
-    })),
-    ...past
-      .filter((b) => b.status === "attended" || b.status === "no_show")
-      .map((b) => ({
-        key: `b-${b.id}`,
-        at: b.class_sessions?.starts_at ?? b.booked_at,
-        icon: CalendarCheckIcon,
-        title: `${b.class_sessions?.disciplines?.name ?? ""} · ${t(`bookingStatus.${b.status}`)}`,
-      })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
-
   const canSuspend = manager || settings.staff_can_suspend_members;
-  const hidden = (extra: Record<string, string> = {}) =>
-    Object.entries({ memberId: member.id, tab, returnTo: path, ...extra }).map(([k, v]) => (
-      <input key={k} type="hidden" name={k} value={v} />
-    ));
 
   return (
     <div className="grid gap-6">
@@ -201,32 +125,13 @@ export default async function MemberProfilePage({
           <>
             {manager ? <MemberSummary memberId={member.id} name={name} /> : null}
             {member.status === "prospect" ? (
-              <form action={setMemberStatus}>
-                {hidden({ status: "active" })}
-                <SubmitButton size="sm">{t("members.activate")}</SubmitButton>
-              </form>
+              <ActivateButton memberId={member.id} name={name} />
             ) : null}
             {member.status === "active" && canSuspend ? (
-              <ConfirmDialog
-                trigger={
-                  <Button size="sm" variant="outline">
-                    {t("members.suspend")}
-                  </Button>
-                }
-                title={t("members.suspendTitle")}
-                description={t("members.suspendBody", { name })}
-                confirmLabel={t("members.suspend")}
-                action={setMemberStatus}
-                fields={{ memberId: member.id, status: "suspended", returnTo: path }}
-              />
+              <StatusButton memberId={member.id} name={name} to="suspended" />
             ) : null}
             {member.status === "suspended" && canSuspend ? (
-              <form action={setMemberStatus}>
-                {hidden({ status: "active" })}
-                <SubmitButton size="sm" variant="outline">
-                  {t("members.reactivate")}
-                </SubmitButton>
-              </form>
+              <StatusButton memberId={member.id} name={name} to="active" />
             ) : null}
             {manager ? (
               <CreditsDialog
@@ -253,6 +158,16 @@ export default async function MemberProfilePage({
           </span>
         </p>
       ) : null}
+      {manager && balance + used > 0 ? (
+        <SegmentMeter
+          label={t("memberProfile.creditsMeter")}
+          className="max-w-md"
+          segments={[
+            { label: t("memberProfile.creditsLeft"), value: Math.max(0, balance), tone: "brand" },
+            { label: t("memberProfile.creditsUsed"), value: used, tone: "neutral" },
+          ]}
+        />
+      ) : null}
 
       <nav
         aria-label={t("memberProfile.tabs")}
@@ -262,6 +177,7 @@ export default async function MemberProfilePage({
           <Link
             key={x}
             href={`/adherents/${member.id}?onglet=${x}`}
+            scroll={false}
             aria-current={x === tab ? "page" : undefined}
             className={cn(
               "rounded-lg px-3 py-1.5 text-sm transition-colors pointer-coarse:py-2.5",
@@ -275,293 +191,437 @@ export default async function MemberProfilePage({
         ))}
       </nav>
 
-      {tab === "historique" ? (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <Card>
+      {/* Chaque onglet se charge à part : l'en-tête reste affiché pendant le changement. */}
+      <Suspense key={tab} fallback={<TabSkeleton />}>
+        {tab === "historique" ? (
+          <HistoryTab context={context} memberId={member.id} path={path} tab={tab} />
+        ) : tab === "reservations" ? (
+          <BookingsTab
+            context={context}
+            memberId={member.id}
+            active={member.status === "active"}
+            path={path}
+            tab={tab}
+          />
+        ) : (
+          <ProfileTab
+            member={member}
+            careNote={careNote?.note ?? ""}
+            path={path}
+            tab={tab}
+            timeZone={context.gym.timezone}
+          />
+        )}
+      </Suspense>
+    </div>
+  );
+}
+
+function TabSkeleton() {
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" aria-busy="true">
+      <Skeleton className="h-80 rounded-xl" />
+      <Skeleton className="h-48 rounded-xl" />
+    </div>
+  );
+}
+
+function Hidden({ memberId, tab, path }: { memberId: string; tab: Tab; path: string }) {
+  return Object.entries({ memberId, tab, returnTo: path }).map(([k, v]) => (
+    <input key={k} type="hidden" name={k} value={v} />
+  ));
+}
+
+/** Historique (gérant) : échanges, notes et séances suivies, par date ; ajout d'une note. */
+async function HistoryTab({
+  context,
+  memberId,
+  path,
+  tab,
+}: {
+  context: TeamContext;
+  memberId: string;
+  path: string;
+  tab: Tab;
+}) {
+  const supabase = await createClient();
+  const format = gymFormatters(context.gym.timezone);
+  const [interactionsRes, bookingsRes] = await Promise.all([
+    supabase
+      .from("interactions")
+      .select("id, channel, direction, subject, summary, occurred_at")
+      .eq("member_id", memberId)
+      .order("occurred_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("bookings")
+      .select("id, status, booked_at, class_sessions(starts_at, disciplines(name))")
+      .eq("member_id", memberId)
+      .in("status", ["attended", "no_show"])
+      .order("booked_at", { ascending: false })
+      .limit(50),
+  ]);
+  type Entry = { key: string; at: string; icon: typeof MailIcon; title: string; body?: string };
+  const timeline: Entry[] = [
+    ...(interactionsRes.data ?? []).map((i) => ({
+      key: `i-${i.id}`,
+      at: i.occurred_at,
+      icon: CHANNEL_ICON[i.channel],
+      title:
+        i.subject ??
+        t(i.channel === "note" ? "memberProfile.note" : `memberProfile.channel.${i.channel}`),
+      ...(i.summary ? { body: i.summary } : {}),
+    })),
+    ...(bookingsRes.data ?? []).map((b) => ({
+      key: `b-${b.id}`,
+      at: b.class_sessions?.starts_at ?? b.booked_at,
+      icon: CalendarCheckIcon,
+      title: `${b.class_sessions?.disciplines?.name ?? ""} · ${t(`bookingStatus.${b.status}`)}`,
+    })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("memberProfile.timeline")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {timeline.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("memberProfile.timelineEmpty")}</p>
+          ) : (
+            <ol className="relative grid gap-5 border-l pl-6">
+              {timeline.map((entry) => {
+                const Icon = entry.icon;
+                return (
+                  <li key={entry.key} className="relative">
+                    <span className="absolute top-0 -left-[2.1rem] flex size-6 items-center justify-center rounded-full bg-card shadow-border">
+                      <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+                    </span>
+                    <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                      <span className="font-medium">{entry.title}</span>
+                      <time dateTime={entry.at} className="text-xs text-muted-foreground">
+                        {format.dateTime(entry.at)}
+                      </time>
+                    </p>
+                    {entry.body ? (
+                      <p className="mt-1 max-w-prose text-sm whitespace-pre-line text-muted-foreground">
+                        {entry.body}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("memberProfile.addNote")}</CardTitle>
+          <CardDescription>{t("memberProfile.addNoteHint")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={addNote} className="grid gap-3">
+            <Hidden memberId={memberId} tab={tab} path={path} />
+            <TextareaWithCount
+              name="note"
+              rows={4}
+              maxLength={2000}
+              required
+              aria-label={t("memberProfile.addNote")}
+            />
+            <SubmitButton className="w-fit">{t("memberProfile.saveNote")}</SubmitButton>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** Réservations : à venir, passées (bilan de présence), inscription à une séance. */
+async function BookingsTab({
+  context,
+  memberId,
+  active,
+  path,
+  tab,
+}: {
+  context: TeamContext;
+  memberId: string;
+  active: boolean;
+  path: string;
+  tab: Tab;
+}) {
+  const supabase = await createClient();
+  const format = gymFormatters(context.gym.timezone);
+  const now = currentTime();
+  const [bookingsRes, upcomingRes] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select(
+        "id, status, booked_at, class_sessions(id, starts_at, ends_at, status, disciplines(name, color))",
+      )
+      .eq("member_id", memberId)
+      .order("booked_at", { ascending: false })
+      .limit(100),
+    active
+      ? supabase
+          .from("class_sessions")
+          .select("id, starts_at, booked_count, capacity, disciplines(name)")
+          .eq("gym_id", context.gym.id)
+          .eq("status", "scheduled")
+          .gt("starts_at", now.toISOString())
+          .lt("starts_at", new Date(now.getTime() + 8 * 86_400_000).toISOString())
+          .order("starts_at")
+      : Promise.resolve({ data: [] }),
+  ]);
+  const bookings = (bookingsRes.data ?? [])
+    .filter((b) => b.class_sessions)
+    .sort((a, b) =>
+      (b.class_sessions?.starts_at ?? "").localeCompare(a.class_sessions?.starts_at ?? ""),
+    );
+  const upcoming = bookings.filter(
+    (b) =>
+      (b.status === "confirmed" || b.status === "waitlisted") &&
+      Date.parse(b.class_sessions?.starts_at ?? "") > now.getTime(),
+  );
+  const past = bookings.filter((b) => !upcoming.includes(b));
+  const bookedIds = new Set(
+    bookings.filter((b) => b.status !== "cancelled").map((b) => b.class_sessions?.id),
+  );
+  const countOf = (status: string) => past.filter((b) => b.status === status).length;
+
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-6">
+        {past.length ? (
+          <SegmentMeter
+            label={t("memberProfile.bookingsMeter")}
+            segments={[
+              { label: t("bookingStatus.attended"), value: countOf("attended"), tone: "success" },
+              { label: t("bookingStatus.no_show"), value: countOf("no_show"), tone: "danger" },
+              { label: t("bookingStatus.cancelled"), value: countOf("cancelled"), tone: "neutral" },
+            ]}
+          />
+        ) : null}
+        {[
+          { title: t("memberProfile.upcoming"), rows: upcoming },
+          { title: t("memberProfile.past"), rows: past.slice(0, 30) },
+        ].map((group) => (
+          <Card key={group.title}>
             <CardHeader>
-              <CardTitle>{t("memberProfile.timeline")}</CardTitle>
+              <CardTitle>
+                {group.title}{" "}
+                <span className="font-normal text-muted-foreground tabular-nums">
+                  {group.rows.length}
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              {timeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("memberProfile.timelineEmpty")}</p>
+              {group.rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("memberProfile.noBookings")}</p>
               ) : (
-                <ol className="relative grid gap-5 border-l pl-6">
-                  {timeline.map((entry) => {
-                    const Icon = entry.icon;
-                    return (
-                      <li key={entry.key} className="relative">
-                        <span className="absolute top-0 -left-[2.1rem] flex size-6 items-center justify-center rounded-full bg-card shadow-border">
-                          <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+                <ul className="-mx-2">
+                  {group.rows.map((b) => (
+                    <li key={b.id}>
+                      <Link
+                        href={`/planning/${b.class_sessions?.id}`}
+                        className="flex flex-wrap items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/50"
+                      >
+                        <span className="w-32 text-muted-foreground tabular-nums">
+                          {format.shortDay(b.class_sessions?.starts_at ?? b.booked_at)}{" "}
+                          {format.time(b.class_sessions?.starts_at ?? b.booked_at)}
                         </span>
-                        <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                          <span className="font-medium">{entry.title}</span>
-                          <time dateTime={entry.at} className="text-xs text-muted-foreground">
-                            {format.dateTime(entry.at)}
-                          </time>
-                        </p>
-                        {entry.body ? (
-                          <p className="mt-1 max-w-prose text-sm whitespace-pre-line text-muted-foreground">
-                            {entry.body}
-                          </p>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ol>
+                        <span className="flex-1">
+                          <DisciplineChip
+                            name={b.class_sessions?.disciplines?.name ?? ""}
+                            color={b.class_sessions?.disciplines?.color}
+                          />
+                        </span>
+                        <StatusPill tone={BOOKING_STATUS_TONE[b.status]}>
+                          {t(`bookingStatus.${b.status}`)}
+                        </StatusPill>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("memberProfile.addNote")}</CardTitle>
-              <CardDescription>{t("memberProfile.addNoteHint")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form action={addNote} className="grid gap-3">
-                {hidden()}
-                <Textarea
-                  name="note"
-                  rows={4}
-                  maxLength={2000}
-                  required
-                  aria-label={t("memberProfile.addNote")}
-                />
-                <SubmitButton className="w-fit">{t("memberProfile.saveNote")}</SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
-      {tab === "reservations" ? (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="grid gap-6">
-            {[
-              { title: t("memberProfile.upcoming"), rows: upcoming },
-              { title: t("memberProfile.past"), rows: past.slice(0, 30) },
-            ].map((group) => (
-              <Card key={group.title}>
-                <CardHeader>
-                  <CardTitle>
-                    {group.title}{" "}
-                    <span className="font-normal text-muted-foreground tabular-nums">
-                      {group.rows.length}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {group.rows.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("memberProfile.noBookings")}</p>
-                  ) : (
-                    <ul className="-mx-2">
-                      {group.rows.map((b) => (
-                        <li key={b.id}>
-                          <Link
-                            href={`/planning/${b.class_sessions?.id}`}
-                            className="flex flex-wrap items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/50"
-                          >
-                            <span className="w-32 text-muted-foreground">
-                              {format.shortDay(b.class_sessions?.starts_at ?? b.booked_at)}{" "}
-                              {format.time(b.class_sessions?.starts_at ?? b.booked_at)}
-                            </span>
-                            <span className="flex-1">
-                              <DisciplineChip
-                                name={b.class_sessions?.disciplines?.name ?? ""}
-                                color={b.class_sessions?.disciplines?.color}
-                              />
-                            </span>
-                            <StatusPill tone={BOOKING_STATUS_TONE[b.status]}>
-                              {t(`bookingStatus.${b.status}`)}
-                            </StatusPill>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          {member.status === "active" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("memberProfile.book")}</CardTitle>
-                <CardDescription>{t("memberProfile.bookHint")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form action={bookFromProfile} className="grid gap-3">
-                  {hidden()}
-                  <NativeSelect name="sessionId" required aria-label={t("memberProfile.book")}>
-                    {(upcomingRes.data ?? [])
-                      .filter((s) => !bookedIds.has(s.id))
-                      .map((s) => (
-                        <NativeSelectOption key={s.id} value={s.id}>
-                          {format.shortDay(s.starts_at)} {format.time(s.starts_at)} ·{" "}
-                          {s.disciplines?.name} · {s.booked_count}/{s.capacity}
-                        </NativeSelectOption>
-                      ))}
-                  </NativeSelect>
-                  <SubmitButton className="w-fit">{t("memberProfile.bookSubmit")}</SubmitButton>
-                </form>
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-      ) : null}
-
-      {tab === "profil" ? (
-        <div className="grid items-start gap-6 lg:grid-cols-2">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>{t("memberProfile.careNote")}</CardTitle>
-              <CardDescription>{t("memberProfile.careNoteHint")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form action={saveCareNote} className="grid gap-3">
-                {hidden()}
-                <Textarea
-                  name="careNote"
-                  defaultValue={careNote?.note ?? ""}
-                  maxLength={500}
-                  rows={2}
-                  aria-label={t("memberProfile.careNote")}
-                  placeholder={t("memberProfile.careNotePlaceholder")}
-                />
-                <SubmitButton size="sm" variant="outline" className="w-fit">
-                  {t("memberProfile.careNoteSave")}
-                </SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("memberProfile.contact")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form action={updateContact} className="grid gap-6">
-                {hidden()}
-                <FieldGroup>
-                  {(
-                    [
-                      ["first_name", "members.new.firstName", "text", member.first_name],
-                      ["last_name", "members.new.lastName", "text", member.last_name],
-                      ["email", "members.new.email", "email", member.email ?? ""],
-                      ["phone", "members.new.phone", "tel", member.phone ?? ""],
-                      [
-                        "acquisition_source",
-                        "memberProfile.source",
-                        "text",
-                        member.acquisition_source ?? "",
-                      ],
-                    ] as const
-                  ).map(([field, label, type, value]) => (
-                    <Field key={field}>
-                      <FieldLabel htmlFor={`m-${field}`}>{t(label)}</FieldLabel>
-                      <Input id={`m-${field}`} name={field} type={type} defaultValue={value} />
-                    </Field>
+        ))}
+      </div>
+      {active ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("memberProfile.book")}</CardTitle>
+            <CardDescription>{t("memberProfile.bookHint")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={bookFromProfile} className="grid gap-3">
+              <Hidden memberId={memberId} tab={tab} path={path} />
+              <NativeSelect name="sessionId" required aria-label={t("memberProfile.book")}>
+                {(upcomingRes.data ?? [])
+                  .filter((s) => !bookedIds.has(s.id))
+                  .map((s) => (
+                    <NativeSelectOption key={s.id} value={s.id}>
+                      {format.shortDay(s.starts_at)} {format.time(s.starts_at)} ·{" "}
+                      {s.disciplines?.name} · {s.booked_count}/{s.capacity}
+                    </NativeSelectOption>
                   ))}
-                </FieldGroup>
-                <p className="text-sm text-muted-foreground">
-                  {member.profiles?.birth_date
-                    ? t("memberProfile.birthDate", {
-                        date: format.dateKey(member.profiles.birth_date),
-                      })
-                    : t("memberProfile.noBirthDate")}
-                </p>
-                <SubmitButton className="w-fit">{t("common.save")}</SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("memberProfile.tags")}</CardTitle>
-                <CardDescription>{t("memberProfile.tagsHint")}</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                {member.tags.length ? (
-                  <ul className="flex flex-wrap gap-2">
-                    {member.tags.map((tag) => (
-                      <li
-                        key={tag}
-                        className="flex items-center gap-1 rounded-full bg-muted py-0.5 pr-1 pl-3 text-sm"
-                      >
-                        <Link
-                          href={`/adherents?tag=${encodeURIComponent(tag)}`}
-                          className="hover:underline"
-                        >
-                          {tag}
-                        </Link>
-                        <form action={removeTag}>
-                          {hidden({ tag })}
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="icon-xs"
-                            aria-label={t("memberProfile.removeTag", { tag })}
-                          >
-                            <XIcon />
-                          </Button>
-                        </form>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{t("memberProfile.noTags")}</p>
-                )}
-                <form action={addTag} className="flex gap-2">
-                  {hidden()}
-                  <Input
-                    name="tag"
-                    maxLength={40}
-                    required
-                    placeholder={t("memberProfile.tagPlaceholder")}
-                    aria-label={t("memberProfile.addTag")}
-                  />
-                  <SubmitButton variant="outline">{t("memberProfile.addTag")}</SubmitButton>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("memberProfile.consents")}</CardTitle>
-                <CardDescription>{t("memberProfile.consentsHint")}</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                {(
-                  [
-                    ["email", member.marketing_email_consent_at],
-                    ["whatsapp", member.marketing_whatsapp_consent_at],
-                  ] as const
-                ).map(([channel, at]) => (
-                  <form
-                    key={channel}
-                    action={setConsent}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    {hidden({ channel, granted: at ? "false" : "true" })}
-                    <span className="text-sm">
-                      <span className="block font-medium">
-                        {t(`memberProfile.consent.${channel}`)}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {at
-                          ? t("memberProfile.consentSince", { date: format.dateTime(at) })
-                          : t("memberProfile.noConsent")}
-                      </span>
-                    </span>
-                    <SubmitButton size="sm" variant="outline">
-                      {at ? t("memberProfile.withdraw") : t("memberProfile.grant")}
-                    </SubmitButton>
-                  </form>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </NativeSelect>
+              <SubmitButton className="w-fit">{t("memberProfile.bookSubmit")}</SubmitButton>
+            </form>
+          </CardContent>
+        </Card>
       ) : null}
+    </div>
+  );
+}
+
+type ProfileMember = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  tags: string[];
+  acquisition_source: string | null;
+  marketing_email_consent_at: string | null;
+  marketing_whatsapp_consent_at: string | null;
+  profiles: { birth_date: string | null } | null;
+};
+
+/** Profil : note « à savoir », coordonnées modifiables sur place, étiquettes, consentements. */
+function ProfileTab({
+  member,
+  careNote,
+  path,
+  tab,
+  timeZone,
+}: {
+  member: ProfileMember;
+  careNote: string;
+  path: string;
+  tab: Tab;
+  timeZone: string;
+}) {
+  const format = gymFormatters(timeZone);
+  const cell = { id: member.id, action: updateMemberField };
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-2">
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>{t("memberProfile.careNote")}</CardTitle>
+          <CardDescription>{t("memberProfile.careNoteHint")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={saveCareNote} className="grid gap-3">
+            <Hidden memberId={member.id} tab={tab} path={path} />
+            <TextareaWithCount
+              name="careNote"
+              defaultValue={careNote}
+              maxLength={500}
+              rows={2}
+              aria-label={t("memberProfile.careNote")}
+              placeholder={t("memberProfile.careNotePlaceholder")}
+            />
+            <SubmitButton size="sm" variant="outline" className="w-fit">
+              {t("memberProfile.careNoteSave")}
+            </SubmitButton>
+          </form>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("memberProfile.contact")}</CardTitle>
+          <CardDescription>{t("memberProfile.contactHint")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-1 text-sm">
+            {(
+              [
+                ["first_name", "members.new.firstName", member.first_name],
+                ["last_name", "members.new.lastName", member.last_name],
+                ["email", "members.new.email", member.email ?? ""],
+                ["phone", "members.new.phone", member.phone ?? ""],
+                ["acquisition_source", "memberProfile.source", member.acquisition_source ?? ""],
+              ] as const
+            ).map(([field, label, value]) => (
+              <div
+                key={field}
+                className="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-1"
+              >
+                <dt className="text-muted-foreground">{t(label)}</dt>
+                <dd className="min-w-0">
+                  <EditableCell
+                    {...cell}
+                    kind="text"
+                    field={field}
+                    label={t(label)}
+                    value={value}
+                    maxLength={field === "email" ? 200 : field === "phone" ? 30 : 80}
+                  />
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {member.profiles?.birth_date
+              ? t("memberProfile.birthDate", { date: format.dateKey(member.profiles.birth_date) })
+              : t("memberProfile.noBirthDate")}
+          </p>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("memberProfile.tags")}</CardTitle>
+            <CardDescription>{t("memberProfile.tagsHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <MemberTags memberId={member.id} tags={member.tags} />
+            {member.tags.length ? (
+              <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                {member.tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/adherents?tag=${encodeURIComponent(tag)}`}
+                    className="text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    {t("memberProfile.sameTag", { tag })}
+                  </Link>
+                ))}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("memberProfile.consents")}</CardTitle>
+            <CardDescription>{t("memberProfile.consentsHint")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ConsentSwitches
+              memberId={member.id}
+              consents={{
+                email: member.marketing_email_consent_at,
+                whatsapp: member.marketing_whatsapp_consent_at,
+              }}
+              formatDate={{
+                email: member.marketing_email_consent_at
+                  ? format.dateTime(member.marketing_email_consent_at)
+                  : null,
+                whatsapp: member.marketing_whatsapp_consent_at
+                  ? format.dateTime(member.marketing_whatsapp_consent_at)
+                  : null,
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

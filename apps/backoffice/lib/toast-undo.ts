@@ -6,7 +6,7 @@ import { type MessageKey, t } from "@/lib/i18n";
 /** Durée laissée pour annuler (WCAG 2.2.1 : assez longue, et le toast reste au survol). */
 export const UNDO_DURATION_MS = 10_000;
 
-type Outcome = { error: MessageKey } | { error?: null | undefined };
+type Outcome = { error?: MessageKey | null | undefined };
 
 /**
  * Action réversible avec « Annuler » à la place d'une confirmation (Watermelon sonner-6,

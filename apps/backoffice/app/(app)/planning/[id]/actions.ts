@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { classChangesSchema } from "@salle/shared";
 import type { CellValue } from "@/components/inline/editable-cell";
+import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
@@ -21,22 +22,6 @@ async function finish(
   const { error } = await run();
   revalidatePath(`/planning/${sessionId}`);
   revalidatePath("/planning");
-  redirect(withFlash(`/planning/${sessionId}`, error ? { error: errorMessageKey(error) } : { ok }));
-}
-
-export async function bookMember(formData: FormData) {
-  const sessionId = uuid.parse(formData.get("sessionId"));
-  const memberId = uuid.parse(formData.get("memberId"));
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("book_session", {
-    p_session_id: sessionId,
-    p_member_id: memberId,
-  });
-  revalidatePath(`/planning/${sessionId}`);
-  revalidatePath("/planning");
-  // Séance complète : book_session place l'adhérent en liste d'attente.
-  const ok: MessageKey =
-    data?.status === "waitlisted" ? "session.addedToWaitlist" : "session.booked";
   redirect(withFlash(`/planning/${sessionId}`, error ? { error: errorMessageKey(error) } : { ok }));
 }
 
@@ -121,35 +106,6 @@ export async function resetAttendance(
   return { error: error ? errorMessageKey(error) : null };
 }
 
-/** « Tous présents » : pointe présents les inscrits encore confirmés (même fonction SQL). */
-export async function markAllAttended(formData: FormData) {
-  const sessionId = uuid.parse(formData.get("sessionId"));
-  const supabase = await createClient();
-  const { data: bookings, error: loadError } = await supabase
-    .from("bookings")
-    .select("id")
-    .eq("session_id", sessionId)
-    .eq("status", "confirmed");
-  if (loadError) {
-    redirect(withFlash(`/planning/${sessionId}`, { error: "common.unexpectedError" }));
-  }
-  let failed: { message?: string } | null = null;
-  for (const booking of bookings ?? []) {
-    const { error } = await supabase.rpc("set_attendance", {
-      p_booking_id: booking.id,
-      p_status: "attended",
-    });
-    if (error) failed = error;
-  }
-  revalidatePath(`/planning/${sessionId}`);
-  redirect(
-    withFlash(
-      `/planning/${sessionId}`,
-      failed ? { error: errorMessageKey(failed) } : { ok: "session.allAttendedSaved" },
-    ),
-  );
-}
-
 /**
  * Édition en place d'une séance (gérant) : un champ à la fois, pour cette séance ou, si elle
  * vient d'un cours récurrent, pour elle et les suivantes. update_session tranche.
@@ -179,4 +135,55 @@ export async function updateSessionField(input: {
   return scope === "following"
     ? { error: null, message: "session.updatedFollowing", count: data }
     : { error: null, message: "session.updated" };
+}
+
+const bookSchema = z.object({ sessionId: uuid, memberId: uuid });
+
+/** Inscription depuis la fiche (accueil) : la ligne apparaît tout de suite, pas de redirection. */
+export async function bookMemberQuick(input: z.input<typeof bookSchema>): Promise<ActionResult> {
+  const parsed = bookSchema.safeParse(input);
+  if (!parsed.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("book_session", {
+    p_session_id: parsed.data.sessionId,
+    p_member_id: parsed.data.memberId,
+  });
+  revalidatePath("/planning");
+  refresh();
+  if (error) return fail(errorMessageKey(error));
+  // Séance complète : book_session place l'adhérent en liste d'attente.
+  return ok(data?.status === "waitlisted" ? "session.addedToWaitlist" : "session.booked");
+}
+
+/** « Tous présents » en un appel (set_attendance_many) : renvoie les réservations pointées. */
+export async function markAllAttendedQuick(input: {
+  sessionId: string;
+}): Promise<ActionResult<string[]>> {
+  const sessionId = uuid.safeParse(input.sessionId);
+  if (!sessionId.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_attendance_many", {
+    p_session_id: sessionId.data,
+  });
+  refresh();
+  if (error) return fail(errorMessageKey(error));
+  return { ok: true, data: data ?? [], count: data?.length ?? 0 };
+}
+
+const resetManySchema = z.object({ sessionId: uuid, bookingIds: z.array(uuid).max(200) });
+
+/** « Annuler » après « Tous présents » : chaque pointage revient à « confirmé » (stratégie). */
+export async function resetAttendanceMany(
+  input: z.input<typeof resetManySchema>,
+): Promise<ActionResult> {
+  const parsed = resetManySchema.safeParse(input);
+  if (!parsed.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  let failed: { message?: string } | null = null;
+  for (const bookingId of parsed.data.bookingIds) {
+    const { error } = await supabase.rpc("reset_attendance", { p_booking_id: bookingId });
+    if (error) failed = error;
+  }
+  refresh();
+  return failed ? fail(errorMessageKey(failed)) : ok();
 }

@@ -1,10 +1,11 @@
 "use server";
 
 import { bookingErrorCode } from "@salle/shared";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { NewMemberState } from "@/components/members/new-member-sheet";
+import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { errorMessageKey, withFlash } from "@/lib/flash";
 import type { MessageKey } from "@/lib/i18n";
@@ -27,23 +28,6 @@ const STATUS_OK = {
   suspended: "members.suspended",
   cancelled: "members.cancelled",
 } as const satisfies Record<string, MessageKey>;
-
-/** Activer, suspendre, réactiver : set_member_status applique les stratégies de la salle. */
-export async function setMemberStatus(formData: FormData) {
-  await requireRole(isFrontDeskRole);
-  const id = z.guid().parse(formData.get("memberId"));
-  const status = z.enum(["active", "suspended", "cancelled"]).parse(formData.get("status"));
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("set_member_status", { p_member_id: id, p_status: status });
-  revalidatePath("/adherents", "layout");
-  revalidatePath("/crm");
-  redirect(
-    withFlash(
-      back(formData),
-      error ? { error: errorMessageKey(error) } : { ok: STATUS_OK[status] },
-    ),
-  );
-}
 
 /** Ajout (ou retrait, si la stratégie l'autorise) de crédits par le gérant. */
 export async function adjustCredits(formData: FormData) {
@@ -146,4 +130,67 @@ export async function createMember(
   redirect(
     withFlash(`/adherents?q=${encodeURIComponent(data.last_name)}`, { ok: "members.new.created" }),
   );
+}
+
+const statusSchema = z.object({
+  memberId: z.guid(),
+  status: z.enum(["active", "suspended", "cancelled"]),
+});
+
+/** Statut changé depuis la liste (menu de ligne) : toast et « Annuler », pas de redirection. */
+export async function setMemberStatusQuick(
+  input: z.input<typeof statusSchema>,
+): Promise<ActionResult> {
+  await requireRole(isFrontDeskRole);
+  const parsed = statusSchema.safeParse(input);
+  if (!parsed.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_member_status", {
+    p_member_id: parsed.data.memberId,
+    p_status: parsed.data.status,
+  });
+  refresh();
+  return error ? fail(errorMessageKey(error)) : ok(STATUS_OK[parsed.data.status]);
+}
+
+const idsSchema = z.array(z.guid()).min(1).max(100);
+
+/** Activer plusieurs inscriptions (set_member_status pour chacune ; stratégies appliquées). */
+export async function bulkActivate(input: { memberIds: string[] }): Promise<ActionResult> {
+  await requireRole(isFrontDeskRole);
+  const ids = idsSchema.safeParse(input.memberIds);
+  if (!ids.success) return fail("common.unexpectedError");
+  const supabase = await createClient();
+  let done = 0;
+  let failed: { message?: string } | null = null;
+  for (const id of ids.data) {
+    const { error } = await supabase.rpc("set_member_status", {
+      p_member_id: id,
+      p_status: "active",
+    });
+    if (error) failed = error;
+    else done += 1;
+  }
+  refresh();
+  if (failed && done === 0) return fail(errorMessageKey(failed));
+  return ok("members.bulk.activated", done);
+}
+
+/** Ajouter une étiquette à plusieurs fiches (add_member_tag). */
+export async function bulkAddTag(input: {
+  memberIds: string[];
+  tag: string;
+}): Promise<ActionResult> {
+  const context = await requireRole(isFrontDeskRole);
+  const ids = idsSchema.safeParse(input.memberIds);
+  const tag = z.string().trim().min(1).max(40).safeParse(input.tag);
+  if (!ids.success || !tag.success) return fail("members.bulk.tagInvalid");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("add_member_tag", {
+    p_gym_id: context.gym.id,
+    p_member_ids: ids.data,
+    p_tag: tag.data,
+  });
+  refresh();
+  return error ? fail(errorMessageKey(error)) : ok("members.bulk.tagged", data ?? 0);
 }

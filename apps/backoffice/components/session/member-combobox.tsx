@@ -2,7 +2,8 @@
 
 import { MEMBER_STATUS_TONE, TONE_CLASSES } from "@salle/shared";
 import { CheckIcon, SearchIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useSessionLive } from "@/components/session/session-live";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Command,
@@ -20,37 +21,21 @@ import { cn } from "@/lib/utils";
 
 /**
  * Recherche d'adhérent au fil de la frappe (nom complet, sans accents, téléphone) puis
- * inscription en un clic : la sélection soumet le formulaire de la Server Action bookMember.
+ * inscription en un clic : la ligne apparaît aussitôt dans la liste (SessionLiveProvider).
  */
-export function MemberCombobox({
-  sessionId,
-  excludeIds,
-  action,
-  full,
-}: {
-  sessionId: string;
-  excludeIds: string[];
-  action: (formData: FormData) => void | Promise<void>;
-  full: boolean;
-}) {
+export function MemberCombobox({ excludeIds, full }: { excludeIds: string[]; full: boolean }) {
   const [query, setQuery] = useState("");
   const { hits, loading, short } = useMemberSearch(query);
-  const form = useRef<HTMLFormElement>(null);
-  const memberInput = useRef<HTMLInputElement>(null);
-  const excluded = new Set(excludeIds);
+  const live = useSessionLive();
+  const excluded = new Set([...excludeIds, ...(live?.pending.map((p) => p.id) ?? [])]);
 
   function book(member: MemberHit) {
-    if (!memberInput.current || !form.current) return;
-    memberInput.current.value = member.id;
-    form.current.requestSubmit();
+    live?.book({ id: member.id, name: `${member.first_name} ${member.last_name}` });
+    setQuery("");
   }
 
   return (
     <div className="grid gap-2">
-      <form ref={form} action={action} className="hidden">
-        <input type="hidden" name="sessionId" value={sessionId} />
-        <input ref={memberInput} type="hidden" name="memberId" />
-      </form>
       <Command shouldFilter={false} className="rounded-xl shadow-border">
         <CommandInput
           value={query}

@@ -148,7 +148,17 @@ export function shiftDateKey(dateKey: string, days: number): string {
 }
 
 export type DateRangePreset =
-  "last7" | "last30" | "thisMonth" | "lastMonth" | "last90" | "thisYear";
+  | "last7"
+  | "last30"
+  | "thisMonth"
+  | "lastMonth"
+  | "last90"
+  | "thisYear"
+  // Vers l'avenir (génération de séances) : à partir d'aujourd'hui.
+  | "next7"
+  | "next14"
+  | "next28"
+  | "nextMonth";
 
 /**
  * Raccourcis de période (champ de période, indicateurs), bornes incluses, relatifs au jour
@@ -175,5 +185,16 @@ export function dateRangePreset(
     }
     case "thisYear":
       return { from: `${todayKey.slice(0, 4)}-01-01`, to: todayKey };
+    case "next7":
+      return { from: todayKey, to: shiftDateKey(todayKey, 6) };
+    case "next14":
+      return { from: todayKey, to: shiftDateKey(todayKey, 13) };
+    case "next28":
+      return { from: todayKey, to: shiftDateKey(todayKey, 27) };
+    case "nextMonth": {
+      const next = monthRange(month)?.next;
+      const range = next ? monthRange(next) : null;
+      return range ? { from: range.from, to: range.to } : { from: todayKey, to: todayKey };
+    }
   }
 }

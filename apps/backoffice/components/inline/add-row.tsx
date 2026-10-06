@@ -1,10 +1,28 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { type MessageKey, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+type CreateAction = () => Promise<{ error: MessageKey | null; id?: string | undefined }>;
+
+/** Création, puis la nouvelle ligne prend le focus (`?n=<id>`, voir `FocusRow`). */
+function useCreate(action: CreateAction) {
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const pathname = usePathname();
+  const run = () =>
+    startTransition(async () => {
+      const result = await action();
+      if (result.error) toast.error(t(result.error), { closeButton: true });
+      else if (result.id) router.replace(`${pathname}?n=${result.id}`, { scroll: false });
+    });
+  return { pending, run };
+}
 
 /** Ligne « + Nouveau » d'un tableau éditable : crée avec les valeurs par défaut. */
 export function AddRow({
@@ -13,10 +31,10 @@ export function AddRow({
   colSpan,
 }: {
   label: string;
-  action: () => Promise<{ error: MessageKey | null }>;
+  action: CreateAction;
   colSpan: number;
 }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useCreate(action);
   return (
     <tr>
       <td colSpan={colSpan} className="p-1">
@@ -24,12 +42,7 @@ export function AddRow({
           type="button"
           disabled={pending}
           aria-busy={pending}
-          onClick={() =>
-            startTransition(async () => {
-              const result = await action();
-              if (result.error) toast.error(t(result.error), { closeButton: true });
-            })
-          }
+          onClick={run}
           className={cn(
             "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:py-3",
             pending && "opacity-60",
@@ -41,4 +54,28 @@ export function AddRow({
       </td>
     </tr>
   );
+}
+
+/** Même création depuis un bouton (état vide). */
+export function AddButton({ label, action }: { label: string; action: CreateAction }) {
+  const { pending, run } = useCreate(action);
+  return (
+    <Button type="button" disabled={pending} onClick={run}>
+      <PlusIcon data-icon="inline-start" aria-hidden />
+      {label}
+    </Button>
+  );
+}
+
+/**
+ * Ligne tout juste créée (brouillon) : elle reçoit le focus sur sa première cellule et défile
+ * dans la vue, pour la compléter au clavier.
+ */
+export function FocusRow({ id }: { id: string }) {
+  useEffect(() => {
+    const row = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(id)}"]`);
+    row?.scrollIntoView({ block: "nearest" });
+    row?.querySelector<HTMLElement>("button, input, [tabindex='0']")?.focus();
+  }, [id]);
+  return null;
 }

@@ -1,9 +1,19 @@
 "use client";
 
 import { Trash2Icon } from "lucide-react";
-import { type ReactNode, useState, useTransition } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useId,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import { deleteDeskShift, saveDeskShift } from "@/app/(app)/planning/desk-actions";
+import { Combobox } from "@/components/forms/combobox";
+import { DateField } from "@/components/forms/date-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,12 +22,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { t } from "@/lib/i18n";
+import { toastUndo } from "@/lib/toast-undo";
 
 export type TeamOption = { id: string; name: string };
 export type DeskShiftDraft = {
@@ -29,134 +39,220 @@ export type DeskShiftDraft = {
   note?: string | undefined;
 };
 
-/** Ajout ou modification d'une permanence à l'accueil (gérant) : personne, date, horaires. */
-export function DeskShiftDialog({
+const OpenShift = createContext<((draft: DeskShiftDraft) => void) | null>(null);
+
+/**
+ * Un seul dialogue de permanence pour toute la page (gérant) : chaque créneau, trou ou « + »
+ * l'ouvre avec son brouillon par `DeskShiftTrigger`.
+ */
+export function DeskShiftProvider({ team, children }: { team: TeamOption[]; children: ReactNode }) {
+  const [draft, setDraft] = useState<DeskShiftDraft | null>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <OpenShift.Provider
+      value={(next) => {
+        setDraft(next);
+        setOpen(true);
+      }}
+    >
+      {children}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          {draft ? (
+            // Clé : un autre brouillon repart de ses propres valeurs.
+            <DeskShiftForm
+              key={`${draft.id ?? "new"}-${draft.date}-${draft.start}`}
+              team={team}
+              draft={draft}
+              onDone={() => setOpen(false)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </OpenShift.Provider>
+  );
+}
+
+/**
+ * Bouton qui ouvre le dialogue avec ce brouillon : `Button` du kit, ou bouton natif (`native`)
+ * pour les créneaux compacts du planning. Sans `DeskShiftProvider`, le bouton est inerte.
+ */
+export function DeskShiftTrigger({
+  draft,
+  native = false,
+  ...props
+}: ComponentProps<typeof Button> & { draft: DeskShiftDraft; native?: boolean | undefined }) {
+  const open = useContext(OpenShift);
+  const onClick = open ? () => open(draft) : undefined;
+  if (native) {
+    return (
+      <button
+        type="button"
+        className={props.className}
+        aria-label={props["aria-label"]}
+        onClick={onClick}
+      >
+        {props.children}
+      </button>
+    );
+  }
+  return <Button type="button" {...props} onClick={onClick} />;
+}
+
+function DeskShiftForm({
   team,
   draft,
-  trigger,
+  onDone,
 }: {
   team: TeamOption[];
   draft: DeskShiftDraft;
-  trigger: ReactNode;
+  onDone: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(draft.profileId ?? null);
+  const [date, setDate] = useState<string | null>(draft.date);
+  const [start, setStart] = useState(draft.start);
+  const [end, setEnd] = useState(draft.end);
+  const [note, setNote] = useState(draft.note ?? "");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const ids = { person: useId(), date: useId(), start: useId(), end: useId(), note: useId() };
   const editing = Boolean(draft.id);
+  const nameOf = (id: string | undefined) => team.find((member) => member.id === id)?.name ?? "";
 
-  function submit(formData: FormData) {
+  function submit() {
+    if (!profileId || !date) {
+      setError(t(!profileId ? "desk.errors.person" : "desk.errors.date"));
+      return;
+    }
     startTransition(async () => {
       const result = await saveDeskShift({
         ...(draft.id ? { id: draft.id } : {}),
-        profileId: String(formData.get("profileId") ?? ""),
-        date: String(formData.get("date") ?? ""),
-        start: String(formData.get("start") ?? ""),
-        end: String(formData.get("end") ?? ""),
-        note: String(formData.get("note") ?? ""),
+        profileId,
+        date,
+        start,
+        end,
+        note,
       });
       if (result.error) {
-        toast.error(t(result.error), { closeButton: true });
+        setError(t(result.error));
         return;
       }
       toast.success(t(editing ? "desk.updated" : "desk.created"));
-      setOpen(false);
+      onDone();
     });
   }
 
   function remove() {
-    if (!draft.id) return;
-    const id = draft.id;
-    startTransition(async () => {
-      const result = await deleteDeskShift(id);
-      if (result.error) toast.error(t(result.error), { closeButton: true });
-      else {
-        toast.success(t("desk.deleted"));
-        setOpen(false);
-      }
+    const { id, ...rest } = draft;
+    if (!id || !rest.profileId) return;
+    const restore = { ...rest, profileId: rest.profileId };
+    onDone();
+    // Réversible : « Annuler » recrée la même permanence.
+    toastUndo({
+      message: t("desk.deletedNamed", { name: nameOf(rest.profileId) }),
+      mode: "inverse",
+      run: () => deleteDeskShift(id),
+      undo: () => saveDeskShift(restore),
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t(editing ? "desk.editTitle" : "desk.addTitle")}</DialogTitle>
-          <DialogDescription>{t("desk.dialogHint")}</DialogDescription>
-        </DialogHeader>
-        <form action={submit} noValidate className="grid gap-4">
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="desk-person">{t("desk.person")}</FieldLabel>
-              <NativeSelect
-                id="desk-person"
-                name="profileId"
-                defaultValue={draft.profileId ?? ""}
-                required
-              >
-                <NativeSelectOption value="" disabled>
-                  {t("desk.choosePerson")}
-                </NativeSelectOption>
-                {team.map((member) => (
-                  <NativeSelectOption key={member.id} value={member.id}>
-                    {member.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="desk-date">{t("desk.date")}</FieldLabel>
-              <Input id="desk-date" name="date" type="date" defaultValue={draft.date} required />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="desk-start">{t("desk.start")}</FieldLabel>
-                <Input
-                  id="desk-start"
-                  name="start"
-                  type="time"
-                  step={900}
-                  defaultValue={draft.start}
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="desk-end">{t("desk.end")}</FieldLabel>
-                <Input
-                  id="desk-end"
-                  name="end"
-                  type="time"
-                  step={900}
-                  defaultValue={draft.end}
-                  required
-                />
-              </Field>
-            </div>
-            <Field>
-              <FieldLabel htmlFor="desk-note">{t("desk.note")}</FieldLabel>
-              <Input id="desk-note" name="note" maxLength={200} defaultValue={draft.note ?? ""} />
-            </Field>
-          </FieldGroup>
-          <DialogFooter className="gap-2 sm:justify-between">
-            {editing ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-destructive"
-                onClick={remove}
-                disabled={pending}
-              >
-                <Trash2Icon data-icon="inline-start" />
-                {t("desk.delete")}
-              </Button>
-            ) : (
-              <span />
-            )}
-            <Button type="submit" disabled={pending} aria-busy={pending}>
-              {t("desk.save")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form
+      noValidate
+      className="grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>{t(editing ? "desk.editTitle" : "desk.addTitle")}</DialogTitle>
+        <DialogDescription>{t("desk.dialogHint")}</DialogDescription>
+      </DialogHeader>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor={ids.person}>{t("desk.person")}</FieldLabel>
+          <Combobox
+            id={ids.person}
+            options={team.map((member) => ({
+              value: member.id,
+              label: member.name,
+              person: true,
+            }))}
+            value={profileId}
+            onChange={setProfileId}
+            placeholder={t("desk.choosePerson")}
+            invalid={error !== null && !profileId}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={ids.date}>{t("desk.date")}</FieldLabel>
+          <DateField
+            id={ids.date}
+            value={date}
+            onChange={setDate}
+            invalid={error !== null && !date}
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field>
+            <FieldLabel htmlFor={ids.start}>{t("desk.start")}</FieldLabel>
+            <Input
+              id={ids.start}
+              type="time"
+              step={900}
+              value={start}
+              onChange={(event) => setStart(event.target.value)}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={ids.end}>{t("desk.end")}</FieldLabel>
+            <Input
+              id={ids.end}
+              type="time"
+              step={900}
+              value={end}
+              onChange={(event) => setEnd(event.target.value)}
+              className="tabular-nums"
+            />
+          </Field>
+        </div>
+        <Field>
+          <FieldLabel htmlFor={ids.note}>{t("desk.note")}</FieldLabel>
+          <Input
+            id={ids.note}
+            maxLength={200}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </Field>
+      </FieldGroup>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <DialogFooter className="gap-2 sm:justify-between">
+        {editing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-destructive"
+            onClick={remove}
+            disabled={pending}
+          >
+            <Trash2Icon data-icon="inline-start" aria-hidden />
+            {t("desk.delete")}
+          </Button>
+        ) : (
+          <span />
+        )}
+        <Button type="submit" disabled={pending}>
+          {pending ? <Spinner data-icon="inline-start" /> : null}
+          {t("desk.save")}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

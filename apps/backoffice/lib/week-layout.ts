@@ -41,3 +41,6 @@ export function layoutDay<T extends TimedItem>(items: readonly T[]): PlacedItem<
   closeGroup();
   return placed;
 }
+
+/** Consignes du glisser-déposer au clavier (lues avec chaque séance déplaçable). */
+export const DND_INSTRUCTIONS_ID = "planning-dnd-instructions";

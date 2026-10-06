@@ -95,7 +95,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       : []),
     ...(manager
       ? [
-          { kind: "session" as const, href: "/planning" },
+          { kind: "session" as const, href: "/planning?creer=1" },
           { kind: "campaign" as const, href: "/emailing" },
         ]
       : []),

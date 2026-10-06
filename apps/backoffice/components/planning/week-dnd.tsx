@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  type Announcements,
   DndContext,
   type DragEndEvent,
   type DragMoveEvent,
+  type KeyboardCoordinateGetter,
+  KeyboardSensor,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -15,16 +18,21 @@ import {
   createContext,
   type CSSProperties,
   type ReactNode,
+  startTransition as startUiTransition,
   useContext,
   useRef,
   useState,
   useTransition,
 } from "react";
 import { toast } from "sonner";
-import type { MovePreview } from "@/app/(app)/planning/move-actions";
-import type { CellSave } from "@/components/inline/editable-cell";
-import { Button } from "@/components/ui/button";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { updateSessionField } from "@/app/(app)/planning/[id]/actions";
+import { type MovePreview, moveSession, previewMove } from "@/app/(app)/planning/move-actions";
+import {
+  type CreateOptions,
+  QuickCreateForm,
+  quickCreateTitle,
+} from "@/components/planning/quick-create";
+import { SessionSheet, type SessionSummary } from "@/components/planning/session-sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,8 +43,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { type MessageKey, t } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { t } from "@/lib/i18n";
+import { toastUndo } from "@/lib/toast-undo";
 import { cn } from "@/lib/utils";
+import { DND_INSTRUCTIONS_ID } from "@/lib/week-layout";
 
 const SNAP_MINUTES = 15;
 
@@ -50,40 +62,39 @@ type SessionDrag = {
   recurring: boolean;
 };
 type Target = { dayKey: string; minutes: number };
-type Actions = {
-  preview: (input: { sessionId: string; dayKey: string; minutes: number }) => Promise<MovePreview>;
-  move: (input: {
-    sessionId: string;
-    dayKey: string;
-    minutes: number;
-  }) => Promise<{ error: MessageKey | null }>;
-  resize: CellSave;
-  create: (input: {
-    dayKey: string;
-    minutes: number;
-    disciplineId: string;
-  }) => Promise<{ error: MessageKey | null }>;
-};
+/** Séance déposée, gardée à sa nouvelle place jusqu'à la réponse du serveur. */
+type Held = { sessionId: string; fromDay: string; fromMinute: number; x: number; y: number };
+type HeldDuration = { sessionId: string; from: number; to: number };
 
 type DragContext = {
   enabled: boolean;
   pxPerMinute: number;
   firstMinute: number;
   target: (Target & { sessionId: string }) | null;
+  held: Held | null;
+  heldDuration: HeldDuration | null;
+  creating: Target | null;
+  createOptions: CreateOptions | null;
   justDropped: () => boolean;
   markDropped: () => void;
   resize: (drag: SessionDrag, duration: number) => void;
-  openCreate: (dayKey: string, minutes: number) => void;
+  openCreate: (target: Target) => void;
+  closeCreate: () => void;
 };
 const DragState = createContext<DragContext>({
   enabled: false,
   pxPerMinute: 1,
   firstMinute: 0,
   target: null,
+  held: null,
+  heldDuration: null,
+  creating: null,
+  createOptions: null,
   justDropped: () => false,
   markDropped: () => {},
   resize: () => {},
   openCreate: () => {},
+  closeCreate: () => {},
 });
 
 /** « mardi 6 octobre » pour une date civile « AAAA-MM-JJ ». */
@@ -98,30 +109,61 @@ const dayLabel = (dayKey: string) =>
 const hhmm = (minutes: number) =>
   `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
 
+const columnRect = (dayKey: string) =>
+  document.querySelector(`[data-day-column="${dayKey}"]`)?.getBoundingClientRect();
+
 /**
- * Glisser-déposer du planning (gérant) : une séance glisse vers un autre jour ou une autre
- * heure (pas de 15 min, heure affichée pendant le geste) ; au dépôt, confirmation avec le
- * nombre d'inscrits prévenus et un éventuel chevauchement du coach. La base tranche.
+ * Glisser-déposer du planning (gérant), à la souris ou au clavier (Espace, flèches, Espace) :
+ * une séance glisse vers un autre jour ou une autre heure (pas de 15 min) ; au dépôt, elle reste
+ * à sa nouvelle place pendant la confirmation (inscrits prévenus, chevauchement du coach), et
+ * revient si la base refuse. Un clic sur une séance ouvre son aperçu ; sur un créneau vide, la
+ * création rapide.
  */
 export function WeekDnd({
   enabled,
   pxPerMinute,
   firstMinute,
   timeZone,
-  disciplines,
-  actions,
+  createOptions,
+  sessions,
   children,
 }: {
   enabled: boolean;
   pxPerMinute: number;
   firstMinute: number;
   timeZone: string;
-  disciplines: { value: string; label: string }[];
-  actions: Actions;
+  createOptions: CreateOptions | null;
+  /** Résumés pour l'aperçu (SessionSheet). */
+  sessions: SessionSummary[];
   children: ReactNode;
 }) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const coordinateGetter: KeyboardCoordinateGetter = (event, { currentCoordinates, context }) => {
+    const step = SNAP_MINUTES * pxPerMinute;
+    const column = [...context.droppableRects.values()][0]?.width ?? 120;
+    switch (event.code) {
+      case "ArrowUp":
+        return { ...currentCoordinates, y: currentCoordinates.y - step };
+      case "ArrowDown":
+        return { ...currentCoordinates, y: currentCoordinates.y + step };
+      case "ArrowLeft":
+        return { ...currentCoordinates, x: currentCoordinates.x - column };
+      case "ArrowRight":
+        return { ...currentCoordinates, x: currentCoordinates.x + column };
+      default:
+        return undefined;
+    }
+  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    // Entrée suit le lien (aperçu) : seul Espace saisit la séance.
+    useSensor(KeyboardSensor, {
+      coordinateGetter,
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+    }),
+  );
   const [target, setTarget] = useState<(Target & { sessionId: string }) | null>(null);
+  const [held, setHeld] = useState<Held | null>(null);
+  const [heldDuration, setHeldDuration] = useState<HeldDuration | null>(null);
   const [pending, setPending] = useState<{
     drag: SessionDrag;
     to: Target;
@@ -130,36 +172,33 @@ export function WeekDnd({
   const [busy, startTransition] = useTransition();
   const droppedAt = useRef(0);
   const [resizing, setResizing] = useState<{ drag: SessionDrag; duration: number } | null>(null);
-  const [creating, setCreating] = useState<{ dayKey: string; minutes: number } | null>(null);
-  const [disciplineId, setDisciplineId] = useState(disciplines[0]?.value ?? "");
+  const [creating, setCreating] = useState<Target | null>(null);
+  const [sheet, setSheet] = useState<string | null>(null);
+  const byId = new Map(sessions.map((session) => [session.id, session]));
+  const justDropped = () => Date.now() - droppedAt.current < 300;
 
   function saveDuration(drag: SessionDrag, duration: number, scope?: "one" | "following") {
     startTransition(async () => {
-      const result = await actions.resize({
+      const result = await updateSessionField({
         id: drag.sessionId,
         field: "duration_minutes",
         value: duration,
         scope,
       });
-      if (result.error) toast.error(t(result.error), { closeButton: true });
-      else toast.success(t("planning.resized", { minutes: duration }));
+      if (result.error) {
+        setHeldDuration(null);
+        toast.error(t(result.error), { closeButton: true });
+        return;
+      }
+      toast.success(t("planning.resized", { minutes: duration }));
+      startUiTransition(() => setHeldDuration(null));
     });
   }
 
   function resize(drag: SessionDrag, duration: number) {
+    setHeldDuration({ sessionId: drag.sessionId, from: drag.duration, to: duration });
     if (drag.recurring) setResizing({ drag, duration });
     else saveDuration(drag, duration);
-  }
-
-  function create() {
-    if (!creating || !disciplineId) return;
-    const slot = creating;
-    setCreating(null);
-    startTransition(async () => {
-      const result = await actions.create({ ...slot, disciplineId });
-      if (result.error) toast.error(t(result.error), { closeButton: true });
-      else toast.success(t("planning.created"));
-    });
   }
 
   function compute(event: DragMoveEvent | DragEndEvent): Target | null {
@@ -178,9 +217,19 @@ export function WeekDnd({
     const drag = event.active.data.current as SessionDrag | undefined;
     const to = compute(event);
     if (!drag || !to || (to.dayKey === drag.dayKey && to.minutes === drag.startMinute)) return;
+    const from = columnRect(drag.dayKey);
+    const into = columnRect(to.dayKey);
+    setHeld({
+      sessionId: drag.sessionId,
+      fromDay: drag.dayKey,
+      fromMinute: drag.startMinute,
+      x: from && into ? into.left - from.left : 0,
+      y: (to.minutes - drag.startMinute) * pxPerMinute,
+    });
     startTransition(async () => {
-      const preview = await actions.preview({ sessionId: drag.sessionId, ...to });
+      const preview = await previewMove({ sessionId: drag.sessionId, ...to });
       if (preview.error) {
+        setHeld(null);
         toast.error(t(preview.error), { closeButton: true });
         return;
       }
@@ -190,14 +239,46 @@ export function WeekDnd({
 
   function confirm() {
     if (!pending) return;
-    const { drag, to } = pending;
+    const { drag, to, preview } = pending;
     setPending(null);
+    const notified = preview.booked + preview.waitlisted;
+    const run = async () => {
+      const result = await moveSession({ sessionId: drag.sessionId, ...to });
+      if (result.error) setHeld(null);
+      else startUiTransition(() => setHeld(null));
+      return result;
+    };
+    if (notified === 0) {
+      // Personne n'a été prévenu : le déplacement est réversible.
+      toastUndo({
+        message: t("planning.moved"),
+        mode: "inverse",
+        run,
+        undo: () =>
+          moveSession({
+            sessionId: drag.sessionId,
+            dayKey: drag.dayKey,
+            minutes: drag.startMinute,
+          }),
+      });
+      return;
+    }
     startTransition(async () => {
-      const result = await actions.move({ sessionId: drag.sessionId, ...to });
+      const result = await run();
       if (result.error) toast.error(t(result.error), { closeButton: true });
-      else toast.success(t("planning.moved"));
+      else toast.success(t("planning.movedNotified", { count: notified }));
     });
   }
+
+  const announcements: Announcements = {
+    onDragStart: ({ active }) =>
+      t("planning.dnd.start", { label: (active.data.current as SessionDrag).label }),
+    onDragOver: () => undefined,
+    onDragEnd: ({ active }) =>
+      t("planning.dnd.end", { label: (active.data.current as SessionDrag).label }),
+    onDragCancel: ({ active }) =>
+      t("planning.dnd.cancel", { label: (active.data.current as SessionDrag).label }),
+  };
 
   const when = pending
     ? new Intl.DateTimeFormat("fr-FR", {
@@ -218,16 +299,25 @@ export function WeekDnd({
         pxPerMinute,
         firstMinute,
         target,
-        justDropped: () => Date.now() - droppedAt.current < 300,
+        held,
+        heldDuration,
+        creating,
+        createOptions,
+        justDropped,
         markDropped: () => {
           droppedAt.current = Date.now();
         },
         resize,
-        openCreate: (dayKey, minutes) => setCreating({ dayKey, minutes }),
+        openCreate: setCreating,
+        closeCreate: () => setCreating(null),
       }}
     >
       <DndContext
         sensors={sensors}
+        accessibility={{
+          announcements,
+          screenReaderInstructions: { draggable: t("planning.dnd.instructions") },
+        }}
         onDragMove={(event) => {
           const to = compute(event);
           const id = (event.active.data.current as SessionDrag | undefined)?.sessionId;
@@ -236,9 +326,51 @@ export function WeekDnd({
         onDragCancel={() => setTarget(null)}
         onDragEnd={onDragEnd}
       >
-        <div aria-busy={busy}>{children}</div>
+        <div
+          aria-busy={busy}
+          onClickCapture={(event) => {
+            // Une séance ouvre son aperçu (clic simple) ; Ctrl/⌘-clic garde la fiche.
+            const link = (event.target as HTMLElement).closest<HTMLElement>("[data-session-link]");
+            if (!link) return;
+            if (justDropped()) {
+              event.preventDefault();
+              event.stopPropagation();
+              return;
+            }
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+            const id = link.dataset.sessionLink ?? "";
+            if (!byId.has(id)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setSheet(id);
+          }}
+        >
+          {children}
+        </div>
       </DndContext>
-      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+      {enabled ? (
+        <p id={DND_INSTRUCTIONS_ID} className="sr-only">
+          {t("planning.dnd.instructions")}
+        </p>
+      ) : null}
+      <p className="sr-only" aria-live="polite">
+        {target
+          ? t("planning.dnd.target", { day: dayLabel(target.dayKey), time: hhmm(target.minutes) })
+          : ""}
+      </p>
+      <SessionSheet
+        session={sheet ? (byId.get(sheet) ?? null) : null}
+        onClose={() => setSheet(null)}
+      />
+      <AlertDialog
+        open={pending !== null}
+        onOpenChange={(open) => {
+          if (open) return;
+          // Fermé sans confirmer : la séance revient à sa place.
+          if (pending) setHeld(null);
+          setPending(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -262,7 +394,14 @@ export function WeekDnd({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={resizing !== null} onOpenChange={(open) => !open && setResizing(null)}>
+      <AlertDialog
+        open={resizing !== null}
+        onOpenChange={(open) => {
+          if (open) return;
+          setResizing(null);
+          setHeldDuration(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -295,43 +434,11 @@ export function WeekDnd({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={creating !== null} onOpenChange={(open) => !open && setCreating(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("planning.createTitle", {
-                when: creating ? `${dayLabel(creating.dayKey)} ${hhmm(creating.minutes)}` : "",
-              })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{t("planning.createHint")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <label className="grid gap-1 text-sm">
-            <span className="text-muted-foreground">{t("templates.discipline")}</span>
-            <NativeSelect
-              value={disciplineId}
-              onChange={(event) => setDisciplineId(event.target.value)}
-              className="w-full"
-            >
-              {disciplines.map((d) => (
-                <NativeSelectOption key={d.value} value={d.value}>
-                  {d.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={create} disabled={!disciplineId}>
-              {t("planning.createConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </DragState.Provider>
   );
 }
 
-/** Colonne d'un jour : zone de dépôt. */
+/** Colonne d'un jour : zone de dépôt ; un clic sur un créneau vide propose d'y créer une séance. */
 export function DroppableDay({
   dayKey,
   className,
@@ -343,27 +450,66 @@ export function DroppableDay({
   style?: CSSProperties | undefined;
   children: ReactNode;
 }) {
-  const { enabled, pxPerMinute, firstMinute, openCreate, justDropped } = useContext(DragState);
+  const {
+    enabled,
+    pxPerMinute,
+    firstMinute,
+    openCreate,
+    closeCreate,
+    creating,
+    createOptions,
+    justDropped,
+  } = useContext(DragState);
   const { setNodeRef, isOver } = useDroppable({
     id: `day-${dayKey}`,
     data: { dayKey },
     disabled: !enabled,
   });
+  const canCreate = enabled && createOptions !== null;
+  const here = creating && creating.dayKey === dayKey ? creating : null;
   return (
-    // Gérant : un clic sur un créneau vide propose d'y créer une séance ponctuelle.
     <div
       ref={setNodeRef}
-      className={cn(className, isOver && "bg-primary/[0.04]", enabled && "cursor-cell")}
+      data-day-column={dayKey}
+      className={cn(className, isOver && "bg-primary/[0.04]", canCreate && "cursor-cell")}
       style={style}
       onClick={(event) => {
-        if (!enabled || justDropped()) return;
+        if (!canCreate || justDropped()) return;
+        // Les clics dans la fenêtre de création (portail) remontent ici : les ignorer.
+        if (!event.currentTarget.contains(event.target as Node)) return;
         if ((event.target as HTMLElement).closest("[data-session]")) return;
         const offset = event.clientY - event.currentTarget.getBoundingClientRect().top;
-        const minutes = Math.round((firstMinute + offset / pxPerMinute) / 15) * 15;
-        if (minutes >= 0 && minutes < 24 * 60) openCreate(dayKey, minutes);
+        const minutes = Math.floor((firstMinute + offset / pxPerMinute) / 15) * 15;
+        if (minutes >= 0 && minutes < 24 * 60) openCreate({ dayKey, minutes });
       }}
     >
       {children}
+      {here && createOptions ? (
+        <Popover open onOpenChange={(open) => !open && closeCreate()}>
+          <PopoverAnchor asChild>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-1 z-30 rounded-md border-2 border-dashed border-primary bg-primary/10 px-1.5 py-1 text-xs font-medium text-primary tabular-nums"
+              style={{
+                top: (here.minutes - firstMinute) * pxPerMinute + 1,
+                height: 60 * pxPerMinute - 2,
+              }}
+            >
+              {hhmm(here.minutes)}
+            </div>
+          </PopoverAnchor>
+          <PopoverContent side="right" align="start" className="grid w-80 gap-3">
+            <p className="text-sm font-semibold">{quickCreateTitle(dayKey)}</p>
+            <QuickCreateForm
+              key={`${here.dayKey}-${here.minutes}`}
+              options={createOptions}
+              dayKey={here.dayKey}
+              minutes={here.minutes}
+              onDone={closeCreate}
+            />
+          </PopoverContent>
+        </Popover>
+      ) : null}
     </div>
   );
 }
@@ -382,7 +528,8 @@ export function DraggableSession({
   style: CSSProperties;
   children: ReactNode;
 }) {
-  const { enabled, target, justDropped, markDropped, resize, pxPerMinute } = useContext(DragState);
+  const { enabled, target, held, heldDuration, markDropped, resize, pxPerMinute } =
+    useContext(DragState);
   const [extra, setExtra] = useState<number | null>(null);
   const resizeStart = useRef(0);
   const snapDuration = (dy: number) =>
@@ -393,32 +540,44 @@ export function DraggableSession({
     disabled: !enabled || !movable,
   });
   const live = isDragging && target?.sessionId === drag.sessionId ? target : null;
+  // Valeurs gardées en attendant le serveur, tant que le bloc est encore à son ancienne place.
+  const heldHere =
+    held &&
+    held.sessionId === drag.sessionId &&
+    held.fromDay === drag.dayKey &&
+    held.fromMinute === drag.startMinute
+      ? held
+      : null;
+  const durationHere =
+    heldDuration && heldDuration.sessionId === drag.sessionId && heldDuration.from === drag.duration
+      ? heldDuration.to
+      : null;
+  const shift = transform ?? (heldHere ? { x: heldHere.x, y: heldHere.y } : null);
+  const height =
+    extra !== null && typeof style.height === "number"
+      ? Math.max(20, style.height + extra)
+      : durationHere !== null
+        ? Math.max(28, durationHere * pxPerMinute - 2)
+        : null;
   return (
     <div
       ref={setNodeRef}
       data-session
+      data-pending={heldHere || durationHere !== null ? "" : undefined}
       {...(enabled && movable ? listeners : {})}
       {...(enabled && movable
         ? { "aria-roledescription": attributes["aria-roledescription"] }
         : {})}
-      onClickCapture={(event) => {
-        // Le relâchement d'un glisser ne doit pas ouvrir la séance.
-        if (justDropped()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      }}
       className={cn(
         className,
         enabled && movable && "cursor-grab touch-none",
         isDragging && "z-40 cursor-grabbing opacity-90 shadow-border-hover",
+        (heldHere || durationHere !== null) && "z-30 opacity-80",
       )}
       style={{
         ...style,
-        ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {}),
-        ...(extra !== null && typeof style.height === "number"
-          ? { height: Math.max(20, style.height + extra), zIndex: 40 }
-          : {}),
+        ...(shift ? { transform: `translate3d(${shift.x}px, ${shift.y}px, 0)` } : {}),
+        ...(height !== null ? { height, zIndex: 40 } : {}),
       }}
     >
       {children}

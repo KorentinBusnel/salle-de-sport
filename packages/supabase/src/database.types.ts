@@ -1885,6 +1885,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_member_tag: {
+        Args: { p_gym_id: string; p_member_ids: string[]; p_tag: string };
+        Returns: number;
+      };
       add_team_role: {
         Args: {
           p_email: string;
@@ -2070,6 +2074,21 @@ export type Database = {
           total: number;
         }[];
       };
+      export_members: {
+        Args: { p_gym_id: string; p_member_ids: string[] };
+        Returns: {
+          created_at: string;
+          credits: number;
+          email: string;
+          email_consent: boolean;
+          first_name: string;
+          last_name: string;
+          phone: string;
+          status: Database["public"]["Enums"]["member_status"];
+          tags: string[];
+          whatsapp_consent: boolean;
+        }[];
+      };
       filter_members: {
         Args: { p_filters: Json; p_gym_id: string };
         Returns: {
@@ -2245,10 +2264,13 @@ export type Database = {
           p_limit?: number;
           p_offset?: number;
           p_query?: string;
+          p_sort?: string;
           p_statuses?: Database["public"]["Enums"]["member_status"][];
           p_tag?: string;
         };
         Returns: {
+          created_at: string;
+          credits: number;
           email: string;
           first_name: string;
           id: string;
@@ -2382,6 +2404,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      set_attendance_many: { Args: { p_session_id: string }; Returns: string[] };
       set_member_status: {
         Args: { p_member_id: string; p_status: Database["public"]["Enums"]["member_status"] };
         Returns: {
@@ -2423,6 +2446,14 @@ export type Database = {
           last_name: string;
           profile_id: string;
           roles: Database["public"]["Enums"]["gym_role"][];
+        }[];
+      };
+      template_change_preview: {
+        Args: { p_template_id: string };
+        Returns: {
+          booked: number;
+          kept: number;
+          sessions: number;
         }[];
       };
       today_trials: {

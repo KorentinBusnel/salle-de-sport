@@ -70,3 +70,19 @@ export function trendChange(current: number, previous: number | null | undefined
   if (Math.abs(ratio) < 0.005) return { direction: "flat", ratio: 0 };
   return { direction: ratio > 0 ? "up" : "down", ratio };
 }
+
+/**
+ * Séance « peu remplie » (étiquette seule, sans action proposée) : à venir ou en cours, avec des
+ * places, remplie sous le seuil réglé par la salle (low_fill_percent, 50 % par défaut).
+ */
+export function isLowFill(session: {
+  booked: number;
+  capacity: number;
+  percent: number;
+  phase: SessionPhase;
+  status?: string | undefined;
+}): boolean {
+  if (session.capacity <= 0 || session.percent <= 0) return false;
+  if (session.phase === "past" || (session.status && session.status !== "scheduled")) return false;
+  return session.booked * 100 < session.capacity * session.percent;
+}

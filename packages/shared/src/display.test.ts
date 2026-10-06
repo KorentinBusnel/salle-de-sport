@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { occupancy, sessionPhase, trendChange } from "./display.ts";
+import { isLowFill, occupancy, sessionPhase, trendChange } from "./display.ts";
 
 describe("sessionPhase", () => {
   const start = new Date("2026-10-05T16:30:00Z");
@@ -28,5 +28,20 @@ describe("trendChange", () => {
     expect(trendChange(1002, 1000)).toEqual({ direction: "flat", ratio: 0 });
     expect(trendChange(5, 0)).toBeNull();
     expect(trendChange(5, null)).toBeNull();
+  });
+});
+
+describe("isLowFill", () => {
+  const base = { capacity: 16, percent: 50, phase: "upcoming" as const, status: "scheduled" };
+  it("sous le seuil, à venir ou en cours", () => {
+    expect(isLowFill({ ...base, booked: 7 })).toBe(true);
+    expect(isLowFill({ ...base, booked: 8 })).toBe(false);
+    expect(isLowFill({ ...base, booked: 3, phase: "live" })).toBe(true);
+  });
+  it("jamais une séance passée, annulée, sans place ou un seuil à 0 %", () => {
+    expect(isLowFill({ ...base, booked: 0, phase: "past" })).toBe(false);
+    expect(isLowFill({ ...base, booked: 0, status: "cancelled" })).toBe(false);
+    expect(isLowFill({ ...base, booked: 0, capacity: 0 })).toBe(false);
+    expect(isLowFill({ ...base, booked: 0, percent: 0 })).toBe(false);
   });
 });

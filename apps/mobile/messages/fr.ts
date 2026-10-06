@@ -238,5 +238,8 @@ export const fr = {
     no_stripe_customer: "Aucun paiement en ligne enregistré pour votre compte.",
     not_refundable: "Ce paiement ne peut pas être remboursé.",
     payment_not_found: "Paiement introuvable.",
+    not_unpaid: "Aucun impayé sur votre compte.",
+    not_settleable: "Ce paiement se règle depuis votre moyen de paiement.",
+    already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",
   },
 } as const;

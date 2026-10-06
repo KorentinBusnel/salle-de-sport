@@ -78,6 +78,9 @@ export const gymPrivateSettingsSchema = z.object({
   crm_list_limit: z.number().int().min(10).max(200).default(50),
   /** Séance « peu remplie » sous ce taux de remplissage (étiquette seule, sans action). */
   low_fill_percent: z.number().int().min(0).max(100).default(50),
+  /** Relances automatiques d'un impayé à J+N après le premier échec (0 : désactivée, run_dunning). */
+  dunning_first_days: z.number().int().min(0).max(60).default(3),
+  dunning_second_days: z.number().int().min(0).max(90).default(7),
   /** Blocs de l'accueil par rôle, dans l'ordre (absent : tous, ordre par défaut). */
   home_blocks: perRole(HOME_BLOCKS).default({}),
   /** Pastilles de la barre latérale par rôle (absent : DEFAULT_NAV_BADGES). */
@@ -256,6 +259,8 @@ const NUMBER_SETTINGS: {
   { key: "risk_min_sessions", scope: "private", section: "suivi", unit: "sessions" },
   { key: "low_fill_percent", scope: "private", section: "suivi", unit: "percent", step: 5 },
   { key: "crm_list_limit", scope: "private", section: "suivi", unit: "rows", step: 10 },
+  { key: "dunning_first_days", scope: "private", section: "suivi", unit: "days" },
+  { key: "dunning_second_days", scope: "private", section: "suivi", unit: "days" },
 ];
 
 /**

@@ -668,6 +668,14 @@ export const fr = {
         label: "Fiches par liste du CRM",
         hint: "Nombre de fiches proposées par catégorie « à compléter ».",
       },
+      dunning_first_days: {
+        label: "1ʳᵉ relance d'un impayé",
+        hint: "Message automatique N jours après le premier échec de paiement. 0 : désactivée.",
+      },
+      dunning_second_days: {
+        label: "2ᵉ relance d'un impayé",
+        hint: "Second message N jours après le premier échec. 0 : désactivée.",
+      },
       allow_attendance_reset: {
         label: "Annuler un pointage",
         hint: "« Remettre à confirmé » un adhérent pointé présent ou absent par erreur.",
@@ -1735,6 +1743,9 @@ export const fr = {
     no_stripe_customer: "Cet adhérent n'a jamais payé en ligne.",
     not_refundable: "Ce paiement ne peut pas être remboursé en ligne.",
     payment_not_found: "Paiement introuvable.",
+    not_unpaid: "Cet adhérent n'a pas d'impayé.",
+    not_settleable: "Cet impayé se règle en ligne par l'adhérent (abonnement payé en ligne).",
+    already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",
   },
   roles: {
     member: "Adhérent",

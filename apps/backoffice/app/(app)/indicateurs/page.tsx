@@ -1,5 +1,14 @@
 import { shiftDateKey, zonedDateKey } from "@salle/shared";
-import { CalendarCheckIcon, ClockIcon, PercentIcon, UserPlusIcon, UserXIcon } from "lucide-react";
+import {
+  BanknoteIcon,
+  CalendarCheckIcon,
+  ClockIcon,
+  CreditCardIcon,
+  PercentIcon,
+  RepeatIcon,
+  UserPlusIcon,
+  UserXIcon,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { z } from "zod";
@@ -53,6 +62,10 @@ const kpisSchema = z.object({
   ),
   coach_minutes: z.number(),
   coach_amount_cents: z.number(),
+  revenue_cents: z.number(),
+  failed_payments: z.number(),
+  mrr_cents: z.number(),
+  active_subscriptions: z.number(),
 });
 
 /**
@@ -155,6 +168,34 @@ export default async function KpisPage({
               icon={ClockIcon}
               trend={{ current: k.coach_minutes, previous: previous?.coach_minutes ?? null }}
               href={`/coachs/heures?mois=${to.slice(0, 7)}`}
+            />
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4">
+            <KpiCard
+              label={t("kpis.revenue")}
+              value={euros(k.revenue_cents)}
+              hint={t("kpis.revenueHint")}
+              icon={BanknoteIcon}
+              trend={{ current: k.revenue_cents, previous: previous?.revenue_cents ?? null }}
+              href={`/paiements?du=${from}&au=${to}`}
+            />
+            <KpiCard
+              label={t("kpis.mrr")}
+              value={euros(k.mrr_cents)}
+              hint={t("kpis.activeSubscriptions", { count: k.active_subscriptions })}
+              icon={RepeatIcon}
+            />
+            <KpiCard
+              label={t("kpis.failedPayments")}
+              value={k.failed_payments}
+              hint={t("kpis.failedPaymentsHint")}
+              icon={CreditCardIcon}
+              trend={{
+                current: k.failed_payments,
+                previous: previous?.failed_payments ?? null,
+                higherIsBetter: false,
+              }}
+              href={`/paiements?du=${from}&au=${to}&statut=failed`}
             />
           </div>
 

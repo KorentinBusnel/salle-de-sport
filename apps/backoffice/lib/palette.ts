@@ -18,6 +18,7 @@ export type PaletteIcon =
   | "kpis"
   | "hub"
   | "settings"
+  | "payments"
   | "member"
   | "session"
   | "campaign";

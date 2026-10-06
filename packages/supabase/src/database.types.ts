@@ -2262,6 +2262,20 @@ export type Database = {
           whatsapp_consent: boolean;
         }[];
       };
+      export_payments: {
+        Args: { p_from: string; p_gym_id: string; p_to: string };
+        Returns: {
+          amount_cents: number;
+          currency: string;
+          description: string;
+          member_name: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          paid_on: string;
+          plan_name: string;
+          promo_code: string;
+          status: Database["public"]["Enums"]["payment_status"];
+        }[];
+      };
       filter_members: {
         Args: { p_filters: Json; p_gym_id: string };
         Returns: {

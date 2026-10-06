@@ -5,6 +5,7 @@ import {
   ChartColumnIcon,
   ChevronsUpDownIcon,
   ClockIcon,
+  CreditCardIcon,
   DumbbellIcon,
   FilterIcon,
   KanbanIcon,
@@ -64,6 +65,7 @@ const ICONS = {
   kpis: ChartColumnIcon,
   hub: SparklesIcon,
   settings: SettingsIcon,
+  payments: CreditCardIcon,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof ICONS;

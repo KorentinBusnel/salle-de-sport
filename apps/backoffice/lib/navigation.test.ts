@@ -18,6 +18,7 @@ describe("buildNavigation", () => {
         "/segments",
         "/emailing",
         "/messages",
+        "/paiements",
         "/coachs",
         "/planning/modeles",
       ],

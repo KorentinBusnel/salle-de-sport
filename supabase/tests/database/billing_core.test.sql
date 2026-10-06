@@ -1,7 +1,7 @@
 -- Facturation sans Stripe : accès par discipline, lots de crédits et expiration, ventes sur
 -- place, renouvellement, codes promo, droits (gérant, accueil selon la stratégie), RLS.
 begin;
-select plan(33);
+select plan(35);
 
 insert into auth.users (id, email) values
   ('71000000-0000-0000-0000-000000000001', 'bc-gerant@test.local'),
@@ -144,6 +144,17 @@ select pg_temp.login_as('71000000-0000-0000-0000-000000000002');
 select lives_ok($$select public.record_manual_sale('72000000-0000-0000-0000-000000000003', '74000000-0000-0000-0000-000000000003', 'cash')$$,
   'accueil avec la stratégie : vente enregistrée');
 select is((select count(*)::integer from public.payments), 0, 'accueil : historique des paiements toujours invisible');
+
+-- Export des paiements : gérant seulement, journalisé
+select throws_ok($$select * from public.export_payments('7a000000-0000-0000-0000-000000000000', current_date - 1, current_date)$$,
+  'P0001', 'forbidden', 'accueil : pas d''export des paiements');
+select pg_temp.login_as('71000000-0000-0000-0000-000000000001');
+create temp table exported as
+  select * from public.export_payments('7a000000-0000-0000-0000-000000000000', current_date - 1, current_date + 1);
+select is((select (details ->> 'count')::integer from public.audit_log where action = 'payments.export'
+           and gym_id = '7a000000-0000-0000-0000-000000000000'),
+  (select count(*)::integer from exported),
+  'export des paiements journalisé avec son nombre de lignes');
 
 -- Isolation : adhérent et autre salle
 select pg_temp.login_as('71000000-0000-0000-0000-000000000005');

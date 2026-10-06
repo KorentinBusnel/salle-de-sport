@@ -903,6 +903,60 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- Export des paiements (gérant), inscrit au journal
+-- ---------------------------------------------------------------------------
+
+create function public.export_payments(p_gym_id uuid, p_from date, p_to date)
+returns table (
+  paid_on timestamptz,
+  member_name text,
+  description text,
+  plan_name text,
+  amount_cents integer,
+  currency text,
+  method public.payment_method,
+  status public.payment_status,
+  promo_code text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_tz text;
+  v_count integer;
+begin
+  if not private.is_gym_manager(p_gym_id) then
+    raise exception 'forbidden';
+  end if;
+  if p_from is null or p_to is null or p_to < p_from or p_to - p_from > 366 then
+    raise exception 'invalid_period';
+  end if;
+  select timezone into v_tz from public.gyms where id = p_gym_id;
+
+  select count(*) into v_count from public.payments p
+  where p.gym_id = p_gym_id
+    and coalesce(p.paid_at, p.created_at) >= p_from::timestamp at time zone v_tz
+    and coalesce(p.paid_at, p.created_at) < (p_to + 1)::timestamp at time zone v_tz;
+  insert into public.audit_log (gym_id, actor_id, action, entity, details)
+  values (p_gym_id, (select auth.uid()), 'payments.export', 'payments',
+          jsonb_build_object('count', v_count, 'from', p_from, 'to', p_to));
+
+  return query
+  select coalesce(p.paid_at, p.created_at), m.first_name || ' ' || m.last_name, p.description,
+         pl.name, p.amount_cents, p.currency, p.method, p.status, pc.code
+  from public.payments p
+  join public.members m on m.id = p.member_id
+  left join public.plans pl on pl.id = p.plan_id
+  left join public.promo_codes pc on pc.id = p.promo_code_id
+  where p.gym_id = p_gym_id
+    and coalesce(p.paid_at, p.created_at) >= p_from::timestamp at time zone v_tz
+    and coalesce(p.paid_at, p.created_at) < (p_to + 1)::timestamp at time zone v_tz
+  order by coalesce(p.paid_at, p.created_at);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Droits d'exécution
 -- ---------------------------------------------------------------------------
 
@@ -928,12 +982,14 @@ revoke all on function
   public.record_manual_sale(uuid, uuid, public.payment_method, text),
   public.renew_manual_subscription(uuid, public.payment_method),
   public.cancel_manual_subscription(uuid),
-  public.gym_kpis(uuid, date, date)
+  public.gym_kpis(uuid, date, date),
+  public.export_payments(uuid, date, date)
 from public, anon;
 grant execute on function
   public.price_quote(uuid, text),
   public.record_manual_sale(uuid, uuid, public.payment_method, text),
   public.renew_manual_subscription(uuid, public.payment_method),
   public.cancel_manual_subscription(uuid),
-  public.gym_kpis(uuid, date, date)
+  public.gym_kpis(uuid, date, date),
+  public.export_payments(uuid, date, date)
 to authenticated;

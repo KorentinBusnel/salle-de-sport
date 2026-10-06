@@ -1958,6 +1958,11 @@ export const fr = {
     mp_quote_not_found: "Devis introuvable.",
     mp_quote_expired: "Ce devis a expiré : demandez-en un nouveau.",
     mp_invalid_status: "Cette action n'est plus possible à ce stade.",
+    mp_campaign_not_found: "Achat groupé introuvable.",
+    mp_campaign_closed: "Cet achat groupé est clos.",
+    mp_commitment_not_found: "Engagement introuvable.",
+    mp_invalid_quantity: "Quantité invalide (de 1 à 10 000).",
+    mp_invalid_date: "La date de clôture doit être dans le futur.",
     payment_overdue:
       "L'abonnement de l'adhérent est en impayé : réservation suspendue jusqu'au règlement.",
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",

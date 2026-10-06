@@ -1035,6 +1035,32 @@ export type Database = {
           },
         ];
       };
+      gym_billing: {
+        Row: {
+          created_at: string;
+          gym_id: string;
+          stripe_customer_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          gym_id: string;
+          stripe_customer_id: string;
+        };
+        Update: {
+          created_at?: string;
+          gym_id?: string;
+          stripe_customer_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_billing_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: true;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gym_closures: {
         Row: {
           created_at: string;
@@ -1402,6 +1428,63 @@ export type Database = {
           },
         ];
       };
+      mp_campaigns: {
+        Row: {
+          closed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          ends_at: string;
+          id: string;
+          min_qty: number;
+          product_id: string;
+          status: Database["public"]["Enums"]["mp_campaign_status"];
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          closed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          ends_at: string;
+          id?: string;
+          min_qty?: number;
+          product_id: string;
+          status?: Database["public"]["Enums"]["mp_campaign_status"];
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          closed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          ends_at?: string;
+          id?: string;
+          min_qty?: number;
+          product_id?: string;
+          status?: Database["public"]["Enums"]["mp_campaign_status"];
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_campaigns_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_campaigns_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       mp_cart_items: {
         Row: {
           gym_id: string;
@@ -1462,6 +1545,74 @@ export type Database = {
         };
         Relationships: [];
       };
+      mp_commitments: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          id: string;
+          order_id: string | null;
+          quantity: number;
+          status: Database["public"]["Enums"]["mp_commitment_status"];
+          stripe_payment_method_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id: string;
+          id?: string;
+          order_id?: string | null;
+          quantity: number;
+          status?: Database["public"]["Enums"]["mp_commitment_status"];
+          stripe_payment_method_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id?: string;
+          id?: string;
+          order_id?: string | null;
+          quantity?: number;
+          status?: Database["public"]["Enums"]["mp_commitment_status"];
+          stripe_payment_method_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_commitments_campaign_id_fkey";
+            columns: ["campaign_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_campaigns";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_commitments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_commitments_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_commitments_order_id_gym_id_fkey";
+            columns: ["order_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_orders";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
       mp_order_items: {
         Row: {
           gym_id: string;
@@ -1515,11 +1666,13 @@ export type Database = {
       };
       mp_orders: {
         Row: {
+          campaign_id: string | null;
           created_at: string;
           created_by: string | null;
           currency: string;
           gym_id: string;
           id: string;
+          paid_at: string | null;
           quote_id: string | null;
           reference: string;
           status: Database["public"]["Enums"]["mp_order_status"];
@@ -1527,11 +1680,13 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          campaign_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           currency?: string;
           gym_id: string;
           id?: string;
+          paid_at?: string | null;
           quote_id?: string | null;
           reference: string;
           status?: Database["public"]["Enums"]["mp_order_status"];
@@ -1539,11 +1694,13 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          campaign_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           currency?: string;
           gym_id?: string;
           id?: string;
+          paid_at?: string | null;
           quote_id?: string | null;
           reference?: string;
           status?: Database["public"]["Enums"]["mp_order_status"];
@@ -1551,6 +1708,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "mp_orders_campaign_id_fkey";
+            columns: ["campaign_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_campaigns";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "mp_orders_created_by_fkey";
             columns: ["created_by"];
@@ -1570,6 +1734,63 @@ export type Database = {
             columns: ["quote_id", "gym_id"];
             isOneToOne: false;
             referencedRelation: "mp_quotes";
+            referencedColumns: ["id", "gym_id"];
+          },
+        ];
+      };
+      mp_payments: {
+        Row: {
+          amount_cents: number;
+          created_at: string;
+          currency: string;
+          gym_id: string;
+          id: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          order_id: string;
+          paid_at: string | null;
+          status: Database["public"]["Enums"]["payment_status"];
+          stripe_payment_intent_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_cents: number;
+          created_at?: string;
+          currency?: string;
+          gym_id: string;
+          id?: string;
+          method?: Database["public"]["Enums"]["payment_method"];
+          order_id: string;
+          paid_at?: string | null;
+          status: Database["public"]["Enums"]["payment_status"];
+          stripe_payment_intent_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          created_at?: string;
+          currency?: string;
+          gym_id?: string;
+          id?: string;
+          method?: Database["public"]["Enums"]["payment_method"];
+          order_id?: string;
+          paid_at?: string | null;
+          status?: Database["public"]["Enums"]["payment_status"];
+          stripe_payment_intent_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mp_payments_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mp_payments_order_id_gym_id_fkey";
+            columns: ["order_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "mp_orders";
             referencedColumns: ["id", "gym_id"];
           },
         ];
@@ -2824,11 +3045,13 @@ export type Database = {
       mp_accept_quote: {
         Args: { p_quote_id: string };
         Returns: {
+          campaign_id: string | null;
           created_at: string;
           created_by: string | null;
           currency: string;
           gym_id: string;
           id: string;
+          paid_at: string | null;
           quote_id: string | null;
           reference: string;
           status: Database["public"]["Enums"]["mp_order_status"];
@@ -2873,14 +3096,61 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      mp_campaign_progress: {
+        Args: { p_gym_id?: string };
+        Returns: {
+          description: string;
+          ends_at: string;
+          gyms: number;
+          id: string;
+          list_price_cents: number;
+          min_qty: number;
+          my_commitment_id: string;
+          my_quantity: number;
+          my_status: Database["public"]["Enums"]["mp_commitment_status"];
+          next_min_qty: number;
+          next_unit_price_cents: number;
+          product_id: string;
+          product_name: string;
+          status: Database["public"]["Enums"]["mp_campaign_status"];
+          title: string;
+          total_qty: number;
+          unit: string;
+          unit_price_cents: number;
+        }[];
+      };
+      mp_cancel_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: {
+          closed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          ends_at: string;
+          id: string;
+          min_qty: number;
+          product_id: string;
+          status: Database["public"]["Enums"]["mp_campaign_status"];
+          title: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_campaigns";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       mp_cancel_order: {
         Args: { p_order_id: string };
         Returns: {
+          campaign_id: string | null;
           created_at: string;
           created_by: string | null;
           currency: string;
           gym_id: string;
           id: string;
+          paid_at: string | null;
           quote_id: string | null;
           reference: string;
           status: Database["public"]["Enums"]["mp_order_status"];
@@ -2897,11 +3167,13 @@ export type Database = {
       mp_checkout_cart: {
         Args: { p_gym_id: string };
         Returns: {
+          campaign_id: string | null;
           created_at: string;
           created_by: string | null;
           currency: string;
           gym_id: string;
           id: string;
+          paid_at: string | null;
           quote_id: string | null;
           reference: string;
           status: Database["public"]["Enums"]["mp_order_status"];
@@ -2911,6 +3183,39 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "mp_orders";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mp_close_campaign: { Args: { p_campaign_id: string }; Returns: Json };
+      mp_commit: {
+        Args: { p_campaign_id: string; p_gym_id: string; p_quantity: number };
+        Returns: Json;
+      };
+      mp_create_campaign: {
+        Args: {
+          p_description?: string;
+          p_ends_at: string;
+          p_min_qty?: number;
+          p_product_id: string;
+          p_title?: string;
+        };
+        Returns: {
+          closed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          ends_at: string;
+          id: string;
+          min_qty: number;
+          product_id: string;
+          status: Database["public"]["Enums"]["mp_campaign_status"];
+          title: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_campaigns";
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -2941,14 +3246,17 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      mp_payment_context: { Args: { p_order_id: string }; Returns: Json };
       mp_receive_order: {
         Args: { p_order_id: string };
         Returns: {
+          campaign_id: string | null;
           created_at: string;
           created_by: string | null;
           currency: string;
           gym_id: string;
           id: string;
+          paid_at: string | null;
           quote_id: string | null;
           reference: string;
           status: Database["public"]["Enums"]["mp_order_status"];
@@ -3001,11 +3309,13 @@ export type Database = {
       mp_set_order_status: {
         Args: { p_order_id: string; p_status: Database["public"]["Enums"]["mp_order_status"] };
         Returns: {
+          campaign_id: string | null;
           created_at: string;
           created_by: string | null;
           currency: string;
           gym_id: string;
           id: string;
+          paid_at: string | null;
           quote_id: string | null;
           reference: string;
           status: Database["public"]["Enums"]["mp_order_status"];
@@ -3020,6 +3330,27 @@ export type Database = {
         };
       };
       mp_unit_price: { Args: { p_product_id: string; p_quantity: number }; Returns: number };
+      mp_withdraw: {
+        Args: { p_commitment_id: string };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          id: string;
+          order_id: string | null;
+          quantity: number;
+          status: Database["public"]["Enums"]["mp_commitment_status"];
+          stripe_payment_method_id: string | null;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "mp_commitments";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       nav_counts: {
         Args: { p_gym_id: string };
         Returns: {
@@ -3460,6 +3791,8 @@ export type Database = {
         | "direct"
         | "billing";
       message_status: "queued" | "logged" | "sent" | "failed";
+      mp_campaign_status: "open" | "closed" | "cancelled";
+      mp_commitment_status: "pending_card" | "committed" | "charged" | "failed" | "cancelled";
       mp_item_kind: "product" | "service";
       mp_order_status:
         "pending_payment" | "paid" | "ordered" | "shipped" | "delivered" | "received" | "cancelled";
@@ -3620,6 +3953,8 @@ export const Constants = {
         "billing",
       ],
       message_status: ["queued", "logged", "sent", "failed"],
+      mp_campaign_status: ["open", "closed", "cancelled"],
+      mp_commitment_status: ["pending_card", "committed", "charged", "failed", "cancelled"],
       mp_item_kind: ["product", "service"],
       mp_order_status: [
         "pending_payment",

@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { MEMBER_STATUS_TONE } from "@salle/shared";
+import { formatPrice, MEMBER_STATUS_TONE } from "@salle/shared";
 import { semantic } from "@salle/ui";
 import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -17,13 +17,50 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+/** Ligne cliquable vers un écran empilé (messages, paiements, offres). */
+function LinkRow({
+  icon,
+  title,
+  hint,
+  href,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  hint: string;
+  href: "/messages" | "/paiements" | "/offres";
+}) {
+  return (
+    <Pressable
+      onPress={() => router.push(href)}
+      accessibilityRole="button"
+      className="active:scale-[0.98]"
+    >
+      <Card className="flex-row items-center gap-3 px-4 py-3.5">
+        <Ionicons name={icon} size={20} color={semantic.foreground} />
+        <View className="flex-1">
+          <Text className="text-base font-medium text-foreground">{title}</Text>
+          <Text className="text-xs text-muted-foreground">{hint}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={semantic["muted-foreground"]} />
+      </Card>
+    </Pressable>
+  );
+}
+
 export default function AccountScreen() {
   const { state, refresh } = useMember();
   if (state.status === "loading") return <Loading />;
   if (state.status !== "ready")
     return <ErrorState message={t("common.unexpectedError")} onRetry={refresh} />;
 
-  const { member, gym, credits, hasSubscription, bookings } = state;
+  const { member, gym, credits, hasSubscription, subscription, commitmentRunning, lots, bookings } =
+    state;
+  const day = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: gym.timezone,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   const attended = bookings.filter((b) => b.status === "attended").length;
   const noShows = bookings.filter((b) => b.status === "no_show").length;
   const initials = `${member.first_name[0] ?? ""}${member.last_name[0] ?? ""}`.toUpperCase();
@@ -52,9 +89,39 @@ export default function AccountScreen() {
 
       <Card className="gap-1 px-4 py-3.5">
         <Text className="text-xs text-muted-foreground">{t("account.subscription")}</Text>
-        <Text className="text-base font-semibold text-foreground">
-          {hasSubscription ? t("account.activeSubscription") : t("account.noSubscription")}
-        </Text>
+        {subscription?.plans ? (
+          <>
+            <View className="flex-row items-center justify-between gap-2">
+              <Text className="flex-1 text-base font-semibold text-foreground">
+                {subscription.plans.name}
+              </Text>
+              {subscription.status === "past_due" ? (
+                <StatusPill tone="danger" label={t("account.pastDue")} />
+              ) : null}
+            </View>
+            <Text className="text-sm text-muted-foreground tabular-nums">
+              {formatPrice(subscription.plans)}
+            </Text>
+            {subscription.current_period_end ? (
+              <Text className="text-sm text-foreground">
+                {t(subscription.cancel_at ? "account.endsOn" : "account.paidUntil", {
+                  date: day.format(new Date(subscription.current_period_end)),
+                })}
+              </Text>
+            ) : null}
+            {commitmentRunning && subscription.commitment_ends_at ? (
+              <Text className="text-xs text-muted-foreground">
+                {t("account.commitmentUntil", {
+                  date: day.format(new Date(subscription.commitment_ends_at)),
+                })}
+              </Text>
+            ) : null}
+          </>
+        ) : (
+          <Text className="text-base font-semibold text-foreground">
+            {hasSubscription ? t("account.activeSubscription") : t("account.noSubscription")}
+          </Text>
+        )}
         <Text className="text-xs text-muted-foreground">{gym.name}</Text>
       </Card>
 
@@ -68,20 +135,45 @@ export default function AccountScreen() {
         {t("account.upcomingLimit", { count: gym.settings.max_upcoming_bookings })}
       </Text>
 
-      <Pressable
-        onPress={() => router.push("/messages")}
-        accessibilityRole="button"
-        className="active:scale-[0.98]"
-      >
-        <Card className="flex-row items-center gap-3 px-4 py-3.5">
-          <Ionicons name="mail-outline" size={20} color={semantic.foreground} />
-          <View className="flex-1">
-            <Text className="text-base font-medium text-foreground">{t("messages.title")}</Text>
-            <Text className="text-xs text-muted-foreground">{t("messages.hint")}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={semantic["muted-foreground"]} />
+      {lots.length ? (
+        <Card className="gap-2 px-4 py-3.5">
+          <Text className="text-xs text-muted-foreground">{t("account.creditLots")}</Text>
+          {lots.map((lot) => (
+            <View key={lot.id} className="flex-row items-baseline justify-between gap-3">
+              <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
+                {lot.name ?? t("account.manualCredits")}
+              </Text>
+              <Text className="text-sm font-medium text-foreground tabular-nums">
+                {t("account.creditCount", { count: lot.remaining })}
+              </Text>
+              <Text className="w-32 text-right text-xs text-muted-foreground">
+                {lot.expiresAt
+                  ? t("account.expiresOn", { date: day.format(new Date(lot.expiresAt)) })
+                  : t("account.noExpiry")}
+              </Text>
+            </View>
+          ))}
         </Card>
-      </Pressable>
+      ) : null}
+
+      <LinkRow
+        icon="pricetags-outline"
+        title={t("offers.title")}
+        hint={t("offers.hint")}
+        href="/offres"
+      />
+      <LinkRow
+        icon="card-outline"
+        title={t("payments.title")}
+        hint={t("payments.hint")}
+        href="/paiements"
+      />
+      <LinkRow
+        icon="mail-outline"
+        title={t("messages.title")}
+        hint={t("messages.hint")}
+        href="/messages"
+      />
 
       <Button
         label={t("account.signOut")}

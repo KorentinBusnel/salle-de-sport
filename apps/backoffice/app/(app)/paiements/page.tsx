@@ -2,6 +2,7 @@ import {
   dateRangePreset,
   formatMoney,
   PAYMENT_METHODS,
+  PAYMENT_STATUS_TONE,
   PAYMENT_STATUSES,
   zonedDateKey,
   zonedStartOfDateKey,
@@ -41,12 +42,6 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: t("payments.title") };
 
-const TONE = {
-  succeeded: "success",
-  pending: "warning",
-  failed: "danger",
-  refunded: "neutral",
-} as const;
 const SORTS = ["date", "date_asc", "amount", "amount_asc"] as const;
 
 /**
@@ -237,7 +232,7 @@ export default async function PaymentsPage({
                         {t(`billing.methodLabel.${p.method}`)}
                       </TableCell>
                       <TableCell>
-                        <StatusPill tone={TONE[p.status]}>
+                        <StatusPill tone={PAYMENT_STATUS_TONE[p.status]}>
                           {t(`billing.paymentStatus.${p.status}`)}
                         </StatusPill>
                       </TableCell>

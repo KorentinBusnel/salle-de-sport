@@ -25,6 +25,26 @@ export type MyBooking = Pick<
   } | null;
 };
 
+export type MySubscription = Pick<
+  Tables<"subscriptions">,
+  | "id"
+  | "status"
+  | "current_period_end"
+  | "commitment_ends_at"
+  | "cancel_at"
+  | "stripe_subscription_id"
+> & {
+  plans: Pick<Tables<"plans">, "name" | "price_cents" | "currency" | "billing_interval"> | null;
+};
+
+/** Lot de crédits encore utilisable (achat ou ajout), restant et date d'expiration. */
+export type CreditLot = {
+  id: string;
+  name: string | null;
+  remaining: number;
+  expiresAt: string | null;
+};
+
 type MemberState =
   | { status: "loading" }
   | { status: "error" }
@@ -34,7 +54,11 @@ type MemberState =
       member: Member;
       gym: Gym;
       hasSubscription: boolean;
+      subscription: MySubscription | null;
+      /** Engagement en cours (la résiliation attend sa fin). */
+      commitmentRunning: boolean;
       credits: number;
+      lots: CreditLot[];
       bookings: MyBooking[];
     };
 
@@ -59,11 +83,17 @@ async function loadMember(userId: string): Promise<MemberState> {
   const [subscriptions, ledger, bookings] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("id")
+      .select(
+        "id, status, current_period_end, commitment_ends_at, cancel_at, stripe_subscription_id, plans(name, price_cents, currency, billing_interval)",
+      )
       .eq("member_id", member.id)
-      .in("status", ["active", "trialing"])
+      .in("status", ["active", "trialing", "past_due"])
+      .order("started_at", { ascending: false })
       .limit(1),
-    supabase.from("credit_ledger").select("delta").eq("member_id", member.id),
+    supabase
+      .from("credit_ledger")
+      .select("id, lot_id, delta, expires_at, plans(name)")
+      .eq("member_id", member.id),
     supabase
       .from("bookings")
       .select(
@@ -76,6 +106,27 @@ async function loadMember(userId: string): Promise<MemberState> {
   if (subscriptions.error || ledger.error || bookings.error) return { status: "error" };
 
   const { gyms, ...rest } = member;
+  const now = Date.now();
+  const subscription = subscriptions.data[0] ?? null;
+  // Même règle que la base : un abonnement suivi à la main s'arrête à la fin de sa période.
+  const hasSubscription =
+    subscription !== null &&
+    (subscription.status === "active" || subscription.status === "trialing") &&
+    (subscription.stripe_subscription_id !== null ||
+      subscription.current_period_end === null ||
+      Date.parse(subscription.current_period_end) > now);
+  const lots = ledger.data
+    .filter((row) => row.lot_id === row.id)
+    .map((lot) => ({
+      id: lot.id,
+      name: lot.plans?.name ?? null,
+      remaining: ledger.data
+        .filter((row) => row.lot_id === lot.id)
+        .reduce((sum, row) => sum + row.delta, 0),
+      expiresAt: lot.expires_at,
+    }))
+    .filter((lot) => lot.remaining > 0 && (!lot.expiresAt || Date.parse(lot.expiresAt) > now))
+    .sort((a, b) => (a.expiresAt ?? "9999").localeCompare(b.expiresAt ?? "9999"));
   return {
     status: "ready",
     member: rest,
@@ -85,8 +136,12 @@ async function loadMember(userId: string): Promise<MemberState> {
       timezone: gyms.timezone,
       settings: parseGymSettings(gyms.settings),
     },
-    hasSubscription: subscriptions.data.length > 0,
+    hasSubscription,
+    subscription,
+    commitmentRunning:
+      subscription?.commitment_ends_at != null && Date.parse(subscription.commitment_ends_at) > now,
     credits: ledger.data.reduce((sum, row) => sum + row.delta, 0),
+    lots,
     bookings: bookings.data,
   };
 }

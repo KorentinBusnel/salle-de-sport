@@ -1,4 +1,10 @@
-import { BOOKING_STATUS_TONE, formatMoney, formatPrice, MEMBER_STATUS_TONE } from "@salle/shared";
+import {
+  BOOKING_STATUS_TONE,
+  formatMoney,
+  formatPrice,
+  MEMBER_STATUS_TONE,
+  PAYMENT_STATUS_TONE,
+} from "@salle/shared";
 import {
   CalendarCheckIcon,
   MailIcon,
@@ -263,12 +269,6 @@ const SUBSCRIPTION_TONE = {
   incomplete_expired: "neutral",
   paused: "neutral",
 } as const;
-const PAYMENT_TONE = {
-  succeeded: "success",
-  pending: "warning",
-  failed: "danger",
-  refunded: "neutral",
-} as const;
 
 /**
  * Abonnement et paiements (gérant) : abonnement en cours (période, engagement, renouvellement
@@ -333,7 +333,7 @@ async function BillingTab({ context, memberId }: { context: TeamContext; memberI
                   <span className="text-xs text-muted-foreground">
                     {t(`billing.methodLabel.${p.method}`)}
                   </span>
-                  <StatusPill tone={PAYMENT_TONE[p.status]}>
+                  <StatusPill tone={PAYMENT_STATUS_TONE[p.status]}>
                     {t(`billing.paymentStatus.${p.status}`)}
                   </StatusPill>
                   <span className="w-24 text-right font-medium tabular-nums">

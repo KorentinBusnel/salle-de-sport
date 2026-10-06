@@ -27,6 +27,14 @@ export const MESSAGE_STATUS_TONE: Record<MessageStatus, Tone> = {
   failed: "danger",
 };
 
+/** Statut d'un paiement (back office et app). */
+export const PAYMENT_STATUS_TONE: Record<"pending" | "succeeded" | "failed" | "refunded", Tone> = {
+  succeeded: "success",
+  pending: "warning",
+  failed: "danger",
+  refunded: "neutral",
+};
+
 export const MEMBER_STATUS_TONE: Record<MemberStatus, Tone> = {
   prospect: "brand",
   active: "success",

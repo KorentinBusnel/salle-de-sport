@@ -830,6 +830,7 @@ export const fr = {
       campaign: "Campagne",
       automation: "Automatisation",
       direct: "Message direct",
+      billing: "Paiement",
     },
     statuses: {
       queued: "En file",

@@ -27,6 +27,7 @@ const ORIGINS = [
   "campaign",
   "automation",
   "direct",
+  "billing",
 ] as const;
 const STATUSES = ["queued", "logged", "sent", "failed"] as const;
 

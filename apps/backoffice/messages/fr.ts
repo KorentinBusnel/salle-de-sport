@@ -1771,6 +1771,13 @@ export const fr = {
     payment_not_found: "Paiement introuvable.",
     not_unpaid: "Cet adhérent n'a pas d'impayé.",
     not_settleable: "Cet impayé se règle en ligne par l'adhérent (abonnement payé en ligne).",
+    mp_not_orderable:
+      "Ce produit ne se commande pas en ligne (service ou produit retiré) : demandez un devis.",
+    mp_cart_empty: "Le panier est vide.",
+    mp_order_not_found: "Commande introuvable.",
+    mp_quote_not_found: "Devis introuvable.",
+    mp_quote_expired: "Ce devis a expiré : demandez-en un nouveau.",
+    mp_invalid_status: "Cette action n'est plus possible à ce stade.",
     payment_overdue:
       "L'abonnement de l'adhérent est en impayé : réservation suspendue jusqu'au règlement.",
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",

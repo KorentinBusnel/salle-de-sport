@@ -666,3 +666,55 @@ join public.class_sessions s on s.id = b.session_id
 where b.gym_id = pg_temp.sid('gym') and s.starts_at > now()
 order by s.starts_at
 limit 1;
+
+-- ---------------------------------------------------------------------------
+-- Marketplace : catalogue fictif commun aux salles (fournisseurs, produits, services, paliers)
+-- ---------------------------------------------------------------------------
+
+insert into public.mp_suppliers (id, name, contact_name, email, phone) values
+  (pg_temp.sid('mp:sup:nutri'), 'NutriSport Distribution', 'Julie Caron', 'pro@nutrisport.example', '+33 4 72 00 10 10'),
+  (pg_temp.sid('mp:sup:boissons'), 'Boissons Express', 'Marc Lenoir', 'commandes@boissons.example', '+33 4 72 00 20 20'),
+  (pg_temp.sid('mp:sup:services'), 'Clean & Café Services', 'Sonia Haddad', 'contact@cleancafe.example', '+33 4 72 00 30 30');
+
+insert into public.mp_categories (id, name, position) values
+  (pg_temp.sid('mp:cat:boissons'), 'Boissons', 1),
+  (pg_temp.sid('mp:cat:nutrition'), 'Nutrition', 2),
+  (pg_temp.sid('mp:cat:accessoires'), 'Accessoires', 3),
+  (pg_temp.sid('mp:cat:services'), 'Services', 4);
+
+insert into public.mp_products (id, kind, category_id, supplier_id, name, brand, description, unit, list_price_cents, price_cents, is_active, position)
+select pg_temp.sid('mp:prod:' || k), kind::public.mp_item_kind, pg_temp.sid('mp:cat:' || cat), pg_temp.sid('mp:sup:' || sup),
+  name, brand, descr, unit, list_price, price, true, pos
+from (values
+  ('energy', 'product', 'boissons', 'boissons', 'Boisson énergisante 25 cl', 'Volt', 'Sans sucre ajouté, caféine naturelle.', 'carton de 24', 4320, 3480, 1),
+  ('isotonic', 'product', 'boissons', 'boissons', 'Boisson isotonique 50 cl', 'Hydra+', 'Électrolytes, goût agrumes.', 'carton de 12', 2760, 2160, 2),
+  ('water', 'product', 'boissons', 'boissons', 'Eau minérale 50 cl', 'Source Claire', null, 'pack de 24', 960, 720, 3),
+  ('whey', 'product', 'nutrition', 'nutri', 'Whey protéine vanille', 'FitPro', 'Isolat, 25 g de protéines par dose.', 'pot de 1 kg', 3990, 2890, 1),
+  ('bars', 'product', 'nutrition', 'nutri', 'Barres protéinées', 'FitPro', 'Chocolat-cacahuète, 20 g de protéines.', 'boîte de 24', 5280, 3840, 2),
+  ('creatine', 'product', 'nutrition', 'nutri', 'Créatine monohydrate', 'FitPro', null, 'pot de 500 g', 2490, 1790, 3),
+  ('shaker', 'product', 'accessoires', 'nutri', 'Shaker 700 ml', 'FitPro', 'Personnalisable avec le logo de la salle.', 'lot de 10', 6900, 4500, 1),
+  ('towels', 'product', 'accessoires', 'services', 'Serviettes microfibre', null, null, 'lot de 20', 9800, 7200, 2),
+  ('cleaning', 'service', 'services', 'services', 'Ménage de la salle', null, 'Passages réguliers, produits fournis. Prix sur devis selon la surface et la fréquence.', null, null, null, 1),
+  ('coffee', 'service', 'services', 'services', 'Machine à café en location', null, 'Machine, entretien et consommables. Prix sur devis.', null, null, null, 2),
+  ('maintenance', 'service', 'services', 'services', 'Entretien des machines de musculation', null, 'Contrôle et maintenance préventive.', null, null, null, 3)
+) as v(k, kind, cat, sup, name, brand, descr, unit, list_price, price, pos);
+
+insert into public.mp_product_costs (product_id, cost_cents)
+select id, round(price_cents * 0.82)::integer from public.mp_products where price_cents is not null;
+
+insert into public.mp_price_tiers (product_id, min_qty, unit_price_cents) values
+  (pg_temp.sid('mp:prod:energy'), 10, 3240),
+  (pg_temp.sid('mp:prod:energy'), 30, 3000),
+  (pg_temp.sid('mp:prod:whey'), 6, 2690),
+  (pg_temp.sid('mp:prod:whey'), 20, 2490),
+  (pg_temp.sid('mp:prod:bars'), 5, 3600),
+  (pg_temp.sid('mp:prod:water'), 20, 640);
+
+-- Un devis répondu et une commande en cours de livraison pour la salle de démo.
+insert into public.mp_quotes (id, gym_id, product_id, title, quantity, message, status, unit_price_cents, answer_note, valid_until, answered_at)
+values (pg_temp.sid('mp:quote:cleaning'), pg_temp.sid('gym'), pg_temp.sid('mp:prod:cleaning'), 'Ménage de la salle', 4,
+  'Deux passages par semaine, 600 m².', 'answered', 42000, 'Forfait mensuel, produits compris.', current_date + 20, now() - interval '1 day');
+insert into public.mp_orders (id, gym_id, reference, status, total_cents, created_at)
+values (pg_temp.sid('mp:order:1'), pg_temp.sid('gym'), 'CMD-DEMO-0001', 'shipped', 64800, now() - interval '5 days');
+insert into public.mp_order_items (order_id, gym_id, product_id, name, unit, quantity, unit_price_cents, line_total_cents)
+values (pg_temp.sid('mp:order:1'), pg_temp.sid('gym'), pg_temp.sid('mp:prod:energy'), 'Boisson énergisante 25 cl', 'carton de 24', 20, 3240, 64800);

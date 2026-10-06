@@ -130,6 +130,13 @@ export const fr = {
     expiresOn: "jusqu'au {date}",
     noExpiry: "sans limite",
     signOut: "Se déconnecter",
+    managePayment: "Moyen de paiement et factures",
+    cancelSubscription: "Résilier mon abonnement",
+    cancelAfter: "Résiliation possible à la fin de votre engagement, le {date}.",
+    cancelTitle: "Résilier votre abonnement ?",
+    cancelBody:
+      "Il s'arrêtera le {date}, à la fin de la période payée. Vous gardez l'accès d'ici là.",
+    cancelled: "Abonnement résilié : il s'arrête le {date}.",
   },
   payments: {
     title: "Mes paiements",
@@ -160,6 +167,15 @@ export const fr = {
     noCommitment: "Sans engagement",
     credits: "{count, plural, one {# séance} other {# séances}}",
     validity: "valable {count} jours",
+    buy: "Acheter",
+    subscribe: "S'abonner",
+    promoLabel: "Code promo",
+    promoHint: "Facultatif : appliqué à votre achat (première échéance d'un abonnement).",
+    alreadySubscribed:
+      "Vous avez déjà un abonnement en cours : les carnets et séances restent disponibles.",
+    paid: "Paiement reçu : vos séances sont créditées.",
+    subscribed: "Abonnement souscrit : bienvenue !",
+    webUnsupported: "L'achat se fait dans l'app iPhone ou Android, ou à l'accueil.",
   },
   messages: {
     title: "Messages",
@@ -216,5 +232,11 @@ export const fr = {
     promo_exhausted: "Ce code promo n'est plus valable.",
     subscription_not_found: "Abonnement introuvable.",
     not_renewable: "Cet abonnement ne peut pas être renouvelé ici.",
+    commitment_running: "Votre engagement court encore : la résiliation sera possible à sa fin.",
+    stripe_not_configured: "Le paiement en ligne n'est pas encore disponible. Achetez à l'accueil.",
+    stripe_error: "Le paiement n'a pas pu être préparé. Réessayez dans un instant.",
+    no_stripe_customer: "Aucun paiement en ligne enregistré pour votre compte.",
+    not_refundable: "Ce paiement ne peut pas être remboursé.",
+    payment_not_found: "Paiement introuvable.",
   },
 } as const;

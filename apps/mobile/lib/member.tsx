@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 export type Gym = { id: string; name: string; timezone: string; settings: GymSettings };
 type Member = Pick<
   Tables<"members">,
-  "id" | "gym_id" | "first_name" | "last_name" | "email" | "status"
+  "id" | "gym_id" | "first_name" | "last_name" | "email" | "status" | "stripe_customer_id"
 >;
 
 export type MyBooking = Pick<
@@ -72,7 +72,9 @@ const MemberContext = createContext<MemberContextValue>({
 async function loadMember(userId: string): Promise<MemberState> {
   const { data: member, error } = await supabase
     .from("members")
-    .select("id, gym_id, first_name, last_name, email, status, gyms(id, name, timezone, settings)")
+    .select(
+      "id, gym_id, first_name, last_name, email, status, stripe_customer_id, gyms(id, name, timezone, settings)",
+    )
     .eq("profile_id", userId)
     .order("created_at")
     .limit(1)

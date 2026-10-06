@@ -2,6 +2,7 @@ import "../global.css";
 import { semantic } from "@salle/ui";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { PaymentsProvider } from "@/components/stripe-provider";
 import { ToastProvider } from "@/components/toast";
 import { Loading } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -47,10 +48,12 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MemberProvider>
-        <ToastProvider>
-          <StatusBar style="dark" />
-          <RootNavigator />
-        </ToastProvider>
+        <PaymentsProvider>
+          <ToastProvider>
+            <StatusBar style="dark" />
+            <RootNavigator />
+          </ToastProvider>
+        </PaymentsProvider>
       </MemberProvider>
     </AuthProvider>
   );

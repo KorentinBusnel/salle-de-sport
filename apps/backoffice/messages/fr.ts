@@ -1676,6 +1676,12 @@ export const fr = {
     promo_exhausted: "Ce code promo a atteint son nombre d'utilisations.",
     subscription_not_found: "Abonnement introuvable.",
     not_renewable: "Cet abonnement ne se renouvelle pas sur place.",
+    commitment_running: "L'engagement de l'adhérent court encore.",
+    stripe_not_configured: "Le paiement en ligne n'est pas encore configuré.",
+    stripe_error: "Stripe n'a pas répondu. Réessayez dans un instant.",
+    no_stripe_customer: "Cet adhérent n'a jamais payé en ligne.",
+    not_refundable: "Ce paiement ne peut pas être remboursé en ligne.",
+    payment_not_found: "Paiement introuvable.",
   },
   roles: {
     member: "Adhérent",

@@ -91,6 +91,13 @@ export const BOOKING_ERROR_CODES = [
   "promo_exhausted",
   "subscription_not_found",
   "not_renewable",
+  // Paiements en ligne (Edge Function « billing »)
+  "commitment_running",
+  "stripe_not_configured",
+  "stripe_error",
+  "no_stripe_customer",
+  "not_refundable",
+  "payment_not_found",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

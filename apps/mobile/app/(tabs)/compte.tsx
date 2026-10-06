@@ -1,9 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { formatPrice, MEMBER_STATUS_TONE } from "@salle/shared";
+import { canCancelSubscription, formatPrice, MEMBER_STATUS_TONE } from "@salle/shared";
 import { semantic } from "@salle/ui";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { useToast } from "@/components/toast";
 import { Button, Card, ErrorState, Loading, Notice, StatusPill } from "@/components/ui";
+import { callBilling } from "@/lib/billing";
+import { confirmAsync } from "@/lib/confirm";
 import { t } from "@/lib/i18n";
 import { useMember } from "@/lib/member";
 import { supabase } from "@/lib/supabase";
@@ -49,6 +55,8 @@ function LinkRow({
 
 export default function AccountScreen() {
   const { state, refresh } = useMember();
+  const toast = useToast();
+  const [busy, setBusy] = useState<"portal" | "cancel" | null>(null);
   if (state.status === "loading") return <Loading />;
   if (state.status !== "ready")
     return <ErrorState message={t("common.unexpectedError")} onRetry={refresh} />;
@@ -64,6 +72,41 @@ export default function AccountScreen() {
   const attended = bookings.filter((b) => b.status === "attended").length;
   const noShows = bookings.filter((b) => b.status === "no_show").length;
   const initials = `${member.first_name[0] ?? ""}${member.last_name[0] ?? ""}`.toUpperCase();
+  // Abonnement payé en ligne, pas encore résilié : l'adhérent le résilie seul après l'engagement.
+  const online = subscription?.stripe_subscription_id != null && subscription.cancel_at === null;
+  const cancellable = online && canCancelSubscription(subscription.commitment_ends_at, new Date());
+
+  /** Portail Stripe : moyen de paiement et factures, dans le navigateur intégré. */
+  async function openPortal() {
+    setBusy("portal");
+    const result = await callBilling<{ url: string }>({
+      action: "portal",
+      returnUrl: Linking.createURL("compte"),
+    });
+    setBusy(null);
+    if (result.error !== null) {
+      toast("error", result.error);
+      return;
+    }
+    await WebBrowser.openBrowserAsync(result.data.url);
+    await refresh();
+  }
+
+  async function cancel() {
+    if (!subscription?.current_period_end) return;
+    const date = day.format(new Date(subscription.current_period_end));
+    const ok = await confirmAsync(t("account.cancelTitle"), t("account.cancelBody", { date }));
+    if (!ok) return;
+    setBusy("cancel");
+    const result = await callBilling<{ ok: true }>({ action: "cancel" });
+    setBusy(null);
+    if (result.error !== null) {
+      toast("error", result.error);
+      return;
+    }
+    toast("success", t("account.cancelled", { date }));
+    await refresh();
+  }
 
   return (
     <ScrollView contentContainerClassName="gap-4 px-4 py-5">
@@ -124,6 +167,37 @@ export default function AccountScreen() {
         )}
         <Text className="text-xs text-muted-foreground">{gym.name}</Text>
       </Card>
+
+      {member.stripe_customer_id || online ? (
+        <View className="gap-2">
+          {member.stripe_customer_id ? (
+            <Button
+              label={t("account.managePayment")}
+              variant="secondary"
+              busy={busy === "portal"}
+              onPress={() => void openPortal()}
+            />
+          ) : null}
+          {online ? (
+            <>
+              <Button
+                label={t("account.cancelSubscription")}
+                variant="secondary"
+                disabled={!cancellable}
+                busy={busy === "cancel"}
+                onPress={() => void cancel()}
+              />
+              {!cancellable && subscription.commitment_ends_at ? (
+                <Text className="px-1 text-xs text-muted-foreground">
+                  {t("account.cancelAfter", {
+                    date: day.format(new Date(subscription.commitment_ends_at)),
+                  })}
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+        </View>
+      ) : null}
 
       <View className="flex-row gap-3">
         <Stat label={t("account.credits")} value={credits} />

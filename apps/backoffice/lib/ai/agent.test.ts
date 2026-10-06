@@ -201,4 +201,48 @@ describe("runAgent", () => {
     });
     expect(JSON.stringify(seen[1]?.messages.at(-1))).toContain("Outil inconnu");
   });
+
+  it("« Arrêter » : garde le texte reçu et n'appelle plus le modèle", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const turn: Turn = async (_params, onText, signal) => {
+      calls++;
+      onText("Début de réponse");
+      controller.abort();
+      if (signal?.aborted) throw new DOMException("aborted", "AbortError");
+      return { content: [], stopReason: "end_turn", usage };
+    };
+    const result = await runAgent({
+      turn,
+      system: "s",
+      history: [],
+      tools,
+      ctx: { calls: [] },
+      onText: () => {},
+      onStep: () => {},
+      onProposal: () => {},
+      signal: controller.signal,
+    });
+    expect(calls).toBe(1);
+    expect(result).toMatchObject({ text: "Début de réponse", stopped: true });
+  });
+
+  it("une erreur hors arrêt remonte", async () => {
+    const turn: Turn = async () => {
+      throw new Error("réseau");
+    };
+    await expect(
+      runAgent({
+        turn,
+        system: "s",
+        history: [],
+        tools,
+        ctx: { calls: [] },
+        onText: () => {},
+        onStep: () => {},
+        onProposal: () => {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow("réseau");
+  });
 });

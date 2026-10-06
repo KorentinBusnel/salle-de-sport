@@ -12,14 +12,17 @@ export function anthropicTurn(): { turn: Turn; model: string } | null {
   const env = aiEnv();
   if (!env.apiKey) return null;
   const client = new Anthropic({ apiKey: env.apiKey, baseURL: "https://api.anthropic.com" });
-  const turn: Turn = async ({ system, messages, tools }, onText) => {
-    const stream = client.messages.stream({
-      model: env.model,
-      max_tokens: 2048,
-      system,
-      messages: messages as MessageParam[],
-      tools: tools as Tool[],
-    });
+  const turn: Turn = async ({ system, messages, tools }, onText, signal) => {
+    const stream = client.messages.stream(
+      {
+        model: env.model,
+        max_tokens: 2048,
+        system,
+        messages: messages as MessageParam[],
+        tools: tools as Tool[],
+      },
+      signal ? { signal } : undefined,
+    );
     stream.on("text", onText);
     const message = await stream.finalMessage();
     return {

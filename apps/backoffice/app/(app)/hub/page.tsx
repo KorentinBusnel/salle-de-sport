@@ -1,16 +1,13 @@
 import { CONNECTED_DIGEST_SOURCES, DIGEST_SOURCES, openDigestItems } from "@salle/shared";
-import { PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AssistantChat } from "@/components/assistant/assistant-chat";
-import type { ChatMessage } from "@/components/assistant/use-assistant";
 import { AskBar } from "@/components/hub/ask-bar";
 import { DigestBoard } from "@/components/hub/digest-board";
+import { HubConversations } from "@/components/hub/hub-conversations";
 import { GenerateDigestButton } from "@/components/hub/generate-digest-button";
 import { SOURCE_ICON } from "@/components/hub/source-icon";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -18,6 +15,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { loadConversation } from "@/lib/ai/conversations";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { getTodayDigest } from "@/lib/digest";
 import { aiEnv } from "@/lib/env.server";
@@ -32,8 +30,8 @@ const CONNECTED = new Set<string>(CONNECTED_DIGEST_SOURCES);
 
 /**
  * Hub 360° (gérant) : l'assistant lit l'activité de la salle et propose, par catégorie
- * (Opérations, Clients, Finance), une synthèse et des actions à valider ; question libre et
- * conversations précédentes.
+ * (Opérations, Clients, Finance), une synthèse et des actions à valider ; en dessous, les
+ * conversations en deux volets (HubConversations).
  */
 export default async function HubPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const params = await searchParams;
@@ -54,25 +52,7 @@ export default async function HubPage({ searchParams }: { searchParams: Promise<
   ]);
 
   const selected = (conversations.data ?? []).find((c) => c.id === params.c);
-  let initialMessages: ChatMessage[] = [];
-  if (selected) {
-    const { data } = await supabase
-      .from("ai_messages")
-      .select("id, role, content")
-      .eq("conversation_id", selected.id)
-      .order("created_at");
-    initialMessages = (data ?? []).map((m) => {
-      const content = m.content as { text?: string; steps?: string[] };
-      return {
-        id: m.id,
-        role: m.role === "user" ? "user" : "assistant",
-        text: content.text ?? "",
-        steps: content.steps ?? [],
-        // Les propositions passées ne sont pas reproposées à la validation.
-        proposals: [],
-      };
-    });
-  }
+  const initialMessages = selected ? ((await loadConversation(context, selected.id)) ?? []) : [];
 
   const open = digest ? openDigestItems(digest).length : 0;
 
@@ -86,15 +66,7 @@ export default async function HubPage({ searchParams }: { searchParams: Promise<
             : t("hub.description")
         }
         actions={
-          <>
-            {configured && digest ? <GenerateDigestButton again variant="outline" /> : null}
-            <Button asChild variant="outline">
-              <Link href="/hub">
-                <PlusIcon data-icon="inline-start" />
-                {t("assistant.newConversation")}
-              </Link>
-            </Button>
-          </>
+          <>{configured && digest ? <GenerateDigestButton again variant="outline" /> : null}</>
         }
       />
 
@@ -153,50 +125,15 @@ export default async function HubPage({ searchParams }: { searchParams: Promise<
       ) : null}
 
       {configured ? (
-        <div className="grid items-start gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("hub.conversations")}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-2">
-              {conversations.data?.length ? (
-                <ul className="grid gap-0.5">
-                  {conversations.data.map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        href={`/hub?c=${c.id}`}
-                        aria-current={c.id === selected?.id ? "page" : undefined}
-                        className={cn(
-                          "grid rounded-lg px-2 py-1.5 text-sm hover:bg-muted",
-                          c.id === selected?.id && "bg-accent text-accent-foreground",
-                        )}
-                      >
-                        <span className="truncate">{c.title || t("assistant.title")}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format.dateTime(c.updated_at)}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-2 text-sm text-muted-foreground">{t("assistant.noHistory")}</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>{selected?.title || t("assistant.title")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AssistantChat
-                key={selected?.id ?? "new"}
-                conversationId={selected?.id}
-                initialMessages={initialMessages}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <HubConversations
+          conversations={(conversations.data ?? []).map((c) => ({
+            id: c.id,
+            title: c.title,
+            when: format.dateTime(c.updated_at),
+          }))}
+          selectedId={selected?.id}
+          initialMessages={initialMessages}
+        />
       ) : null}
     </div>
   );

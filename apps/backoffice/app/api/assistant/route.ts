@@ -66,11 +66,23 @@ export async function POST(request: Request) {
     content: { text: parsed.data.message },
   });
 
+  // « Arrêter » côté navigateur : la requête est abandonnée, le flux annulé, le modèle interrompu.
+  const abort = new AbortController();
+  request.signal.addEventListener("abort", () => abort.abort(), { once: true });
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
+    cancel() {
+      abort.abort();
+    },
     async start(controller) {
-      const emit = (event: AssistantEvent) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      const emit = (event: AssistantEvent) => {
+        if (abort.signal.aborted) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        } catch {
+          abort.abort();
+        }
+      };
       emit({ type: "conversation", id: conversationId });
       try {
         const answer = await askAssistant({
@@ -82,13 +94,19 @@ export async function POST(request: Request) {
           memberId: parsed.data.memberId,
           conversationId,
           emit,
+          signal: abort.signal,
         });
         await supabase.from("ai_messages").insert({
           gym_id: context.gym.id,
           conversation_id: conversationId,
           role: "assistant",
           content: JSON.parse(
-            JSON.stringify({ text: answer.text, steps: answer.steps, proposals: answer.proposals }),
+            JSON.stringify({
+              text: answer.text,
+              steps: answer.steps,
+              proposals: answer.proposals,
+              ...(answer.stopped ? { stopped: true } : {}),
+            }),
           ) as { [key: string]: Json },
         });
         await supabase
@@ -100,7 +118,11 @@ export async function POST(request: Request) {
         console.error("assistant", error);
         emit({ type: "error", message: "assistant.errors.failed" });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Flux déjà annulé par le navigateur.
+        }
       }
     },
   });

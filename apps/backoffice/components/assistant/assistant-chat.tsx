@@ -3,10 +3,12 @@
 import {
   ArrowUpIcon,
   CheckIcon,
+  FilterIcon,
   LoaderIcon,
   MailIcon,
-  FilterIcon,
   SparklesIcon,
+  SquareIcon,
+  XIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState, useTransition } from "react";
@@ -14,7 +16,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { approveMessage, approveSegment } from "@/app/(app)/hub/actions";
+import { TextareaWithCount } from "@/components/forms/textarea-with-count";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Proposal } from "@/lib/ai/types";
 import { type MessageKey, t } from "@/lib/i18n";
@@ -30,7 +35,9 @@ const SUGGESTIONS = [
 
 /**
  * Conversation avec l'assistant : fil des questions et réponses (Markdown, liens internes),
- * étapes en cours, cartes de propositions à valider, saisie (Entrée pour envoyer).
+ * étapes en cours, cartes de propositions modifiables avant validation, saisie (Entrée pour
+ * envoyer, « Arrêter » pendant la réponse). `fill` : occupe la hauteur du parent, fil défilant et
+ * saisie collée en bas (Hub).
  */
 export function AssistantChat({
   conversationId,
@@ -38,6 +45,7 @@ export function AssistantChat({
   memberId,
   autoAsk,
   compact = false,
+  fill = false,
   onConversation,
 }: {
   conversationId?: string | undefined;
@@ -46,7 +54,9 @@ export function AssistantChat({
   /** Question posée dès l'affichage (résumé d'une fiche adhérent). */
   autoAsk?: string | undefined;
   compact?: boolean | undefined;
-  onConversation?: ((id: string) => void) | undefined;
+  fill?: boolean | undefined;
+  /** Conversation créée ou reprise, avec sa première question (titre provisoire). */
+  onConversation?: ((id: string, firstQuestion: string) => void) | undefined;
 }) {
   const assistant = useAssistant({
     conversationId,
@@ -56,7 +66,8 @@ export function AssistantChat({
   const [draft, setDraft] = useState("");
   const asked = useRef(false);
   const end = useRef<HTMLDivElement>(null);
-  const { ask, conversationId: currentId } = assistant;
+  const { ask, stop, conversationId: currentId } = assistant;
+  const firstQuestion = assistant.messages.find((m) => m.role === "user")?.text ?? "";
 
   useEffect(() => {
     if (autoAsk && !asked.current) {
@@ -65,10 +76,10 @@ export function AssistantChat({
     }
   }, [autoAsk, ask]);
   useEffect(() => {
-    if (currentId) onConversation?.(currentId);
-  }, [currentId, onConversation]);
+    if (currentId) onConversation?.(currentId, firstQuestion);
+  }, [currentId, firstQuestion, onConversation]);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [assistant.messages]);
 
   function submit(event?: FormEvent) {
@@ -91,9 +102,13 @@ export function AssistantChat({
 
   const streaming = assistant.status === "streaming";
   return (
-    <div className="grid min-h-0 gap-4">
+    <div className={cn("min-h-0", fill ? "flex flex-1 flex-col" : "grid gap-4")}>
       <div
-        className={cn("grid content-start gap-5 overflow-y-auto", compact ? "max-h-[55vh]" : "")}
+        className={cn(
+          "grid content-start gap-5 overflow-y-auto",
+          compact && "max-h-[55vh]",
+          fill && "min-h-0 flex-1 overscroll-contain p-4",
+        )}
         aria-live="polite"
         aria-busy={streaming}
       >
@@ -139,7 +154,10 @@ export function AssistantChat({
         <div ref={end} />
       </div>
 
-      <form onSubmit={submit} className="grid gap-2">
+      <form
+        onSubmit={submit}
+        className={cn("grid gap-2", fill && "shrink-0 border-t bg-card p-3 sm:rounded-b-xl")}
+      >
         <div className="relative">
           <Textarea
             value={draft}
@@ -152,20 +170,34 @@ export function AssistantChat({
             }}
             placeholder={t("assistant.placeholder")}
             aria-label={t("assistant.placeholder")}
-            rows={compact ? 2 : 3}
+            rows={compact || fill ? 2 : 3}
             maxLength={2000}
             autoFocus={compact}
             className="resize-none pr-14"
           />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={streaming || !draft.trim()}
-            aria-label={t("assistant.send")}
-            className="absolute right-2 bottom-2"
-          >
-            {streaming ? <LoaderIcon className="animate-spin" /> : <ArrowUpIcon />}
-          </Button>
+          {streaming ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={stop}
+              aria-label={t("assistant.stop")}
+              title={t("assistant.stop")}
+              className="absolute right-2 bottom-2"
+            >
+              <SquareIcon className="fill-current" aria-hidden />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!draft.trim()}
+              aria-label={t("assistant.send")}
+              className="absolute right-2 bottom-2"
+            >
+              <ArrowUpIcon aria-hidden />
+            </Button>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">{t("assistant.disclaimer")}</p>
       </form>
@@ -223,6 +255,9 @@ function AssistantAnswer({ message }: { message: ChatMessage }) {
           {t("assistant.thinking")}
         </p>
       ) : null}
+      {message.stopped ? (
+        <p className="text-xs text-muted-foreground">{t("assistant.stopped")}</p>
+      ) : null}
       {message.proposals.map((proposal) => (
         <ProposalCard key={proposal.id} proposal={proposal} />
       ))}
@@ -230,20 +265,34 @@ function AssistantAnswer({ message }: { message: ChatMessage }) {
   );
 }
 
+const SUBJECT_MAX = 200;
+const BODY_MAX = 4000;
+const SEGMENT_NAME_MAX = 80;
+
+/**
+ * Proposition de l'assistant, modifiable avant validation : destinataires retirables, objet et
+ * texte du message, nom du segment. Rien ne part sans « Valider ».
+ */
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const [state, setState] = useState<"open" | "done" | "dismissed">("open");
   const [pending, startTransition] = useTransition();
+  const [members, setMembers] = useState(proposal.type === "message" ? proposal.members : []);
+  const [subject, setSubject] = useState(proposal.type === "message" ? proposal.subject : "");
+  const [body, setBody] = useState(proposal.type === "message" ? proposal.body : "");
+  const [name, setName] = useState(proposal.type === "segment" ? proposal.name : "");
+  const id = proposal.id;
+
+  const valid =
+    proposal.type === "message"
+      ? members.length > 0 && subject.trim().length > 0 && body.trim().length > 0
+      : name.trim().length > 0;
 
   function approve() {
     startTransition(async () => {
       const result =
         proposal.type === "message"
-          ? await approveMessage({
-              memberIds: proposal.members.map((m) => m.id),
-              subject: proposal.subject,
-              body: proposal.body,
-            })
-          : await approveSegment({ name: proposal.name, filters: proposal.filters });
+          ? await approveMessage({ memberIds: members.map((m) => m.id), subject, body })
+          : await approveSegment({ name, filters: proposal.filters });
       if (result.error) {
         toast.error(t(result.error), { closeButton: true });
         return;
@@ -257,51 +306,97 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
     });
   }
 
+  const open = state === "open";
   const Icon = proposal.type === "message" ? MailIcon : FilterIcon;
+  const label = t(
+    proposal.type === "message" ? "assistant.proposal.message" : "assistant.proposal.segment",
+  );
   return (
     <section
-      aria-label={t(
-        proposal.type === "message" ? "assistant.proposal.message" : "assistant.proposal.segment",
-      )}
+      aria-label={label}
       className={cn(
         "grid gap-3 rounded-xl border bg-card p-4 text-sm shadow-border",
-        state !== "open" && "opacity-70",
+        !open && "opacity-70",
       )}
     >
       <header className="flex items-center gap-2 font-medium">
         <Icon className="size-4 text-primary" aria-hidden />
-        {t(
-          proposal.type === "message" ? "assistant.proposal.message" : "assistant.proposal.segment",
-        )}
+        {label}
+        {open ? (
+          <span className="ml-auto text-xs font-normal text-muted-foreground">
+            {t("assistant.proposal.editable")}
+          </span>
+        ) : null}
       </header>
       {proposal.type === "message" ? (
         <>
-          <p className="text-xs text-muted-foreground">
-            {t("assistant.proposal.recipients", { count: proposal.members.length })} :{" "}
-            {proposal.members.slice(0, 8).map((m, i) => (
-              <span key={m.id}>
-                {i ? ", " : ""}
-                <Link href={`/adherents/${m.id}`} className="underline">
-                  {m.name}
-                </Link>
-              </span>
-            ))}
-            {proposal.members.length > 8 ? "…" : ""}
-          </p>
-          <div className="rounded-lg bg-muted/60 p-3">
-            <p className="font-medium">{proposal.subject}</p>
-            <p className="mt-1 whitespace-pre-line text-muted-foreground">{proposal.body}</p>
+          <div className="grid gap-1.5">
+            <p className="text-xs text-muted-foreground">
+              {t("assistant.proposal.recipients", { count: members.length })}
+            </p>
+            <ul className="flex flex-wrap gap-1.5">
+              {members.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex h-7 items-center gap-1 rounded-full bg-muted pr-1 pl-2.5 text-xs"
+                >
+                  <Link href={`/adherents/${m.id}`} className="hover:underline">
+                    {m.name}
+                  </Link>
+                  {open ? (
+                    <button
+                      type="button"
+                      onClick={() => setMembers((list) => list.filter((x) => x.id !== m.id))}
+                      aria-label={t("assistant.proposal.removeRecipient", { name: m.name })}
+                      className="grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground pointer-coarse:size-7"
+                    >
+                      <XIcon className="size-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-subject`}>{t("assistant.proposal.subject")}</Label>
+            <Input
+              id={`${id}-subject`}
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              maxLength={SUBJECT_MAX}
+              disabled={!open}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`${id}-body`}>{t("assistant.proposal.body")}</Label>
+            <TextareaWithCount
+              id={`${id}-body`}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              maxLength={BODY_MAX}
+              rows={5}
+              disabled={!open}
+            />
           </div>
         </>
       ) : (
-        <p>
-          <span className="font-medium">{proposal.name}</span> ·{" "}
-          {t("assistant.proposal.members", { count: proposal.count })}
-        </p>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${id}-name`}>{t("assistant.proposal.segmentName")}</Label>
+          <Input
+            id={`${id}-name`}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            maxLength={SEGMENT_NAME_MAX}
+            disabled={!open}
+          />
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {t("assistant.proposal.members", { count: proposal.count })}
+          </p>
+        </div>
       )}
-      {state === "open" ? (
+      {open ? (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={approve} disabled={pending} aria-busy={pending}>
+          <Button size="sm" onClick={approve} disabled={pending || !valid} aria-busy={pending}>
             {proposal.type === "message"
               ? t("assistant.proposal.approve")
               : t("assistant.proposal.approveSegment")}

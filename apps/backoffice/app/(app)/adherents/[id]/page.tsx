@@ -26,7 +26,6 @@ import { ActivateButton } from "@/components/members/activate-button";
 import { CreditsDialog } from "@/components/members/credits-dialog";
 import { MemberOverview } from "@/components/members/member-overview";
 import { SectionError } from "@/components/section-error";
-import { CardsSkeleton } from "@/components/skeletons";
 import { ReceiptLink } from "@/components/payments/receipt-link";
 import { ConsentSwitches } from "@/components/members/profile/consent-switches";
 import { MemberTags } from "@/components/members/profile/member-tags";
@@ -206,7 +205,7 @@ export default async function MemberProfilePage({
       {/* Synthèse (accueil et gérant), chargée à part : une erreur reste locale au bloc. */}
       <section aria-label={t("memberOverview.title")}>
         <SectionError>
-          <Suspense fallback={<CardsSkeleton count={manager ? 4 : 3} height="h-52" />}>
+          <Suspense fallback={<Skeleton className="h-32 rounded-xl xl:h-[6.5rem]" />}>
             <MemberOverview
               memberId={member.id}
               timeZone={context.gym.timezone}

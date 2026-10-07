@@ -94,13 +94,20 @@ Mise en ligne :
 
 1. **Supabase de production** : créer le projet (région UE, Paris de préférence), y appliquer
    toutes les migrations **sans seed** (API Management, comme pour le projet de dev ; renseigner
-   `SUPABASE_PROD_PROJECT_REF` dans la session cloud).
+   `SUPABASE_PROD_PROJECT_REF` dans la session cloud). Plan gratuit : un projet peu sollicité est
+   mis en pause au bout d'une semaine et le formulaire cesse alors de fonctionner ; plan Pro
+   conseillé pour la production.
 2. **Vercel** : nouveau projet sur le dépôt, Root Directory `apps/landing`, domaine `kettl.ai`
-   (plan Pro : usage commercial et événements de Web Analytics). Variables (Production) :
-   `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` du projet de production (cette dernière en
-   « Sensitive »), `RESEND_API_KEY`, `RESEND_FROM` (ex. `Kettl <bonjour@kettl.ai>`), et au besoin
-   `NEXT_PUBLIC_SITE_URL`. Activer Web Analytics dans le projet.
-3. **Resend** : vérifier le domaine `kettl.ai` (enregistrements DNS).
+   (plan Pro : usage commercial et événements de Web Analytics). Variables (Production
+   seulement) : `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` du projet de production (cette
+   dernière en « Sensitive »), `RESEND_API_KEY` (« Sensitive »), `RESEND_FROM` (ex.
+   `Kettl <bonjour@mail.kettl.ai>`), `NEXT_PUBLIC_SITE_URL` (pas « Sensitive »). Activer Web
+   Analytics dans le projet. Le déploiement de production échoue tant que la landing n'est pas
+   sur `main` et que les mentions légales ne sont pas complètes ; les previews fonctionnent.
+3. **Resend** : vérifier un sous-domaine d'envoi (ex. `mail.kettl.ai`, recommandé par Resend),
+   région Irlande, en recopiant les enregistrements DNS (DKIM, SPF) de l'onglet Records ; créer
+   une clé « Sending access ». La réponse à l'email part vers `contact@kettl.ai` : cette boîte
+   doit exister.
 4. **Contenu** : compléter `apps/landing/content/legal.ts` (le build de production échoue tant
    qu'il reste un « À COMPLÉTER ») et remplacer la photo provisoire
    `apps/landing/assets/hero-provisoire.webp` par une photo HD sous licence, sans marque visible.

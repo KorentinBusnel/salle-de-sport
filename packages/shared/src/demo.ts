@@ -42,3 +42,6 @@ export const demoRequestSchema = z.object({
 export type DemoRequestInput = z.input<typeof demoRequestSchema>;
 export type DemoRequest = z.output<typeof demoRequestSchema>;
 export type DemoRequestField = keyof DemoRequestInput;
+
+/** Champs du formulaire, dans l'ordre d'affichage. */
+export const DEMO_REQUEST_FIELDS = Object.keys(demoRequestSchema.shape) as DemoRequestField[];

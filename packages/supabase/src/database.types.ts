@@ -879,6 +879,57 @@ export type Database = {
           },
         ];
       };
+      demo_requests: {
+        Row: {
+          city: string;
+          created_at: string;
+          created_on: string;
+          current_tool: string | null;
+          email: string;
+          full_name: string;
+          gym_name: string;
+          id: string;
+          members_band: Database["public"]["Enums"]["demo_members_band"];
+          message: string | null;
+          note: string | null;
+          phone: string | null;
+          status: Database["public"]["Enums"]["demo_request_status"];
+          updated_at: string;
+        };
+        Insert: {
+          city: string;
+          created_at?: string;
+          created_on?: string;
+          current_tool?: string | null;
+          email: string;
+          full_name: string;
+          gym_name: string;
+          id?: string;
+          members_band: Database["public"]["Enums"]["demo_members_band"];
+          message?: string | null;
+          note?: string | null;
+          phone?: string | null;
+          status?: Database["public"]["Enums"]["demo_request_status"];
+          updated_at?: string;
+        };
+        Update: {
+          city?: string;
+          created_at?: string;
+          created_on?: string;
+          current_tool?: string | null;
+          email?: string;
+          full_name?: string;
+          gym_name?: string;
+          id?: string;
+          members_band?: Database["public"]["Enums"]["demo_members_band"];
+          message?: string | null;
+          note?: string | null;
+          phone?: string | null;
+          status?: Database["public"]["Enums"]["demo_request_status"];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       desk_shifts: {
         Row: {
           created_at: string;
@@ -3446,6 +3497,19 @@ export type Database = {
         };
       };
       reorder_disciplines: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
+      request_demo: {
+        Args: {
+          p_city: string;
+          p_current_tool: string;
+          p_email: string;
+          p_full_name: string;
+          p_gym_name: string;
+          p_members_band: Database["public"]["Enums"]["demo_members_band"];
+          p_message: string;
+          p_phone: string;
+        };
+        Returns: undefined;
+      };
       reset_attendance: {
         Args: { p_booking_id: string };
         Returns: {
@@ -3619,6 +3683,35 @@ export type Database = {
         };
       };
       set_attendance_many: { Args: { p_session_id: string }; Returns: string[] };
+      set_demo_request: {
+        Args: {
+          p_id: string;
+          p_note: string;
+          p_status: Database["public"]["Enums"]["demo_request_status"];
+        };
+        Returns: {
+          city: string;
+          created_at: string;
+          created_on: string;
+          current_tool: string | null;
+          email: string;
+          full_name: string;
+          gym_name: string;
+          id: string;
+          members_band: Database["public"]["Enums"]["demo_members_band"];
+          message: string | null;
+          note: string | null;
+          phone: string | null;
+          status: Database["public"]["Enums"]["demo_request_status"];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "demo_requests";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       set_member_status: {
         Args: { p_member_id: string; p_status: Database["public"]["Enums"]["member_status"] };
         Returns: {
@@ -3775,6 +3868,8 @@ export type Database = {
       campaign_status: "draft" | "scheduled" | "sending" | "sent" | "cancelled";
       credit_reason:
         "purchase" | "renewal" | "booking" | "booking_refund" | "expiration" | "manual_adjustment";
+      demo_members_band: "under_100" | "100_to_300" | "300_to_600" | "over_600";
+      demo_request_status: "new" | "contacted" | "demo_done" | "dropped";
       employment_type: "employee" | "freelance";
       gym_role: "member" | "coach" | "staff" | "manager" | "admin";
       integration_provider: "gmail" | "whatsapp" | "pennylane" | "stripe";
@@ -3936,6 +4031,8 @@ export const Constants = {
         "expiration",
         "manual_adjustment",
       ],
+      demo_members_band: ["under_100", "100_to_300", "300_to_600", "over_600"],
+      demo_request_status: ["new", "contacted", "demo_done", "dropped"],
       employment_type: ["employee", "freelance"],
       gym_role: ["member", "coach", "staff", "manager", "admin"],
       integration_provider: ["gmail", "whatsapp", "pennylane", "stripe"],

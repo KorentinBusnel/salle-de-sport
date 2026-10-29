@@ -13,6 +13,26 @@ pnpm db:reset       # repartir d'une base propre
 pnpm db:test        # tests RLS (pgTAP)
 ```
 
+## Site vitrine (apps/site)
+
+Landing page « Chalk » destinée aux gérants d'autres salles, avec un formulaire « Demander une
+démo » (demandes lues dans le back office, Plateforme › Démos, compte `admin@demo.local`).
+
+```sh
+pnpm env:local                         # écrit aussi apps/site/.env.local
+pnpm --filter @salle/site dev          # http://localhost:3001
+```
+
+- **Vercel** : un second projet, racine `apps/site`, variables `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` et `NEXT_PUBLIC_SITE_URL` (domaine du site). Le site n'est
+  indexé qu'en production.
+- **Avant la mise en ligne** : compléter `LEGAL` dans `apps/site/lib/site.ts` (raison sociale,
+  adresse, SIREN, directeur de la publication, email de contact RGPD) et confirmer le nom.
+- **Captures du produit** (après `pnpm db:reset`) : lancer le back office
+  (`pnpm --filter @salle/backoffice build` puis `start`), servir l'export web de l'app
+  (`npx expo export --platform web` dans `apps/mobile`, `.env.local` chargé, port 8081) et le site,
+  puis `node scripts/site-captures.mjs` (`--only backoffice|app|og`).
+
 ## Comptes de démo
 
 Créés par `supabase/seed.sql`, mot de passe commun `demo1234` (base locale et projet Supabase de
@@ -21,7 +41,7 @@ dev en ligne ; données fictives uniquement).
 | Compte                                    | Rôle                              |
 | ----------------------------------------- | --------------------------------- |
 | `gerant@demo.local`                       | gérant                            |
-| `admin@demo.local`                        | admin                             |
+| `admin@demo.local`                        | admin (et Plateforme)             |
 | `accueil@demo.local`                      | accueil                           |
 | `coach1@demo.local` … `coach6@demo.local` | coachs                            |
 | `adherent@demo.local`                     | adhérent avec abonnement illimité |

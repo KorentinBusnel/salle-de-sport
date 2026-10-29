@@ -724,3 +724,18 @@ values (pg_temp.sid('mp:order:1'), pg_temp.sid('gym'), pg_temp.sid('mp:prod:ener
 insert into public.mp_campaigns (id, product_id, title, description, ends_at, min_qty)
 values (pg_temp.sid('mp:campaign:whey'), pg_temp.sid('mp:prod:whey'), 'Whey de la rentrée',
   'Commande commune du réseau : plus les salles s''engagent, plus le prix baisse.', now() + interval '12 days', 20);
+
+-- Demandes de démo reçues par le site vitrine (fictives), suivies dans Plateforme › Démos.
+insert into public.demo_requests (id, full_name, gym_name, email, phone, city, members_band, current_tool, message, status, note, created_on, created_at)
+select pg_temp.sid('demo:' || k), full_name, gym_name, email, phone, city, band::public.demo_members_band, tool, msg,
+  status::public.demo_request_status, note, (now() - ago)::date, now() - ago
+from (values
+  ('1', 'Inès Moreau', 'Box Garonne', 'ines.moreau@box-garonne.example', '06 12 48 73 05', 'Toulouse', '100_to_300', 'Bsport',
+    'Deux créneaux Hyrox le samedi, on veut sortir des relances WhatsApp.', 'new', null, interval '3 hours'),
+  ('2', 'Julien Ferrand', 'Atelier 41 CrossFit', 'julien@atelier41.example', null, 'Nantes', 'under_100', 'Tableur',
+    null, 'new', null, interval '1 day 2 hours'),
+  ('3', 'Camille Rousset', 'Rousset Training Club', 'camille.rousset@rtc.example', '07 81 26 39 14', 'Annecy', '300_to_600', 'Deciplus',
+    'Trois salles, un seul planning souhaité.', 'contacted', 'Rappel mardi 10 h, intéressée par les achats groupés.', interval '4 days'),
+  ('4', 'Mehdi Chaouch', 'Run Factory', 'mehdi@runfactory.example', '06 54 17 92 38', 'Lille', '100_to_300', null,
+    'Running club, carnets de séances surtout.', 'demo_done', 'Démo faite le 22, attend un devis.', interval '9 days')
+) as v(k, full_name, gym_name, email, phone, city, band, tool, msg, status, note, ago);

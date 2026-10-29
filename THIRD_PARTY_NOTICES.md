@@ -44,3 +44,48 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## AI Design Skills (elayadesign) — licence MIT
+
+Le site vitrine `apps/site` suit le skill `landing-page-design` de
+[AI Design Skills](https://github.com/elayadesign/ai-design-skills) (dépôt
+`elayadesign/ai-design-skills`, commit `ded7efc`) :
+
+- copie dans `.claude/skills/landing-page-design/` (licence dans `LICENSE`), avec deux ajouts
+  signalés en tête de fichier : portée limitée à `apps/site` et section « Dans ce dépôt » ;
+- ce skill adapte lui-même des idées de [taste-skill](https://github.com/Leonxlnx/taste-skill)
+  (Leon Lin, MIT), dont la licence figure à la fin de son `SKILL.md`.
+
+```
+MIT License
+
+Copyright (c) 2026 Elaya
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Phosphor Icons — licence MIT
+
+Icônes du site vitrine (`apps/site`), paquet `@phosphor-icons/react`
+([phosphoricons.com](https://phosphoricons.com), dépôt `phosphor-icons/react`), utilisé tel quel.
+
+## Geist — licence SIL Open Font License 1.1
+
+Police du site vitrine (`apps/site`), dessinée par Vercel ([vercel.com/font](https://vercel.com/font)),
+chargée par `next/font/google` (aucun fichier de police dans le dépôt).

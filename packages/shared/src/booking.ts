@@ -115,6 +115,9 @@ export const BOOKING_ERROR_CODES = [
   "mp_commitment_not_found",
   "mp_invalid_quantity",
   "mp_invalid_date",
+  // Demandes de démo du site vitrine
+  "too_many_requests",
+  "demo_request_not_found",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

@@ -99,6 +99,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @salle/backoffice build
 
+  site:
+    name: Build du site vitrine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @salle/site build
+
   mobile:
     name: Bundle de l'app mobile (iOS et Android)
     runs-on: ubuntu-latest

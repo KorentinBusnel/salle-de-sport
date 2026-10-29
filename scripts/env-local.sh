@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Écrit les .env.local du back office et de l'app mobile à partir de Supabase local.
+# Écrit les .env.local du back office, du site et de l'app mobile à partir de Supabase local.
 # Ces clés sont celles, publiques, de Supabase local : rien de secret.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -18,8 +18,12 @@ cat > apps/backoffice/.env.local <<ENV
 NEXT_PUBLIC_SUPABASE_URL=$api_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key
 ENV
+cat > apps/site/.env.local <<ENV
+NEXT_PUBLIC_SUPABASE_URL=$api_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key
+ENV
 cat > apps/mobile/.env.local <<ENV
 EXPO_PUBLIC_SUPABASE_URL=$api_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=$anon_key
 ENV
-echo "apps/backoffice/.env.local et apps/mobile/.env.local écrits."
+echo "apps/backoffice/.env.local, apps/site/.env.local et apps/mobile/.env.local écrits."

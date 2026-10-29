@@ -11,7 +11,8 @@ export type MembersBand = (typeof MEMBERS_BANDS)[number];
  * formulaire, refusées désormais par `request_demo`.
  */
 export const DEMO_REQUEST_KINDS = ["trial", "contact"] as const;
-export type DemoRequestKind = (typeof DEMO_REQUEST_KINDS)[number] | "demo";
+export type SiteRequestKind = (typeof DEMO_REQUEST_KINDS)[number];
+export type DemoRequestKind = SiteRequestKind | "demo";
 
 /** Suivi d'une demande par les admins (enum SQL `demo_request_status`). */
 export const DEMO_REQUEST_STATUSES = [

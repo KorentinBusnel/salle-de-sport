@@ -3503,13 +3503,13 @@ export type Database = {
       request_demo: {
         Args: {
           p_city: string;
-          p_current_tool: string;
+          p_current_tool?: string;
           p_email: string;
           p_full_name: string;
           p_gym_name: string;
           p_kind: Database["public"]["Enums"]["demo_request_kind"];
-          p_members_band: Database["public"]["Enums"]["demo_members_band"];
-          p_message: string;
+          p_members_band?: Database["public"]["Enums"]["demo_members_band"];
+          p_message?: string;
           p_phone: string;
         };
         Returns: undefined;

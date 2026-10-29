@@ -37,9 +37,10 @@ create function public.request_demo(
   p_email text,
   p_phone text,
   p_city text,
-  p_members_band public.demo_members_band,
-  p_current_tool text,
-  p_message text
+  -- Facultatifs selon le type : une question n'a pas de taille, un essai pas de message.
+  p_members_band public.demo_members_band default null,
+  p_current_tool text default null,
+  p_message text default null
 )
 returns void
 language plpgsql

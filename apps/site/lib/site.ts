@@ -30,7 +30,7 @@ export const SECTIONS = {
   contact: "contact",
 } as const;
 
-/** Panneaux des fonctionnalités (dérouleur), l'IA en premier. */
+/** Ancres des fonctionnalités, l'IA en premier (la pastille du hero vise la première). */
 export const FEATURES = {
   assistant: "fonction-ia",
   classes: "fonction-cours",

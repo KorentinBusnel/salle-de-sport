@@ -405,7 +405,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `requestAnimationFrame`), `animate-rise` au chargement du hero ; `prefers-reduced-motion` →
   opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
-  partir de `lg`) et le dérouleur des fonctionnalités (`FeatureScroller`, liste collante).
+  partir de `lg`, menu mobile). Fonctionnalités en rangées alternées texte / capture, l'IA en
+  premier (ancres `FEATURES`).
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). `LEGAL` : mentions légales à compléter avant la
   mise en ligne (affichées « à compléter »).

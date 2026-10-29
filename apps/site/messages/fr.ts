@@ -75,12 +75,10 @@ export const fr = {
   },
   benefits: {
     eyebrow: "Fonctionnalités",
-    navLabel: "Fonctionnalités de {brand}",
     title: "Ce que {brand} change dans votre semaine",
     subtitle:
       "Un back office pour l'équipe, une app pour les adhérents, une seule base de données entre les deux.",
     classes: {
-      nav: "Remplir les cours",
       title: "Des cours pleins, jamais surréservés",
       body: "Vos adhérents voient les places restantes en direct dans l'app. Quand une place se libère, la liste d'attente promeut le premier inscrit éligible.",
       point1: "Deux réservations simultanées ne prennent jamais la même place.",
@@ -89,7 +87,6 @@ export const fr = {
       alt: "Planning de la semaine dans le back office, séances colorées par discipline avec leur remplissage.",
     },
     payments: {
-      nav: "Encaisser sans relancer",
       title: "Des impayés traités avant la fin du mois",
       body: "Abonnements par carte ou prélèvement SEPA, carnets de séances et séances à l'unité, payés dans l'app avec Stripe.",
       point1: "Un prélèvement rejeté suspend les réservations jusqu'au règlement.",
@@ -98,7 +95,6 @@ export const fr = {
       alt: "Page Paiements du back office : encaissements, statuts et filtres.",
     },
     members: {
-      nav: "Connaître chaque adhérent",
       title: "Chaque adhérent connu dès la porte",
       body: "La fiche résume ancienneté, séances des 30 derniers jours, taux de présence et crédits restants. L'accueil voit l'essentiel, sans les finances.",
       point1: "Note « à savoir » partagée avec l'accueil et les coachs du jour.",
@@ -107,7 +103,6 @@ export const fr = {
       alt: "Fiche adhérent : bandeau de synthèse, coordonnées et historique.",
     },
     coaches: {
-      nav: "Payer les coachs",
       title: "Les heures des coachs calculées pour vous",
       body: "Chaque séance terminée compte pour ses coachs : durée multipliée par le taux horaire, avec plusieurs coachs par cours si besoin.",
       point1: "Export CSV par coach, prêt pour leur facture.",
@@ -116,7 +111,6 @@ export const fr = {
       alt: "Heures réalisées par coach sur le mois, avec le montant à facturer.",
     },
     assistant: {
-      nav: "Piloter avec l'IA",
       title: "Vos questions, répondues en une phrase",
       body: "Demandez « Qui n'est pas venu depuis trois semaines ? » : l'assistant lit vos données avec vos droits, répond avec les fiches concernées et prépare la relance.",
       point1: "Rien ne part sans votre validation.",

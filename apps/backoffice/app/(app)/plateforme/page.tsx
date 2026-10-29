@@ -1,4 +1,6 @@
 import {
+  DEMO_REQUEST_STATUS_TONE,
+  DEMO_REQUEST_STATUSES,
   formatMoney,
   MP_CAMPAIGN_STATUS_TONE,
   MP_ORDER_STATUS_TONE,
@@ -38,13 +40,21 @@ import {
   createProduct,
   createSupplier,
   updateCategory,
+  updateDemoRequest,
   updateProduct,
   updateSupplier,
 } from "./actions";
 
 export const metadata: Metadata = { title: t("platform.title") };
 
-const TABS = ["catalogue", "fournisseurs", "devis", "commandes", "achats-groupes"] as const;
+const TABS = [
+  "catalogue",
+  "fournisseurs",
+  "devis",
+  "commandes",
+  "achats-groupes",
+  "demos",
+] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL = {
   catalogue: "platform.tab.catalogue",
@@ -52,11 +62,13 @@ const TAB_LABEL = {
   devis: "platform.tab.quotes",
   commandes: "platform.tab.orders",
   "achats-groupes": "platform.tab.campaigns",
+  demos: "platform.tab.demos",
 } as const;
 
 /**
  * Espace Plateforme (administrateurs) : catalogue commun de la marketplace édité sur place,
- * fournisseurs, réponses aux devis et suivi des commandes de toutes les salles.
+ * fournisseurs, réponses aux devis, suivi des commandes de toutes les salles et demandes de
+ * démo venues du site vitrine.
  */
 export default async function PlatformPage({
   searchParams,
@@ -98,6 +110,8 @@ export default async function PlatformPage({
         <QuotesTab timeZone={context.gym.timezone} />
       ) : tab === "achats-groupes" ? (
         <CampaignsTab timeZone={context.gym.timezone} />
+      ) : tab === "demos" ? (
+        <DemosTab timeZone={context.gym.timezone} />
       ) : (
         <OrdersTab timeZone={context.gym.timezone} />
       )}
@@ -681,5 +695,121 @@ async function CampaignsTab({ timeZone }: { timeZone: string }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+async function DemosTab({ timeZone }: { timeZone: string }) {
+  const supabase = await createClient();
+  const format = gymFormatters(timeZone);
+  const { data: requests } = await supabase
+    .from("demo_requests")
+    .select(
+      "id, full_name, gym_name, email, phone, city, members_band, current_tool, message, status, note, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const statusOptions = DEMO_REQUEST_STATUSES.map((value) => ({
+    value,
+    label: t(`platform.demos.statusLabel.${value}`),
+  }));
+  const fresh = (requests ?? []).filter((r) => r.status === "new").length;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("platform.demos.title")}</CardTitle>
+        <CardDescription>
+          {t("platform.demos.newCount", { count: fresh })} · {t("platform.demos.hint")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="overflow-x-auto px-2">
+        {!requests?.length ? (
+          <p className="px-2 text-sm text-muted-foreground">{t("platform.demos.empty")}</p>
+        ) : (
+          <Table className="min-w-[64rem]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-2">{t("platform.demos.gym")}</TableHead>
+                <TableHead>{t("platform.demos.contact")}</TableHead>
+                <TableHead>{t("platform.demos.message")}</TableHead>
+                <TableHead>{t("platform.demos.status")}</TableHead>
+                <TableHead className="pr-2">{t("platform.demos.note")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.map((r) => (
+                <TableRow key={r.id} className="align-top">
+                  <TableCell className="pl-2">
+                    <span className="flex items-center gap-2 font-medium">
+                      {r.gym_name}
+                      {r.status === "new" ? (
+                        <StatusPill tone={DEMO_REQUEST_STATUS_TONE.new}>
+                          {t("platform.demos.statusLabel.new")}
+                        </StatusPill>
+                      ) : null}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {r.city} · {t(`platform.demos.bands.${r.members_band}`)}
+                    </span>
+                    <span className="block text-xs text-muted-foreground tabular-nums">
+                      {t("platform.demos.received")} {format.dateTime(r.created_at)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="block font-medium">{r.full_name}</span>
+                    <a
+                      href={`mailto:${r.email}`}
+                      className="block text-sm text-primary underline-offset-4 hover:underline"
+                    >
+                      {r.email}
+                    </a>
+                    {r.phone ? (
+                      <a
+                        href={`tel:${r.phone.replace(/[^\d+]/g, "")}`}
+                        className="block text-sm text-muted-foreground tabular-nums hover:text-foreground"
+                      >
+                        {r.phone}
+                      </a>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="max-w-80 whitespace-normal">
+                    {r.current_tool ? (
+                      <span className="block text-xs text-muted-foreground">
+                        {t("platform.demos.tool")} : {r.current_tool}
+                      </span>
+                    ) : null}
+                    <span className="block text-sm">{r.message ?? t("platform.none")}</span>
+                  </TableCell>
+                  <TableCell className="p-1">
+                    <EditableCell
+                      kind="select"
+                      id={r.id}
+                      field="status"
+                      label={`${t("platform.demos.status")} : ${r.gym_name}`}
+                      value={r.status}
+                      options={statusOptions}
+                      action={updateDemoRequest}
+                    />
+                  </TableCell>
+                  <TableCell className="max-w-72 p-1 pr-2 whitespace-normal">
+                    <EditableCell
+                      kind="text"
+                      multiline
+                      id={r.id}
+                      field="note"
+                      label={`${t("platform.demos.note")} : ${r.gym_name}`}
+                      value={r.note ?? ""}
+                      placeholder={t("platform.demos.notePlaceholder")}
+                      maxLength={1000}
+                      action={updateDemoRequest}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

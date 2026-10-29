@@ -1,6 +1,11 @@
 "use server";
 
-import { MP_ORDER_STATUSES, zonedInstant } from "@salle/shared";
+import {
+  DEMO_REQUEST_STATUSES,
+  type DemoRequestStatus,
+  MP_ORDER_STATUSES,
+  zonedInstant,
+} from "@salle/shared";
 import type { TablesUpdate } from "@salle/supabase";
 import { refresh } from "next/cache";
 import { z } from "zod";
@@ -328,4 +333,40 @@ export async function closeCampaign(input: { id: string }): Promise<ActionResult
   if (data?.status === "cancelled") return ok("platform.campaigns.belowMinimum");
   if (data?.failed) return ok("platform.campaigns.closedWithFailures", data.failed);
   return ok("platform.campaigns.closed", data?.charged ?? 0);
+}
+
+const demoRequestFields = {
+  status: z.enum(DEMO_REQUEST_STATUSES),
+  note: optionalText(1000),
+} as const;
+
+/** Suivi d'une demande de démo du site vitrine (statut ou note), par set_demo_request. */
+export async function updateDemoRequest(input: {
+  id: string;
+  field: string;
+  value: CellValue;
+}): Promise<Result> {
+  await requireAdmin();
+  const field = z
+    .enum(Object.keys(demoRequestFields) as [keyof typeof demoRequestFields])
+    .safeParse(input.field);
+  if (!field.success || !z.guid().safeParse(input.id).success)
+    return { error: "platform.errors.invalid" };
+  const parsed = demoRequestFields[field.data].safeParse(input.value);
+  if (!parsed.success) return { error: "platform.errors.invalid" };
+  const supabase = await createClient();
+  // La fonction prend statut et note ensemble : on garde l'autre valeur telle quelle.
+  const { data: current } = await supabase
+    .from("demo_requests")
+    .select("status, note")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (!current) return { error: "bookingErrors.demo_request_not_found" };
+  const { error } = await supabase.rpc("set_demo_request", {
+    p_id: input.id,
+    p_status: field.data === "status" ? (parsed.data as DemoRequestStatus) : current.status,
+    p_note: (field.data === "note" ? (parsed.data as string | null) : current.note) ?? "",
+  });
+  refresh();
+  return { error: error ? errorMessageKey(error) : null };
 }

@@ -15,8 +15,9 @@ pnpm db:test        # tests RLS (pgTAP)
 
 ## Site vitrine (apps/site)
 
-Landing page « Chalk » destinée aux gérants d'autres salles, avec un formulaire « Demander une
-démo » (demandes lues dans le back office, Plateforme › Démos, compte `admin@demo.local`).
+Landing page « Chalk » destinée aux gérants de toutes les salles, avec un formulaire « Commencez
+gratuitement » / « Nous contacter » (demandes lues dans le back office, Plateforme › Demandes,
+compte `admin@demo.local`).
 
 ```sh
 pnpm env:local                         # écrit aussi apps/site/.env.local

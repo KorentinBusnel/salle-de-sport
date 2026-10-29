@@ -258,5 +258,7 @@ export const fr = {
     payment_overdue:
       "Votre abonnement est en attente de paiement : réglez-le pour réserver (Compte).",
     already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",
+    too_many_requests: "Trop de demandes en peu de temps. Réessayez dans une heure.",
+    demo_request_not_found: "Demande introuvable.",
   },
 } as const;

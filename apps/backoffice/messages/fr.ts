@@ -2034,6 +2034,8 @@ export const fr = {
     payment_overdue:
       "L'abonnement de l'adhérent est en impayé : réservation suspendue jusqu'au règlement.",
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",
+    too_many_requests: "Trop de demandes en peu de temps. Réessayez dans une heure.",
+    demo_request_not_found: "Demande de démo introuvable.",
   },
   roles: {
     member: "Adhérent",

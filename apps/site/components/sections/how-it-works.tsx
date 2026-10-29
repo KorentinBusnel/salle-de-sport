@@ -12,7 +12,11 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section id={SECTIONS.how} aria-labelledby="comment-titre" className="py-20 sm:py-24">
+    <section
+      id={SECTIONS.how}
+      aria-labelledby="comment-titre"
+      className="bg-background py-20 sm:py-24"
+    >
       <div className={CONTAINER}>
         <Reveal>
           <SectionHeading
@@ -25,9 +29,12 @@ export function HowItWorks() {
         <ol className="mt-12 grid gap-6 md:grid-cols-3">
           {STEPS.map(({ n, icon: Icon, title, body }, index) => (
             <li key={n}>
-              <Reveal delay={index * 80} className="h-full rounded-2xl bg-background p-6 sm:p-8">
+              <Reveal
+                delay={index * 80}
+                className="h-full rounded-2xl bg-card p-6 shadow-border sm:p-8"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="flex size-10 items-center justify-center rounded-lg bg-card text-primary shadow-border">
+                  <span className="flex size-10 items-center justify-center rounded-lg bg-accent text-primary">
                     <Icon aria-hidden="true" className="size-5" />
                   </span>
                   <span className="text-sm font-semibold text-primary tabular-nums">

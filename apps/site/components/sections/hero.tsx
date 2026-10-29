@@ -1,48 +1,71 @@
-import { BarbellIcon } from "@phosphor-icons/react/ssr";
+import { CaretRightIcon, SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react/ssr";
 import { ButtonLink } from "@/components/button";
 import { PhoneFrame, ProductFrame } from "@/components/frames";
 import { CONTAINER } from "@/components/section-heading";
+import { getGymCount } from "@/lib/gym-count";
 import { t } from "@/lib/i18n";
-import { SECTIONS } from "@/lib/site";
+import { FEATURES, GYM_COUNT_MIN, SECTIONS } from "@/lib/site";
 import appPlanning from "@/public/captures/app-planning.jpg";
 import today from "@/public/captures/aujourdhui.jpg";
 
-export function Hero() {
+export async function Hero() {
+  // Compteur réel de salles, affiché seulement à partir d'un seuil (relu toutes les heures).
+  const count = await getGymCount();
+
   return (
     <section id={SECTIONS.top} aria-labelledby="hero-title" className="overflow-hidden pt-24 pb-20">
       <div className={`${CONTAINER} pt-12 sm:pt-16`}>
-        <div className="mx-auto max-w-hero text-center">
-          <p className="animate-rise text-sm font-semibold text-primary">{t("hero.eyebrow")}</p>
+        <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
+          <a
+            href={`#${FEATURES.assistant}`}
+            className="inline-flex min-h-10 animate-rise items-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-medium shadow-border transition-colors duration-300 ease-base hover:bg-background"
+          >
+            <SparkleIcon aria-hidden="true" weight="fill" className="size-4 text-primary" />
+            {t("hero.announce")}
+            <CaretRightIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+          </a>
           <h1
             id="hero-title"
-            className="mt-4 animate-rise text-hero text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl"
+            className="mt-8 animate-rise text-hero text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl"
           >
-            {t("hero.titleStart")} <br className="hidden sm:inline" />
-            {t("hero.titleEnd")}
+            {t("hero.title")}
           </h1>
           <p
-            className="mt-6 animate-rise text-lg text-muted-foreground"
+            className="mt-6 max-w-hero animate-rise text-lg text-muted-foreground"
             style={{ animationDelay: "80ms" }}
           >
             {t("hero.subtitle")}
           </p>
           <div
-            className="mt-8 flex animate-rise flex-col items-center gap-3"
+            className="mt-8 flex w-full animate-rise flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row"
             style={{ animationDelay: "160ms" }}
           >
-            <ButtonLink href={`#${SECTIONS.demo}`}>{t("hero.cta")}</ButtonLink>
-            <p className="text-sm text-muted-foreground">{t("hero.ctaNote")}</p>
+            <ButtonLink
+              variant="outline"
+              href={`#${SECTIONS.contact}`}
+              className="w-full sm:w-auto"
+            >
+              {t("hero.contact")}
+            </ButtonLink>
+            <ButtonLink href={`#${SECTIONS.start}`} className="w-full sm:w-auto">
+              {t("hero.start")}
+            </ButtonLink>
           </div>
           <p
-            className="mx-auto mt-8 max-w-xs animate-rise text-sm font-medium sm:max-w-none"
-            style={{ animationDelay: "240ms" }}
+            className="mt-4 animate-rise text-sm text-muted-foreground"
+            style={{ animationDelay: "160ms" }}
           >
-            <BarbellIcon
-              aria-hidden="true"
-              className="mr-2 inline size-5 align-text-bottom text-primary"
-            />
-            {t("hero.proof")}
+            {t("hero.note")}
           </p>
+          {count !== null && count >= GYM_COUNT_MIN ? (
+            <p
+              className="mt-6 flex animate-rise items-center gap-2 text-sm font-medium tabular-nums"
+              style={{ animationDelay: "240ms" }}
+            >
+              <UsersThreeIcon aria-hidden="true" className="size-5 shrink-0 text-primary" />
+              {t("hero.count", { count })}
+            </p>
+          ) : null}
         </div>
 
         <div

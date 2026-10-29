@@ -3,20 +3,45 @@
 import { CaretDownIcon, CheckCircleIcon } from "@phosphor-icons/react/ssr";
 import {
   DEMO_REQUEST_FIELDS,
+  DEMO_REQUEST_KINDS,
   demoRequestSchema,
   MEMBERS_BANDS,
   type DemoRequestField,
+  type SiteRequestKind as Kind,
 } from "@salle/shared";
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { requestDemo, type DemoFormState } from "@/app/actions";
 import { buttonClasses } from "@/components/button";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { SECTIONS } from "@/lib/site";
 
 const INITIAL: DemoFormState = { status: "idle" };
 
-/** Formulaire « Demander une démo » ; « Envoyer une autre demande » le remonte à neuf. */
+// Champs facultatifs selon le type de demande (même règle que demoRequestSchema).
+const OPTIONAL: Record<Kind, readonly DemoRequestField[]> = {
+  trial: ["phone", "currentTool", "message"],
+  contact: ["phone", "city", "membersBand", "currentTool"],
+};
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
+/**
+ * Formulaire du site : « Créer ma salle » (essai) ou « Poser une question ». Le lien `#contact`
+ * (« Nous contacter ») ouvre le second ; « Envoyer une autre demande » le remonte à neuf.
+ */
 export function DemoForm() {
   const [round, setRound] = useState(0);
   return <DemoFormRound key={round} onAgain={() => setRound((value) => value + 1)} />;
@@ -24,6 +49,19 @@ export function DemoForm() {
 
 function DemoFormRound({ onAgain }: { onAgain: () => void }) {
   const [state, formAction, pending] = useActionState(requestDemo, INITIAL);
+  // Type choisi : celui du lien suivi (#contact), sauf si le visiteur l'a changé depuis.
+  const hash = useSyncExternalStore(
+    subscribeHash,
+    () => window.location.hash,
+    () => "",
+  );
+  const [choice, setChoice] = useState<{ kind: Kind; hash: string } | null>(null);
+  const kind: Kind =
+    choice && choice.hash === hash
+      ? choice.kind
+      : hash === `#${SECTIONS.contact}`
+        ? "contact"
+        : "trial";
   // Erreurs relevées dans le navigateur avant l'envoi ; la base et le serveur revalident.
   const [clientErrors, setClientErrors] = useState<Set<DemoRequestField>>(new Set());
   const openedAt = useRef(0);
@@ -42,10 +80,10 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
       <div className="flex flex-col items-start gap-4 rounded-2xl bg-card p-6 shadow-border sm:p-8">
         <CheckCircleIcon aria-hidden="true" weight="fill" className="size-10 text-success" />
         <h3 ref={successTitle} tabIndex={-1} className="text-2xl font-semibold tracking-tight">
-          {t("form.successTitle")}
+          {t(`form.success.${state.kind}Title`)}
         </h3>
         <p className="text-base text-muted-foreground" role="status">
-          {t("form.successBody", { email: state.email })}
+          {t(`form.success.${state.kind}Body`, { email: state.email })}
         </p>
         <button type="button" onClick={onAgain} className={buttonClasses("secondary")}>
           {t("form.again")}
@@ -91,12 +129,14 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
     });
   }
 
+  const optional = (name: DemoRequestField) => OPTIONAL[kind].includes(name);
   const field = (name: DemoRequestField) => ({
     id: `demo-${name}`,
     name,
     defaultValue: values?.[name] ?? "",
     "aria-invalid": invalid.has(name) || undefined,
     "aria-describedby": invalid.has(name) ? `demo-${name}-error` : undefined,
+    required: !optional(name),
     onChange: () => clearError(name),
   });
 
@@ -107,12 +147,39 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
       noValidate
       className="rounded-2xl bg-card p-6 shadow-border sm:p-8"
     >
+      <fieldset className="mb-6">
+        <legend className="mb-2 text-sm font-medium">{t("form.kind")}</legend>
+        {/* Contrôle segmenté : rayon xl 12, marge 4, d'où lg 8 à l'intérieur (skill B3). */}
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+          {DEMO_REQUEST_KINDS.map((value) => (
+            <label
+              key={value}
+              className={cn(
+                "flex min-h-10 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center text-sm font-medium transition-colors duration-300 ease-base has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
+                kind === value
+                  ? "bg-card text-foreground shadow-border"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <input
+                type="radio"
+                name="kind"
+                value={value}
+                checked={kind === value}
+                onChange={() => setChoice({ kind: value, hash })}
+                className="sr-only"
+              />
+              {t(`form.kinds.${value}`)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field name="fullName" invalid={invalid.has("fullName")}>
-          <input {...field("fullName")} autoComplete="name" required className={INPUT} />
+          <input {...field("fullName")} autoComplete="name" className={INPUT} />
         </Field>
         <Field name="gymName" invalid={invalid.has("gymName")}>
-          <input {...field("gymName")} autoComplete="organization" required className={INPUT} />
+          <input {...field("gymName")} autoComplete="organization" className={INPUT} />
         </Field>
         <Field name="email" invalid={invalid.has("email")}>
           <input
@@ -121,23 +188,22 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
             autoComplete="email"
             inputMode="email"
             placeholder={t("form.emailPlaceholder")}
-            required
             className={INPUT}
           />
         </Field>
         <Field name="phone" invalid={invalid.has("phone")} optional>
           <input {...field("phone")} type="tel" autoComplete="tel" className={INPUT} />
         </Field>
-        <Field name="city" invalid={invalid.has("city")}>
-          <input {...field("city")} autoComplete="address-level2" required className={INPUT} />
+        <Field name="city" invalid={invalid.has("city")} optional={optional("city")}>
+          <input {...field("city")} autoComplete="address-level2" className={INPUT} />
         </Field>
-        <Field name="membersBand" invalid={invalid.has("membersBand")}>
+        <Field
+          name="membersBand"
+          invalid={invalid.has("membersBand")}
+          optional={optional("membersBand")}
+        >
           <div className="relative">
-            <select
-              {...field("membersBand")}
-              required
-              className={cn(INPUT, "appearance-none pr-10")}
-            >
+            <select {...field("membersBand")} className={cn(INPUT, "appearance-none pr-10")}>
               <option value="">{t("form.choose")}</option>
               {MEMBERS_BANDS.map((band) => (
                 <option key={band} value={band}>
@@ -158,11 +224,13 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
             className={INPUT}
           />
         </Field>
-        <Field name="message" invalid={invalid.has("message")} optional wide>
+        <Field name="message" invalid={invalid.has("message")} optional={optional("message")} wide>
           <textarea
             {...field("message")}
             rows={4}
-            placeholder={t("form.messagePlaceholder")}
+            placeholder={t(
+              kind === "trial" ? "form.messagePlaceholder" : "form.questionPlaceholder",
+            )}
             className={cn(INPUT, "resize-y")}
           />
         </Field>
@@ -187,7 +255,7 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
         disabled={pending}
         className={cn(buttonClasses("primary"), "mt-6 w-full")}
       >
-        {pending ? t("form.pending") : t("form.submit")}
+        {pending ? t("form.pending") : t(`form.submit.${kind}`)}
       </button>
       <p className="mt-4 text-sm text-muted-foreground">
         {t("form.privacyBefore")}{" "}

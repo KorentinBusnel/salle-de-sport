@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import { SECTIONS } from "@/lib/site";
 
 const QUESTIONS = [
+  "activity",
   "app",
   "payments",
   "rejected",

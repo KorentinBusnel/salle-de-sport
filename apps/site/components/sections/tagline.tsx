@@ -8,7 +8,7 @@ import { t } from "@/lib/i18n";
  */
 export function Tagline() {
   return (
-    <section aria-label={t("tagline.line3")} className="bg-background py-20 sm:py-24">
+    <section aria-label={t("tagline.line3")} className="py-20 sm:py-24">
       <div className={CONTAINER}>
         <TaglineReveal
           lines={[t("tagline.line1"), t("tagline.line2"), t("tagline.line3")]}

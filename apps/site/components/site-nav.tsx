@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { buttonClasses } from "@/components/button";
 import { ChalkMark } from "@/components/chalk-mark";
 import { cn } from "@/lib/cn";
+import { useActiveSection } from "@/lib/use-active-section";
 
 type NavLink = { id: string; label: string };
 
@@ -28,27 +29,11 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
   const pathname = usePathname();
   const onHome = pathname === "/";
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState<string | null>(null);
-
-  // Section courante : celle qui traverse le milieu de l'écran.
-  useEffect(() => {
-    if (!onHome) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.id;
-          if (entry.isIntersecting) setCurrent(id);
-          else setCurrent((value) => (value === id ? null : value));
-        }
-      },
-      { rootMargin: "-50% 0px -50% 0px" },
-    );
-    for (const { id } of [...links, cta]) {
-      const section = document.getElementById(id);
-      if (section) observer.observe(section);
-    }
-    return () => observer.disconnect();
-  }, [onHome, links, cta]);
+  // Section courante, sur la page d'accueil seulement (lib/use-active-section.ts).
+  const current = useActiveSection(
+    [...links, cta].map((link) => link.id),
+    onHome,
+  );
 
   // Menu ouvert : Échap le ferme, la page derrière ne défile plus.
   useEffect(() => {
@@ -65,7 +50,7 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
   }, [open]);
 
   const href = (id: string) => (onHome ? `#${id}` : `/#${id}`);
-  const isCurrent = (id: string) => onHome && current === id;
+  const isCurrent = (id: string) => current === id;
 
   return (
     <header className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
@@ -82,7 +67,7 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
           <ChalkMark className="size-7" />
           <span aria-hidden="true">{brand}</span>
         </Link>
-        <ul className="hidden items-center gap-1 md:flex">
+        <ul className="hidden items-center gap-1 lg:flex">
           {links.map((link) => (
             <li key={link.id}>
               <a
@@ -113,7 +98,7 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
           aria-controls="menu-mobile"
           aria-label={open ? labels.close : labels.open}
           onClick={() => setOpen((value) => !value)}
-          className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-300 ease-base hover:bg-secondary md:hidden"
+          className="relative flex size-10 items-center justify-center rounded-full transition-colors duration-300 ease-base hover:bg-secondary lg:hidden"
         >
           {/* Deux traits qui se croisent : l'icône se transforme au lieu de changer d'un coup. */}
           <span
@@ -137,7 +122,7 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
         id="menu-mobile"
         inert={!open}
         className={cn(
-          "fixed inset-0 -z-10 flex flex-col bg-card/90 px-6 pt-24 pb-12 backdrop-blur-xl transition-opacity duration-300 ease-base md:hidden",
+          "fixed inset-0 -z-10 flex flex-col bg-card/90 px-6 pt-24 pb-12 backdrop-blur-xl transition-opacity duration-300 ease-base lg:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
@@ -155,8 +140,12 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
             >
               <a
                 href={href(link.id)}
+                aria-current={isCurrent(link.id) ? "location" : undefined}
                 onClick={() => setOpen(false)}
-                className="flex min-h-12 items-center text-3xl font-semibold tracking-tight"
+                className={cn(
+                  "flex min-h-12 items-center text-3xl font-semibold tracking-tight transition-colors duration-300 ease-base",
+                  isCurrent(link.id) ? "text-primary" : "text-foreground",
+                )}
               >
                 {link.label}
               </a>

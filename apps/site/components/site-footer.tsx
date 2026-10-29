@@ -8,6 +8,7 @@ const COLUMNS: { title: MessageKey; links: { href: string; label: MessageKey }[]
   {
     title: "footer.product",
     links: [
+      { href: `/#${SECTIONS.adaptable}`, label: "nav.adaptable" },
       { href: `/#${SECTIONS.features}`, label: "nav.features" },
       { href: `/#${SECTIONS.how}`, label: "nav.how" },
       { href: `/#${SECTIONS.faq}`, label: "nav.faq" },
@@ -16,7 +17,7 @@ const COLUMNS: { title: MessageKey; links: { href: string; label: MessageKey }[]
   {
     title: "footer.legal",
     links: [
-      { href: `/#${SECTIONS.demo}`, label: "nav.cta" },
+      { href: `/#${SECTIONS.start}`, label: "nav.cta" },
       { href: "/confidentialite", label: "footer.privacy" },
       { href: "/mentions-legales", label: "footer.legalNotice" },
     ],

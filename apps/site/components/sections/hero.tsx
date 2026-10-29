@@ -20,7 +20,7 @@ export async function Hero() {
             href={`#${FEATURES.assistant}`}
             className="inline-flex min-h-10 animate-rise items-center gap-2 rounded-full bg-card px-4 py-2 text-sm font-medium shadow-border transition-colors duration-300 ease-base hover:bg-background"
           >
-            <SparkleIcon aria-hidden="true" weight="fill" className="size-4 text-primary" />
+            <SparkleIcon aria-hidden="true" className="size-4 text-primary" />
             {t("hero.announce")}
             <CaretRightIcon aria-hidden="true" className="size-4 text-muted-foreground" />
           </a>
@@ -62,7 +62,7 @@ export async function Hero() {
               className="mt-6 flex animate-rise items-center gap-2 text-sm font-medium tabular-nums"
               style={{ animationDelay: "240ms" }}
             >
-              <UsersThreeIcon aria-hidden="true" className="size-5 shrink-0 text-primary" />
+              <UsersThreeIcon aria-hidden="true" className="size-4 shrink-0 text-primary" />
               {t("hero.count", { count })}
             </p>
           ) : null}

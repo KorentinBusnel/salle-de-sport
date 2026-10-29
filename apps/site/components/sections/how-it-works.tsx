@@ -1,4 +1,5 @@
 import { CalendarCheckIcon, FadersIcon, UsersThreeIcon } from "@phosphor-icons/react/ssr";
+import { IconChip } from "@/components/icon-chip";
 import { Reveal } from "@/components/reveal";
 import { CONTAINER, SectionHeading } from "@/components/section-heading";
 import { t } from "@/lib/i18n";
@@ -34,9 +35,7 @@ export function HowItWorks() {
                 className="h-full rounded-2xl bg-card p-6 shadow-border sm:p-8"
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex size-10 items-center justify-center rounded-lg bg-accent text-primary">
-                    <Icon aria-hidden="true" className="size-5" />
-                  </span>
+                  <IconChip icon={Icon} />
                   <span className="text-sm font-semibold text-primary tabular-nums">
                     {t("how.step", { n })}
                   </span>

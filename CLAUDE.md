@@ -392,10 +392,12 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (lecture anonyme de `gyms`), affiché à partir de `GYM_COUNT_MIN` (10) ; page statique relue
   toutes les heures (`revalidate = 3600`, cache de `fetch`). Indexée seulement quand
   `VERCEL_ENV=production` (`robots`, `metadata.robots`).
-- Design : skill **`.claude/skills/landing-page-design`** (elayadesign, MIT), réservé à ce site.
-  Geist (`next/font/google`), icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`),
-  couleurs de `@salle/ui/theme.css`, mais **rayons Tailwind par défaut** et courbe `ease-base`
-  (`app/globals.css`). Espacements de la table B2 seulement, échelle de texte Tailwind, ni
+- Design : **design system du produit** (couleurs, rayons et ombres de `@salle/ui/theme.css`,
+  jamais redéfinis ; police Inter par `next/font/google` ; appui `scale(0.96)`) et skill
+  **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
+  page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
+  `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
+  Espacements de la table B2 seulement, échelle de texte Tailwind, ni
   italique, ni graisse 800/900, ni dégradé de fond (seul `text-hero`), ni `transition-all` :
   vérifié par `lib/design-rules.test.ts`. Textes : **aucun trait d'union** (pas de « Puis-je »,
   « rendez-vous »), ni mot creux, ni point d'exclamation : `lib/messages.test.ts`. Espaces

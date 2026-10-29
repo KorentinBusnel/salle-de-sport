@@ -1,8 +1,8 @@
 import Image, { type StaticImageData } from "next/image";
 import { cn } from "@/lib/cn";
 
-// Rayons imbriqués (skill B3) : rayon intérieur = rayon extérieur − marge (2xl 16 − 8 = lg 8,
-// 4xl 32 − 8 = 3xl 24).
+// Rayons imbriqués des tokens (packages/ui) : rayon intérieur = rayon extérieur − marge
+// (2xl 18 − 8 = lg 10, 4xl 26 − 8 = 2xl 18).
 
 /** Capture du back office dans un cadre clair. */
 export function ProductFrame({
@@ -49,7 +49,7 @@ export function PhoneFrame({
         alt={alt}
         sizes="224px"
         placeholder="blur"
-        className="h-auto w-full rounded-3xl"
+        className="h-auto w-full rounded-2xl"
       />
     </div>
   );

@@ -1,17 +1,9 @@
 @import "tailwindcss";
 @import "@salle/ui/theme.css";
 
-/* Site vitrine : système visuel du skill landing-page-design (.claude/skills). Les couleurs
-   viennent de packages/ui ; les rayons reviennent aux valeurs Tailwind par défaut (B3). */
+/* Site vitrine : design system du produit (packages/ui : couleurs, rayons, ombres ; police Inter)
+   et règles de mise en page du skill landing-page-design (.claude/skills). */
 @theme {
-  --radius-xs: 0.125rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
-  --radius-4xl: 2rem;
   /* Courbe de base (B7) : décélère et se pose. */
   --ease-base: cubic-bezier(0.22, 1, 0.36, 1);
   /* Largeur du titre et du sous-titre du hero (B5). */
@@ -19,7 +11,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {

@@ -78,7 +78,7 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
   if (state.status === "sent") {
     return (
       <div className="flex flex-col items-start gap-4 rounded-2xl bg-card p-6 shadow-border sm:p-8">
-        <CheckCircleIcon aria-hidden="true" weight="fill" className="size-10 text-success" />
+        <CheckCircleIcon aria-hidden="true" className="size-10 text-success" />
         <h3 ref={successTitle} tabIndex={-1} className="text-2xl font-semibold tracking-tight">
           {t(`form.success.${state.kind}Title`)}
         </h3>
@@ -149,7 +149,7 @@ function DemoFormRound({ onAgain }: { onAgain: () => void }) {
     >
       <fieldset className="mb-6">
         <legend className="mb-2 text-sm font-medium">{t("form.kind")}</legend>
-        {/* Contrôle segmenté : rayon xl 12, marge 4, d'où lg 8 à l'intérieur (skill B3). */}
+        {/* Contrôle segmenté : rayon xl 14, marge 4, d'où lg 10 à l'intérieur. */}
         <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
           {DEMO_REQUEST_KINDS.map((value) => (
             <label

@@ -84,8 +84,3 @@ SOFTWARE.
 
 Icônes du site vitrine (`apps/site`), paquet `@phosphor-icons/react`
 ([phosphoricons.com](https://phosphoricons.com), dépôt `phosphor-icons/react`), utilisé tel quel.
-
-## Geist — licence SIL Open Font License 1.1
-
-Police du site vitrine (`apps/site`), dessinée par Vercel ([vercel.com/font](https://vercel.com/font)),
-chargée par `next/font/google` (aucun fichier de police dans le dépôt).

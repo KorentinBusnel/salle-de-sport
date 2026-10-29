@@ -29,7 +29,6 @@ export function Start() {
               <li key={key} className="flex gap-3 text-base font-medium">
                 <CheckCircleIcon
                   aria-hidden="true"
-                  weight="fill"
                   className="mt-0.5 size-5 shrink-0 text-primary"
                 />
                 {t(key)}

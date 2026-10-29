@@ -21,7 +21,7 @@ export function AssistantIllustration() {
         </p>
         <div className="flex gap-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
-            <SparkleIcon aria-hidden="true" weight="fill" className="size-4" />
+            <SparkleIcon aria-hidden="true" className="size-4" />
           </span>
           <div className="min-w-0 flex-1 space-y-3 text-sm">
             <p>{t("assistantDemo.answer")}</p>
@@ -33,7 +33,7 @@ export function AssistantIllustration() {
                 </li>
               ))}
             </ul>
-            {/* Rayon 12 et marge 12 : la formule B3 donne 0, les boutons gardent leur rayon. */}
+            {/* Rayon 14 et marge 12 : la formule donne 2, les boutons gardent leur rayon. */}
             <div className="rounded-xl bg-card p-3 shadow-border">
               <p className="text-xs font-semibold text-muted-foreground">
                 {t("assistantDemo.proposal")}

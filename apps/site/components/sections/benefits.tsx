@@ -10,6 +10,7 @@ import type { Icon } from "@phosphor-icons/react";
 import type { StaticImageData } from "next/image";
 import { AssistantIllustration } from "@/components/assistant-illustration";
 import { ProductFrame } from "@/components/frames";
+import { IconChip } from "@/components/icon-chip";
 import { Reveal } from "@/components/reveal";
 import { CONTAINER, SectionHeading } from "@/components/section-heading";
 import { cn } from "@/lib/cn";
@@ -73,9 +74,7 @@ function BenefitRow({ benefit, flipped }: { benefit: Benefit; flipped: boolean }
       className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16"
     >
       <Reveal className={cn("lg:col-span-2", flipped && "lg:order-last")}>
-        <span className="flex size-10 items-center justify-center rounded-lg bg-card text-primary shadow-border">
-          <Icon aria-hidden="true" className="size-5" />
-        </span>
+        <IconChip icon={Icon} />
         <h3
           id={`${FEATURES[key]}-titre`}
           className="mt-6 text-2xl font-semibold tracking-tight sm:text-3xl"

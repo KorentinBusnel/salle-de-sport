@@ -3,7 +3,8 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// Garde-fous du skill landing-page-design (.claude/skills) sur les classes Tailwind du site.
+// Garde-fous du skill landing-page-design (.claude/skills) et du design system du produit
+// (packages/ui) sur les classes et les icônes du site.
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function sources(dir: string): string[] {
@@ -70,6 +71,30 @@ describe("règles visuelles du site", () => {
         /^(transition-all|ease-(in|out|in-out|linear)|duration-(0|75|100|150))$/.test(utility),
       ),
     ).toEqual([]);
+  });
+
+  it("icônes Phosphor au trait, décoratives et importées pour le serveur", () => {
+    const issues = FILES.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      const found: string[] = [];
+      // Une seule graisse sur tout le site : aucune icône pleine ou grasse.
+      if (/\bweight=/.test(text)) found.push(`${relative(ROOT, file)} : weight`);
+      // Valeurs depuis /ssr (sans contexte React) ; seul le type Icon vient du paquet principal.
+      if (/import \{[^}]*\} from "@phosphor-icons\/react"/.test(text)) {
+        found.push(`${relative(ROOT, file)} : import hors /ssr`);
+      }
+      // À côté d'un texte, l'icône est décorative : aria-hidden partout.
+      for (const [element, name] of text.matchAll(/<(\w*Icon)\b[^>]*>/g)) {
+        if (!element.includes("aria-hidden")) found.push(`${relative(ROOT, file)} : ${name}`);
+      }
+      return found;
+    });
+    expect(issues).toEqual([]);
+  });
+
+  it("rayons et ombres du design system du produit (packages/ui), jamais redéfinis", () => {
+    const css = readFileSync(join(ROOT, "app/globals.css"), "utf8");
+    expect(css.match(/--(radius|shadow)-[\w-]+:/g) ?? []).toEqual([]);
   });
 
   it("icônes Phosphor seulement (B6)", () => {

@@ -6,6 +6,7 @@ import {
   TagIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/ssr";
+import { IconChip } from "@/components/icon-chip";
 import { Reveal } from "@/components/reveal";
 import { CONTAINER, SectionHeading } from "@/components/section-heading";
 import { t } from "@/lib/i18n";
@@ -43,9 +44,7 @@ export function Adaptable() {
           {CARDS.map(({ key, icon: Icon }, index) => (
             <li key={key}>
               <Reveal delay={index * 60} className="h-full rounded-2xl bg-background p-6">
-                <span className="flex size-10 items-center justify-center rounded-lg bg-card text-primary shadow-border">
-                  <Icon aria-hidden="true" className="size-5" />
-                </span>
+                <IconChip icon={Icon} />
                 <h3 className="mt-6 text-lg font-semibold tracking-tight">
                   {t(`adaptable.${key}Title`)}
                 </h3>

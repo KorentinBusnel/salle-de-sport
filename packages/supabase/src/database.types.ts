@@ -881,7 +881,7 @@ export type Database = {
       };
       demo_requests: {
         Row: {
-          city: string;
+          city: string | null;
           created_at: string;
           created_on: string;
           current_tool: string | null;
@@ -889,7 +889,8 @@ export type Database = {
           full_name: string;
           gym_name: string;
           id: string;
-          members_band: Database["public"]["Enums"]["demo_members_band"];
+          kind: Database["public"]["Enums"]["demo_request_kind"];
+          members_band: Database["public"]["Enums"]["demo_members_band"] | null;
           message: string | null;
           note: string | null;
           phone: string | null;
@@ -897,7 +898,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          city: string;
+          city?: string | null;
           created_at?: string;
           created_on?: string;
           current_tool?: string | null;
@@ -905,7 +906,8 @@ export type Database = {
           full_name: string;
           gym_name: string;
           id?: string;
-          members_band: Database["public"]["Enums"]["demo_members_band"];
+          kind: Database["public"]["Enums"]["demo_request_kind"];
+          members_band?: Database["public"]["Enums"]["demo_members_band"] | null;
           message?: string | null;
           note?: string | null;
           phone?: string | null;
@@ -913,7 +915,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          city?: string;
+          city?: string | null;
           created_at?: string;
           created_on?: string;
           current_tool?: string | null;
@@ -921,7 +923,8 @@ export type Database = {
           full_name?: string;
           gym_name?: string;
           id?: string;
-          members_band?: Database["public"]["Enums"]["demo_members_band"];
+          kind?: Database["public"]["Enums"]["demo_request_kind"];
+          members_band?: Database["public"]["Enums"]["demo_members_band"] | null;
           message?: string | null;
           note?: string | null;
           phone?: string | null;
@@ -3504,6 +3507,7 @@ export type Database = {
           p_email: string;
           p_full_name: string;
           p_gym_name: string;
+          p_kind: Database["public"]["Enums"]["demo_request_kind"];
           p_members_band: Database["public"]["Enums"]["demo_members_band"];
           p_message: string;
           p_phone: string;
@@ -3690,7 +3694,7 @@ export type Database = {
           p_status: Database["public"]["Enums"]["demo_request_status"];
         };
         Returns: {
-          city: string;
+          city: string | null;
           created_at: string;
           created_on: string;
           current_tool: string | null;
@@ -3698,7 +3702,8 @@ export type Database = {
           full_name: string;
           gym_name: string;
           id: string;
-          members_band: Database["public"]["Enums"]["demo_members_band"];
+          kind: Database["public"]["Enums"]["demo_request_kind"];
+          members_band: Database["public"]["Enums"]["demo_members_band"] | null;
           message: string | null;
           note: string | null;
           phone: string | null;
@@ -3869,7 +3874,8 @@ export type Database = {
       credit_reason:
         "purchase" | "renewal" | "booking" | "booking_refund" | "expiration" | "manual_adjustment";
       demo_members_band: "under_100" | "100_to_300" | "300_to_600" | "over_600";
-      demo_request_status: "new" | "contacted" | "demo_done" | "dropped";
+      demo_request_kind: "demo" | "trial" | "contact";
+      demo_request_status: "new" | "contacted" | "demo_done" | "onboarded" | "dropped";
       employment_type: "employee" | "freelance";
       gym_role: "member" | "coach" | "staff" | "manager" | "admin";
       integration_provider: "gmail" | "whatsapp" | "pennylane" | "stripe";
@@ -4032,7 +4038,8 @@ export const Constants = {
         "manual_adjustment",
       ],
       demo_members_band: ["under_100", "100_to_300", "300_to_600", "over_600"],
-      demo_request_status: ["new", "contacted", "demo_done", "dropped"],
+      demo_request_kind: ["demo", "trial", "contact"],
+      demo_request_status: ["new", "contacted", "demo_done", "onboarded", "dropped"],
       employment_type: ["employee", "freelance"],
       gym_role: ["member", "coach", "staff", "manager", "admin"],
       integration_provider: ["gmail", "whatsapp", "pennylane", "stripe"],

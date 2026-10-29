@@ -704,7 +704,7 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
   const { data: requests } = await supabase
     .from("demo_requests")
     .select(
-      "id, full_name, gym_name, email, phone, city, members_band, current_tool, message, status, note, created_at",
+      "id, kind, full_name, gym_name, email, phone, city, members_band, current_tool, message, status, note, created_at",
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -742,6 +742,9 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                   <TableCell className="pl-2">
                     <span className="flex items-center gap-2 font-medium">
                       {r.gym_name}
+                      <StatusPill tone={r.kind === "trial" ? "brand" : "neutral"}>
+                        {t(`platform.demos.kind.${r.kind}`)}
+                      </StatusPill>
                       {r.status === "new" ? (
                         <StatusPill tone={DEMO_REQUEST_STATUS_TONE.new}>
                           {t("platform.demos.statusLabel.new")}
@@ -749,7 +752,9 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                       ) : null}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      {r.city} · {t(`platform.demos.bands.${r.members_band}`)}
+                      {[r.city, r.members_band && t(`platform.demos.bands.${r.members_band}`)]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                     <span className="block text-xs text-muted-foreground tabular-nums">
                       {t("platform.demos.received")} {format.dateTime(r.created_at)}

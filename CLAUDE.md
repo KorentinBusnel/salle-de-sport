@@ -17,6 +17,7 @@ Conventions de code et de travail pour ce dépôt. Le cahier des charges est `BR
 ```
 apps/backoffice     Next.js 16 (App Router) + Tailwind v4 + shadcn/ui — équipe de la salle
 apps/mobile         Expo SDK 57 + Expo Router + NativeWind 4 — adhérents
+apps/site           Next.js 16 + Tailwind v4 — site vitrine « Chalk » pour les gérants d'autres salles
 packages/shared     règles métier, schémas Zod, dates, i18n — TypeScript pur
 packages/supabase   types générés + type du client
 packages/ui         tokens de design (tokens.ts) et thème Tailwind v4 (theme.css)
@@ -38,7 +39,8 @@ pnpm db:lint                     # lint SQL + advisors, échoue sur un avertisse
 pnpm db:types                    # régénère packages/supabase/src/database.types.ts
 pnpm fn:test                     # Edge Functions : deno lint, check, test (stripe-mock sur :12111)
 pnpm env:local                   # écrit les .env.local des deux apps depuis Supabase local
-pnpm dev                         # back office + Metro
+pnpm dev                         # back office (:3000), site vitrine (:3001) + Metro
+node scripts/site-captures.mjs   # captures du produit pour le site (voir README)
 ```
 
 En session cloud, démarrer Supabase sans les services inutiles :
@@ -175,6 +177,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `private.apply_member_stripe_event`. Edge Function `billing` : `mp_checkout`, `mp_commit`
   (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
   `billing/marketplace.ts`.
+- **Demandes de démo** (`demo_requests`, globale comme le catalogue) : déposées **uniquement via**
+  `request_demo`, **seule fonction ouverte à `anon`** (validation, doublon du jour ignoré, plafond
+  `too_many_requests` de 30 par heure) ; lues et suivies par les admins de plateforme
+  (`set_demo_request`, onglet Plateforme › Démos) ; purge à 3 ans (`demo-requests-purge`).
+  Schéma `demoRequestSchema` (`packages/shared/src/demo.ts`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -369,6 +376,31 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   les imbrique pas ; `lib/messages.test.ts` le vérifie) — écrire deux pluriels côte à côte.
 - Heure courante dans un Server Component : `currentTime()` (`lib/clock.ts`) ; la règle « pureté »
   du React Compiler refuse `Date.now()` dans le rendu.
+
+## Site vitrine (apps/site)
+
+- Landing page qui vend la plateforme aux gérants d'autres salles ; nom **provisoire** dans
+  `BRAND` (`lib/site.ts`, injecté dans `t()` comme `{brand}`). Une seule action : « Demander une
+  démo » (`requestDemo`, `app/actions.ts` : Zod partagé, champ piège, délai minimal, puis
+  `request_demo` avec la clé anon, côté serveur uniquement). Page statique : se construit sans
+  variables ; indexée seulement quand `VERCEL_ENV=production` (`robots`, `metadata.robots`).
+- Design : skill **`.claude/skills/landing-page-design`** (elayadesign, MIT), réservé à ce site.
+  Geist (`next/font/google`), icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`),
+  couleurs de `@salle/ui/theme.css`, mais **rayons Tailwind par défaut** et courbe `ease-base`
+  (`app/globals.css`). Espacements de la table B2 seulement, échelle de texte Tailwind, ni
+  italique, ni graisse 800/900, ni dégradé de fond (seul `text-hero`), ni `transition-all` :
+  vérifié par `lib/design-rules.test.ts`. Textes : **aucun trait d'union** (pas de « Puis-je »,
+  « rendez-vous »), ni mot creux, ni point d'exclamation : `lib/messages.test.ts`. Espaces
+  insécables françaises posées par `t()` (`frenchSpacing`).
+- Animations : `Reveal` (IntersectionObserver, une fois, contenu visible sans JavaScript grâce à
+  `@media (scripting: enabled)`), `TaglineReveal` (mot à mot, un écouteur limité par
+  `requestAnimationFrame`), `animate-rise` au chargement du hero ; `prefers-reduced-motion` →
+  opacité seule.
+- **Preuves** : faits vérifiables du produit seulement. Jamais de témoignage, logo ou chiffre
+  inventé ; `TESTIMONIALS` ne reçoit que des citations réelles et autorisées. `LEGAL` : mentions
+  légales à compléter avant la mise en ligne (affichées « à compléter »).
+- Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
+  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée.
 
 ## App mobile (Expo)
 

@@ -6,7 +6,6 @@ import { Fragment, useEffect, useRef } from "react";
  * Phrase révélée mot à mot (skill B11) : les mots partent à 30 % d'opacité et s'allument un à un,
  * dans l'ordre de lecture, à mesure que le bloc franchit la ligne de déclenchement. Un seul
  * écouteur de défilement, limité par requestAnimationFrame, retiré une fois tout allumé.
- * Sur mobile, les lignes se suivent et s'équilibrent (aucun mot seul sur sa ligne).
  */
 export function TaglineReveal({ lines, className }: { lines: string[]; className?: string }) {
   const ref = useRef<HTMLParagraphElement>(null);
@@ -53,17 +52,21 @@ export function TaglineReveal({ lines, className }: { lines: string[]; className
 
   return (
     <p ref={ref} className={className}>
-      {lines.map((line, lineIndex) => (
-        <span key={line} className="sm:block">
-          {lineIndex > 0 && " "}
-          {line.split(" ").map((word, index) => (
-            <Fragment key={index}>
-              {index > 0 && " "}
-              <span data-word="">{word}</span>
-            </Fragment>
-          ))}
-        </span>
-      ))}
+      {lines.map((line, lineIndex) => {
+        const words = line.split(" ");
+        return (
+          <span key={line} className="block">
+            {lineIndex > 0 && " "}
+            {words.map((word, index) => (
+              <Fragment key={index}>
+                {/* Les deux derniers mots restent ensemble : jamais un mot seul en fin de phrase. */}
+                {index > 0 && (index === words.length - 1 ? "\u00a0" : " ")}
+                <span data-word="">{word}</span>
+              </Fragment>
+            ))}
+          </span>
+        );
+      })}
     </p>
   );
 }

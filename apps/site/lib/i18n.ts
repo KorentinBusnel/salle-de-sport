@@ -11,7 +11,7 @@ const translate = createTranslator(fr);
  * pour qu'aucun signe ne se retrouve seul en début de ligne.
  */
 export function frenchSpacing(text: string): string {
-  return text.replace(/ ([?!:;»])/g, " $1").replace(/« /g, "« ");
+  return text.replace(/ ([?!:;»])/g, "\u00a0$1").replace(/« /g, "«\u00a0");
 }
 
 export function t(key: MessageKey, params?: TranslationParams): string {

@@ -20,7 +20,9 @@
     scroll-padding-top: 6rem;
   }
   body {
-    @apply bg-card font-sans text-foreground antialiased;
+    /* Un seul quadrillage pour toute la page : il défile avec le contenu, sans rupture entre les
+       sections (pas de bandes de fond). */
+    @apply bg-card bg-grid font-sans text-foreground antialiased;
   }
   h1,
   h2,
@@ -37,8 +39,8 @@
   }
 }
 
-/* Quadrillage fin derrière le hero et le formulaire, pour que le blanc ne paraisse pas vide :
-   motif SVG de 32 px (table B2) en traits pleins à 7 %, aucun dégradé (B4). */
+/* Quadrillage fin de la page, pour que le blanc ne paraisse pas vide : motif SVG de 32 px
+   (table B2) en traits pleins à 7 %, aucun dégradé (B4). */
 @utility bg-grid {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M0 .5H32M.5 0V32' fill='none' stroke='%2318181b' stroke-opacity='.07'/%3E%3C/svg%3E");
   background-position: center top;

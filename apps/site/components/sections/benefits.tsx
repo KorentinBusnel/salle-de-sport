@@ -39,7 +39,7 @@ export function Benefits() {
     <section
       id={SECTIONS.features}
       aria-labelledby="fonctionnalites-titre"
-      className="bg-background py-20 sm:py-24"
+      className="py-20 sm:py-24"
     >
       <div className={CONTAINER}>
         <Reveal>

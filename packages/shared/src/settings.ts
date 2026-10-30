@@ -26,7 +26,8 @@ export type LayoutRole = (typeof LAYOUT_ROLES)[number];
 
 export const HOME_BLOCKS_BY_ROLE: Record<LayoutRole, readonly HomeBlock[]> = {
   manager: ["brief", "operations", "clients", "finance"],
-  staff: ["operations", "clients", "finance"],
+  // Nouveaux venus : déjà dans Opérations ; le bloc Clients (CRM) reste au gérant.
+  staff: ["operations", "finance"],
   coach: ["operations"],
 };
 /** Pastilles qu'un rôle peut voir (les autres comptes lui sont refusés par nav_counts). */

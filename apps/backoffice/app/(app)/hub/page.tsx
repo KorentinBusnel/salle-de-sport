@@ -29,9 +29,9 @@ export const metadata: Metadata = { title: t("hub.title") };
 const CONNECTED = new Set<string>(CONNECTED_DIGEST_SOURCES);
 
 /**
- * Hub 360° (gérant) : l'assistant lit l'activité de la salle et propose, par catégorie
- * (Opérations, Clients, Finance), une synthèse et des actions à valider ; en dessous, les
- * conversations en deux volets (HubConversations).
+ * Assistant (gérant ; le « Hub 360° » du brief) : l'assistant lit l'activité de la salle et
+ * propose, par catégorie (Opérations, Clients, Finance), une synthèse et des actions à valider ;
+ * en dessous, les conversations en deux volets (HubConversations).
  */
 export default async function HubPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const params = await searchParams;
@@ -91,12 +91,15 @@ export default async function HubPage({ searchParams }: { searchParams: Promise<
             </span>
           );
         })}
-        <Link
-          href="/parametres?onglet=integrations"
-          className="ml-1 text-sm font-medium text-primary hover:underline"
-        >
-          {t("hub.manageSources")}
-        </Link>
+        {/* Sans clé, le seul lien vers les intégrations est celui de l'encart ci-dessous. */}
+        {configured ? (
+          <Link
+            href="/parametres?onglet=integrations"
+            className="ml-1 text-sm font-medium text-primary hover:underline"
+          >
+            {t("hub.manageSources")}
+          </Link>
+        ) : null}
       </div>
 
       {configured ? (

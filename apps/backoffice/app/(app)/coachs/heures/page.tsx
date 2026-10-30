@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { type HoursRow, HoursTable } from "@/components/coaches/hours-table";
 import { MonthNav } from "@/components/forms/month-nav";
+import { PageCrumb } from "@/components/page-crumb";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { isManagerRole, requireTeamContext } from "@/lib/auth";
@@ -63,6 +64,8 @@ export default async function CoachHoursPage({
 
   return (
     <div className="grid gap-6">
+      {/* Gérant : la page vit sous « Coachs », le fil d'Ariane le dit (« Coachs › Heures »). */}
+      {manager ? <PageCrumb label={t("hours.crumb")} /> : null}
       <PageHeader
         title={manager ? t("hours.title") : t("nav.myHours")}
         description={t("hours.hint")}

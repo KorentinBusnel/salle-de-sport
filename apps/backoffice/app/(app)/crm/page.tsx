@@ -1,10 +1,8 @@
 import { PIPELINE_STAGES, type PipelineStage } from "@salle/shared";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PipelineBoard } from "@/components/crm/pipeline-board";
 import { Flash } from "@/components/flash";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { t } from "@/lib/i18n";
@@ -58,15 +56,7 @@ export default async function CrmPage({
 
   return (
     <div className="grid min-w-0 gap-6">
-      <PageHeader
-        title={t("crm.title")}
-        description={t("crm.hint")}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/segments">{t("nav.segments")}</Link>
-          </Button>
-        }
-      />
+      <PageHeader title={t("crm.title")} description={t("crm.hint")} />
       <Flash ok={params.ok} error={params.erreur} />
       <PipelineBoard columns={columns} moreHref={MORE_HREF} action={moveMemberStage} />
     </div>

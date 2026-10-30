@@ -32,7 +32,7 @@ export default async function TemplatesPage({
   const current = templates?.find((tpl) => tpl.id === params.modele);
   return (
     <div className="grid gap-6">
-      <PageHeader title={t("emailing.title")} description={t("emailing.noDelivery")} />
+      <PageHeader title={t("emailing.tab.templates")} description={t("emailing.templatesHint")} />
       <EmailingNav current="/emailing/modeles" />
       <Flash ok={params.ok} error={params.erreur} />
 

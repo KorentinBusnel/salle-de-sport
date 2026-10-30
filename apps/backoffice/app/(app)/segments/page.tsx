@@ -67,15 +67,7 @@ export default async function SegmentsPage({
   return (
     <UrlStateProvider>
       <div className="grid gap-6">
-        <PageHeader
-          title={t("segments.title")}
-          description={t("segments.hint")}
-          actions={
-            <Button asChild variant="outline">
-              <Link href="/crm">{t("nav.crm")}</Link>
-            </Button>
-          }
-        />
+        <PageHeader title={t("segments.title")} description={t("segments.hint")} />
         <EmailingNav current="/segments" />
         <Flash
           ok={typeof params.ok === "string" ? params.ok : undefined}

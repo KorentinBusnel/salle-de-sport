@@ -4,7 +4,6 @@ import {
   ArrowUpIcon,
   CheckIcon,
   FilterIcon,
-  LoaderIcon,
   MailIcon,
   SparklesIcon,
   SquareIcon,
@@ -34,8 +33,9 @@ const SUGGESTIONS = [
 ] as const satisfies readonly MessageKey[];
 
 /**
- * Conversation avec l'assistant : fil des questions et réponses (Markdown, liens internes),
- * étapes en cours, cartes de propositions modifiables avant validation, saisie (Entrée pour
+ * Conversation avec l'assistant, au rendu de la landing : question dans une bulle orange,
+ * réponse précédée de la pastille étincelle (Markdown, liens internes, tableaux en lignes),
+ * étapes en cours, propositions repliées (« Modifier », « Valider l'envoi »), saisie (Entrée pour
  * envoyer, « Arrêter » pendant la réponse). `fill` : occupe la hauteur du parent, fil défilant et
  * saisie collée en bas (Hub).
  */
@@ -137,7 +137,7 @@ export function AssistantChat({
           message.role === "user" ? (
             <div
               key={message.id}
-              className="ml-auto max-w-[85%] rounded-2xl bg-muted px-4 py-2 text-sm"
+              className="ml-auto max-w-[85%] rounded-2xl bg-primary px-4 py-2 text-sm text-primary-foreground"
             >
               <span className="sr-only">{t("assistant.you")} : </span>
               {message.text}
@@ -207,60 +207,72 @@ export function AssistantChat({
 
 function AssistantAnswer({ message }: { message: ChatMessage }) {
   return (
-    <article className="grid gap-3">
-      {message.steps.length ? (
-        <ul className="flex flex-wrap gap-1.5" aria-label={t("assistant.title")}>
-          {[...new Set(message.steps)].map((step) => (
-            <li
-              key={step}
-              className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground"
+    <article className="flex gap-3">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
+        <SparklesIcon className="size-4" aria-hidden />
+      </span>
+      <div className="grid min-w-0 flex-1 content-start gap-3">
+        {message.steps.length ? (
+          <ul className="flex flex-wrap gap-1.5" aria-label={t("assistant.title")}>
+            {[...new Set(message.steps)].map((step) => (
+              <li
+                key={step}
+                className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground"
+              >
+                <CheckIcon className="size-3" aria-hidden />
+                {step}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {message.text ? (
+          <div className="prose-assistant text-sm leading-relaxed">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ href, children }) =>
+                  href?.startsWith("/") ? (
+                    <Link
+                      href={href}
+                      className="font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {children}
+                    </Link>
+                  ) : (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      {children}
+                    </a>
+                  ),
+              }}
             >
-              <CheckIcon className="size-3" aria-hidden />
-              {step}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {message.text ? (
-        <div className="prose-assistant text-sm leading-relaxed">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              a: ({ href, children }) =>
-                href?.startsWith("/") ? (
-                  <Link
-                    href={href}
-                    className="font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {children}
-                  </Link>
-                ) : (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline"
-                  >
-                    {children}
-                  </a>
-                ),
-            }}
-          >
-            {message.text}
-          </ReactMarkdown>
-        </div>
-      ) : message.pending ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <LoaderIcon className="size-4 animate-spin" aria-hidden />
-          {t("assistant.thinking")}
-        </p>
-      ) : null}
-      {message.stopped ? (
-        <p className="text-xs text-muted-foreground">{t("assistant.stopped")}</p>
-      ) : null}
-      {message.proposals.map((proposal) => (
-        <ProposalCard key={proposal.id} proposal={proposal} />
-      ))}
+              {message.text}
+            </ReactMarkdown>
+          </div>
+        ) : message.pending ? (
+          <p className="flex h-8 items-center gap-1" role="status">
+            <span className="sr-only">{t("assistant.thinking")}</span>
+            {[0, 150, 300].map((delay) => (
+              <span
+                key={delay}
+                aria-hidden
+                className="size-1.5 animate-pulse rounded-full bg-muted-foreground motion-reduce:animate-none"
+                style={{ animationDelay: `${delay}ms` }}
+              />
+            ))}
+          </p>
+        ) : null}
+        {message.stopped ? (
+          <p className="text-xs text-muted-foreground">{t("assistant.stopped")}</p>
+        ) : null}
+        {message.proposals.map((proposal) => (
+          <ProposalCard key={proposal.id} proposal={proposal} />
+        ))}
+      </div>
     </article>
   );
 }
@@ -270,11 +282,13 @@ const BODY_MAX = 4000;
 const SEGMENT_NAME_MAX = 80;
 
 /**
- * Proposition de l'assistant, modifiable avant validation : destinataires retirables, objet et
- * texte du message, nom du segment. Rien ne part sans « Valider ».
+ * Proposition de l'assistant, repliée comme sur la landing : « Message proposé à N adhérents »,
+ * objet et début du texte, puis « Modifier » (destinataires retirables, objet, texte, nom du
+ * segment) et « Valider l'envoi ». Rien ne part sans validation.
  */
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const [state, setState] = useState<"open" | "done" | "dismissed">("open");
+  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [members, setMembers] = useState(proposal.type === "message" ? proposal.members : []);
   const [subject, setSubject] = useState(proposal.type === "message" ? proposal.subject : "");
@@ -298,6 +312,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         return;
       }
       setState("done");
+      setEditing(false);
       toast.success(
         proposal.type === "message"
           ? t("assistant.proposal.sent", { count: result.count ?? 0 })
@@ -307,34 +322,28 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
   }
 
   const open = state === "open";
+  const fields = open && editing;
   const Icon = proposal.type === "message" ? MailIcon : FilterIcon;
-  const label = t(
-    proposal.type === "message" ? "assistant.proposal.message" : "assistant.proposal.segment",
-  );
+  const label =
+    proposal.type === "message"
+      ? t("assistant.proposal.messageTo", { count: members.length })
+      : t("assistant.proposal.segment");
   return (
     <section
       aria-label={label}
       className={cn(
-        "grid gap-3 rounded-xl border bg-card p-4 text-sm shadow-border",
+        "grid gap-3 rounded-xl bg-card p-4 text-sm shadow-border",
         !open && "opacity-70",
       )}
     >
-      <header className="flex items-center gap-2 font-medium">
+      <header className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
         <Icon className="size-4 text-primary" aria-hidden />
         {label}
-        {open ? (
-          <span className="ml-auto text-xs font-normal text-muted-foreground">
-            {t("assistant.proposal.editable")}
-          </span>
-        ) : null}
       </header>
       {proposal.type === "message" ? (
-        <>
-          <div className="grid gap-1.5">
-            <p className="text-xs text-muted-foreground">
-              {t("assistant.proposal.recipients", { count: members.length })}
-            </p>
-            <ul className="flex flex-wrap gap-1.5">
+        fields ? (
+          <>
+            <ul className="flex flex-wrap gap-1.5" aria-label={t("assistant.proposal.to")}>
               {members.map((m) => (
                 <li
                   key={m.id}
@@ -343,43 +352,47 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
                   <Link href={`/adherents/${m.id}`} className="hover:underline">
                     {m.name}
                   </Link>
-                  {open ? (
-                    <button
-                      type="button"
-                      onClick={() => setMembers((list) => list.filter((x) => x.id !== m.id))}
-                      aria-label={t("assistant.proposal.removeRecipient", { name: m.name })}
-                      className="grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground pointer-coarse:size-7"
-                    >
-                      <XIcon className="size-3" aria-hidden />
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setMembers((list) => list.filter((x) => x.id !== m.id))}
+                    aria-label={t("assistant.proposal.removeRecipient", { name: m.name })}
+                    className="grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground pointer-coarse:size-7"
+                  >
+                    <XIcon className="size-3" aria-hidden />
+                  </button>
                 </li>
               ))}
             </ul>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-subject`}>{t("assistant.proposal.subject")}</Label>
+              <Input
+                id={`${id}-subject`}
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                maxLength={SUBJECT_MAX}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`${id}-body`}>{t("assistant.proposal.body")}</Label>
+              <TextareaWithCount
+                id={`${id}-body`}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                maxLength={BODY_MAX}
+                rows={5}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="grid gap-1">
+            <p className="font-medium">{subject}</p>
+            <p className="line-clamp-2 text-muted-foreground">{body}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {members.map((m) => m.name).join(", ")}
+            </p>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-subject`}>{t("assistant.proposal.subject")}</Label>
-            <Input
-              id={`${id}-subject`}
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              maxLength={SUBJECT_MAX}
-              disabled={!open}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-body`}>{t("assistant.proposal.body")}</Label>
-            <TextareaWithCount
-              id={`${id}-body`}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              maxLength={BODY_MAX}
-              rows={5}
-              disabled={!open}
-            />
-          </div>
-        </>
-      ) : (
+        )
+      ) : fields ? (
         <div className="grid gap-1.5">
           <Label htmlFor={`${id}-name`}>{t("assistant.proposal.segmentName")}</Label>
           <Input
@@ -387,27 +400,39 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={SEGMENT_NAME_MAX}
-            disabled={!open}
           />
           <p className="text-xs text-muted-foreground tabular-nums">
             {t("assistant.proposal.members", { count: proposal.count })}
           </p>
         </div>
+      ) : (
+        <p>
+          <span className="font-medium">{name}</span>{" "}
+          <span className="text-muted-foreground tabular-nums">
+            · {t("assistant.proposal.members", { count: proposal.count })}
+          </span>
+        </p>
       )}
       {open ? (
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={approve} disabled={pending || !valid} aria-busy={pending}>
-            {proposal.type === "message"
-              ? t("assistant.proposal.approve")
-              : t("assistant.proposal.approveSegment")}
-          </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             size="sm"
             variant="ghost"
             onClick={() => setState("dismissed")}
             disabled={pending}
+            className="mr-auto text-muted-foreground"
           >
             {t("assistant.proposal.dismiss")}
+          </Button>
+          {editing ? null : (
+            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+              {t("assistant.proposal.edit")}
+            </Button>
+          )}
+          <Button size="sm" onClick={approve} disabled={pending || !valid} aria-busy={pending}>
+            {proposal.type === "message"
+              ? t("assistant.proposal.approve")
+              : t("assistant.proposal.approveSegment")}
           </Button>
         </div>
       ) : (

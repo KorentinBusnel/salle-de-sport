@@ -28,7 +28,7 @@ export const fr = {
     count:
       "{count, plural, one {# salle gère déjà son activité} other {# salles gèrent déjà leur activité}} avec {brand}",
     backofficeAlt:
-      "Page Aujourd'hui du back office {brand} : séances du jour, essais à accueillir, permanence et impayés.",
+      "Page Aujourd'hui du back office {brand} : brief de l'assistant, question libre, indicateurs du jour et permanence à l'accueil.",
     appAlt: "Planning de la semaine dans l'app adhérent {brand}, avec les places restantes.",
   },
   benefits: {

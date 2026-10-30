@@ -175,17 +175,20 @@ export function CampaignsBoard({
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {t("emailing.campaignCount", { count: campaigns.length })}
-        </p>
-        {ready ? (
-          <Button onClick={() => setSheet({ open: true, campaign: null })}>
-            <MailPlusIcon data-icon="inline-start" />
-            {t("emailing.newCampaign")}
-          </Button>
-        ) : null}
-      </div>
+      {/* Sans campagne, l'état vide porte seul le titre et le bouton (pas de doublon). */}
+      {campaigns.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {t("emailing.campaignCount", { count: campaigns.length })}
+          </p>
+          {ready ? (
+            <Button onClick={() => setSheet({ open: true, campaign: null })}>
+              <MailPlusIcon data-icon="inline-start" />
+              {t("emailing.newCampaign")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {!ready ? (
         <p className="rounded-xl bg-muted/60 px-4 py-3 text-sm">

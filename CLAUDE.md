@@ -286,12 +286,16 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   de la frappe : `useMemberSearch`. Règles de reprise : imports `@/components/ui/*`, icônes lucide
   `aria-hidden`, rôles sémantiques (ni couleur brute ni `dark:`), textes par `t()`, focus visible,
   cibles de 40 px en `pointer-coarse:`, `tabular-nums`, jamais `transition-all`.
-- Accueil (`app/(app)/page.tsx`) orienté action, par rôle : brief du jour (gérant), Opérations,
-  Clients, Finance — blocs affichés et ordonnés par rôle (`homeBlocksFor`), **chacun sous
+- Accueil (`app/(app)/page.tsx`) orienté action, par rôle : bloc **Assistant** (gérant : brief du
+  jour, question libre `AskBar target="palette"` et suggestions ; sans clé, `AssistantOff`),
+  Opérations, Clients (CRM, gérant), Finance — blocs affichés et ordonnés par rôle (`homeBlocksFor`),
+  **chacun sous
   `SectionError` + `Suspense`** (`components/today/*-section.tsx`). Lectures mémorisées par requête
   dans `lib/today.ts` (`getTodaySessions`, `getTodayTrials`, `getTodayDesk`, `getUnpaid`,
   `getActionCount`, `getClosureConflicts`, `getSetupSteps`) : une section appelle ce dont elle a
-  besoin, sans relire. Trous de permanence par `deskWindows` (horaires d'ouverture du jour, sinon
+  besoin, sans relire. « N actions » : `countActions` (`lib/home-actions.ts`), seulement ce que le
+  rôle peut traiter. Un seul lien par destination (planning du jour, semaine) ; un coach voit ses
+  séances. Trous de permanence par `deskWindows` (horaires d'ouverture du jour, sinon
   séances ± marge) / `uncoveredIntervals` (`packages/shared/src/desk.ts`) ; « peu remplie » :
   `isLowFill` (`display.ts`, seuil `low_fill_percent`). Données vivantes : `LiveRefresh`
   (`router.refresh()` toutes les 60 s onglet visible, et Realtime sur `class_sessions` de la salle).
@@ -300,7 +304,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
   faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
   de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
-  interface `components/assistant/` (Hub, ⌘K, résumé de fiche). Hub en deux volets
+  interface `components/assistant/` (page **Assistant** `/hub`, le « Hub 360° » du brief ; ⌘K ;
+  résumé de fiche), au rendu de la landing (bulle orange, pastille étincelle, trois points,
+  proposition repliée « Modifier » / « Valider l'envoi »). Hub en deux volets
   (`HubConversations` : messages par `app/api/assistant/conversations/[id]`, `?c=` par
   `history.pushState`) ; « Arrêter » abandonne la requête, le signal interrompt `runAgent` et le
   texte reçu est enregistré (`stopped`) ; propositions modifiables avant validation. Un outil qui agit n'agit pas : il
@@ -359,7 +365,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `member_overview` (accueil et gérant ; `finance` à `null` hors gérant), sous `SectionError` +
   `Suspense`. Tons d'abonnement : `SUBSCRIPTION_STATUS_TONE` (shared).
 - Emailing : **une seule entrée** de la barre latérale ; `EmailingNav` (onglets Campagnes, Modèles,
-  Automatisations, Segments, Messages) en tête de chaque page, adresses inchangées (`/segments`,
+  Automatisations, Segments, Messages) en tête de chaque page, titre = nom de l'onglet, mention
+  « pas d'envoi réel » dans Messages seulement ; automatisations enregistrées sur place
+  (`AutomationCard`, `useAutosave`), adresses inchangées (`/segments`,
   `/messages` rattachées à « Emailing » par `NAV_ALIASES` / `activeHref`, `lib/navigation.ts`).
   `CampaignsBoard` (tableau, `CampaignSheet`, `ConfirmDialog` contrôlé par `open` sans
   `trigger`), actions `saveCampaign` / `sendCampaignNow` / `setCampaignSchedule` /
@@ -397,6 +405,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
   page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
   `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
+  Fond du hero et du formulaire : quadrillage `bg-grid` (motif SVG de 32 px, traits pleins, pas de
+  dégradé).
   Espacements de la table B2 seulement, échelle de texte Tailwind, ni
   italique, ni graisse 800/900, ni dégradé de fond (seul `text-hero`), ni `transition-all` :
   vérifié par `lib/design-rules.test.ts`. Textes : **aucun trait d'union** (pas de « Puis-je »,

@@ -147,7 +147,7 @@ export const fr = {
     skipToContent: "Aller au contenu",
     badge: "{count} à traiter",
     today: "Aujourd'hui",
-    hub: "Hub 360°",
+    hub: "Assistant",
     planning: "Planning",
     templates: "Cours récurrents",
     members: "Adhérents",
@@ -805,7 +805,7 @@ export const fr = {
       blockHint: {
         brief: "Synthèse de l'assistant (si la clé est configurée).",
         operations: "Remplissage, essais, permanence, séances du jour.",
-        clients: "Nouveaux venus, CRM à compléter.",
+        clients: "CRM à compléter (gérant).",
         finance: "Impayés et factures.",
       },
       badge: {
@@ -904,6 +904,7 @@ export const fr = {
   },
   hours: {
     title: "Heures des coachs",
+    crumb: "Heures",
     hint: "Séances terminées et non annulées, valorisées au taux horaire : base des factures.",
     previousMonth: "Mois précédent",
     nextMonth: "Mois suivant",
@@ -1079,8 +1080,10 @@ export const fr = {
   },
   emailing: {
     title: "Emailing",
-    noDelivery:
-      "Pas d'envoi réel pour l'instant : les emails sont mis en file et journalisés (onglet Messages), en attendant le branchement d'un service d'envoi.",
+    campaignsHint: "Envois groupés à un segment, tout de suite ou à la date choisie.",
+    templatesHint: "Textes réutilisables, personnalisés pour chaque adhérent (prénom, nom, salle).",
+    automationsHint:
+      "Messages qui partent seuls : bienvenue, relance des inactifs, anniversaire. Chaque réglage s'enregistre aussitôt.",
     tab: {
       campaigns: "Campagnes",
       templates: "Modèles",
@@ -1184,6 +1187,8 @@ export const fr = {
     },
     on: "Activée",
     off: "Désactivée",
+    automationOn: "Automatisation activée.",
+    automationOff: "Automatisation désactivée.",
     enabled: "Activer",
     noTemplate: "Aucun modèle",
     inactiveDays: "Sans séance depuis (jours)",
@@ -1438,7 +1443,7 @@ export const fr = {
       messageHint: "Fréquence, surface, contraintes de livraison…",
       send: "Envoyer la demande",
       sent: "Demande envoyée : la réponse arrive dans l'onglet Devis.",
-      newRequest: "Nouvelle demande",
+      newRequest: "Demander un devis",
     },
     quotes: {
       empty: "Aucun devis",
@@ -1834,7 +1839,7 @@ export const fr = {
       "Aucune clé ni aucun secret n'est affiché ici : ils sont gérés dans la configuration de l'hébergement.",
     claude: {
       name: "Assistant Claude",
-      hint: "Répond aux questions du Hub 360° et prépare des actions que vous validez.",
+      hint: "Répond à vos questions sur la salle et prépare des actions que vous validez.",
       next: "Ajoutez ANTHROPIC_API_KEY dans la configuration de l'hébergement (Vercel, Production et Preview).",
     },
     gmail: {
@@ -1874,7 +1879,7 @@ export const fr = {
     thinking: "Réflexion…",
     notConfigured: "Assistant non configuré : ajoutez la clé API dans les intégrations.",
     openSettings: "Voir les intégrations",
-    continueInHub: "Continuer dans le Hub",
+    continueInHub: "Continuer dans l'assistant",
     newConversation: "Nouvelle conversation",
     history: "Conversations",
     noHistory: "Aucune conversation pour l'instant.",
@@ -1882,6 +1887,7 @@ export const fr = {
     disclaimer:
       "L'assistant peut se tromper : vérifiez les chiffres importants. Rien n'est envoyé sans votre validation.",
     suggestions: {
+      absent: "Qui n'est pas venu depuis trois semaines ?",
       week: "Résume-moi la semaine",
       churn: "Qui risque de partir ?",
       fill: "Remplissage du CrossFit de 18 h 30 ce mois-ci",
@@ -1904,16 +1910,17 @@ export const fr = {
       digest: "Rédaction de la synthèse…",
     },
     proposal: {
-      message: "Message à valider",
+      messageTo:
+        "{count, plural, =0 {Message proposé sans destinataire} one {Message proposé à # adhérent} other {Message proposé à # adhérents}}",
       segment: "Segment à créer",
-      recipients: "{count, plural, one {# destinataire} other {# destinataires}}",
+      to: "Destinataires",
+      edit: "Modifier",
       members: "{count, plural, =0 {Aucun adhérent} one {# adhérent} other {# adhérents}}",
-      editable: "Modifiable avant validation",
       subject: "Objet",
       body: "Message",
       segmentName: "Nom du segment",
       removeRecipient: "Retirer {name}",
-      approve: "Valider et mettre en file",
+      approve: "Valider l'envoi",
       approveSegment: "Créer le segment",
       dismiss: "Ignorer",
       approved: "Validé.",
@@ -1927,9 +1934,9 @@ export const fr = {
     },
   },
   hub: {
-    title: "Hub 360°",
+    title: "Assistant",
     description:
-      "L'assistant lit l'activité de la salle et propose, par catégorie, quoi faire aujourd'hui.",
+      "Posez vos questions : l'assistant lit les données de la salle avec vos droits, répond avec les fiches concernées et prépare les relances. Rien ne part sans votre validation.",
     actionsCount:
       "{count, plural, =0 {Aucune action proposée} one {# action proposée} other {# actions proposées}}",
     generatedAt: "Lu à {time} · rien n'est envoyé sans votre validation",
@@ -2086,13 +2093,19 @@ export const fr = {
     greetingShort: "Bonjour {name}",
     actions:
       "{count, plural, =0 {rien d'urgent aujourd'hui} one {# action vous attend} other {# actions vous attendent}}",
-    openPlanning: "Ouvrir le planning",
     brief: "Brief du jour",
+    askPlaceholder: "Posez une question sur votre salle…",
+    assistantOff: {
+      title: "Activez l'assistant IA",
+      body: "Il répond à vos questions sur la salle, prépare les relances et vous laisse valider avant tout envoi.",
+      cta: "Configurer l'assistant",
+    },
     briefEmpty:
       "Préparez la synthèse du jour : l'assistant lit la salle et vous dit quoi faire en priorité.",
-    openHub: "Ouvrir le Hub",
+    openHub: "Ouvrir l'assistant",
     operations: "Opérations",
     dayPlanning: "Planning du jour",
+    mySessions: "Vos séances du jour",
     fill: "Taux de remplissage",
     lowFill: "Peu remplie",
     newcomersKpi: "Nouveaux venus",
@@ -2113,11 +2126,8 @@ export const fr = {
     assign: "Assigner",
     edit: "Modifier",
     addShift: "Ajouter",
-    manageShifts: "Gérer dans le planning",
     clients: "Clients",
     pipeline: "Pipeline",
-    newcomers: "Nouveaux clients présents aujourd'hui",
-    newcomersEmpty: "Aucun nouveau client inscrit aujourd'hui.",
     crm: {
       title: "CRM à compléter",
       incomplete: "Fiches incomplètes",
@@ -2131,7 +2141,6 @@ export const fr = {
       call: "Appeler",
     },
     finance: "Finance",
-    financeSources: "Sources",
     renewals: "Abonnements à renouveler",
     renewBy: "fin le {date}",
     unpaid: "Impayés clients",

@@ -13,7 +13,11 @@ export async function Hero() {
   const count = await getGymCount();
 
   return (
-    <section id={SECTIONS.top} aria-labelledby="hero-title" className="overflow-hidden pt-24 pb-20">
+    <section
+      id={SECTIONS.top}
+      aria-labelledby="hero-title"
+      className="overflow-hidden bg-grid pt-24 pb-20"
+    >
       <div className={`${CONTAINER} pt-12 sm:pt-16`}>
         <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
           <a

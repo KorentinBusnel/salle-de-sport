@@ -644,7 +644,8 @@ export default async function SessionPage({
               </Card>
             ) : null}
 
-            {manager && scheduled ? (
+            {/* Une séance terminée ne s'annule plus (crédits rendus, inscrits prévenus). */}
+            {manager && scheduled && phase !== "past" ? (
               <Card className="bg-destructive/[0.03]">
                 <CardHeader>
                   <CardTitle>{t("session.cancelSession")}</CardTitle>

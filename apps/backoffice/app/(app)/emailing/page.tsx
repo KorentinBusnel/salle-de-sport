@@ -102,7 +102,7 @@ export default async function CampaignsPage({
 
   return (
     <div className="grid gap-6">
-      <PageHeader title={t("emailing.title")} description={t("emailing.noDelivery")} />
+      <PageHeader title={t("emailing.tab.campaigns")} description={t("emailing.campaignsHint")} />
       <EmailingNav current="/emailing" />
       <CampaignsBoard
         campaigns={rows}

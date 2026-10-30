@@ -50,6 +50,8 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
     end: clock(to).replace(" h ", ":"),
   });
 
+  // Coach : les indicateurs portent sur ses séances, la liste aussi.
+  const listed = frame.isCoachOnly ? day.sessions.filter((s) => s.mine) : day.sessions;
   const deskEntries = [
     ...desk.shifts.map((shift) => ({ kind: "shift" as const, at: shift.starts_at, shift })),
     ...desk.gaps.map((gap) => ({ kind: "gap" as const, at: gap.start.toISOString(), gap })),
@@ -59,14 +61,13 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
     <HomeSection
       id="operations"
       title={t("today.operations")}
-      href="/planning"
+      href={`/planning?vue=jour&jour=${frame.today}`}
       link={t("today.dayPlanning")}
     >
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KpiCard
           label={t("today.fill")}
           icon={GaugeIcon}
-          href="/planning"
           value={day.capacity ? Math.round((day.booked / day.capacity) * 100) : "—"}
           suffix={day.capacity ? "%" : undefined}
           hint={t("dashboard.seats", { booked: day.booked, capacity: day.capacity })}
@@ -240,25 +241,25 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
               </ul>
             )}
             {frame.manager ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <DeskShiftTrigger
-                  draft={{ date: frame.today, ...desk.defaultSlot }}
-                  size="sm"
-                  variant="outline"
-                >
-                  <PlusIcon data-icon="inline-start" aria-hidden />
-                  {t("today.addShift")}
-                </DeskShiftTrigger>
-                <Link href="/planning" className="text-sm font-medium text-primary hover:underline">
-                  {t("today.manageShifts")}
-                </Link>
-              </div>
+              <DeskShiftTrigger
+                draft={{ date: frame.today, ...desk.defaultSlot }}
+                size="sm"
+                variant="outline"
+                className="w-fit"
+              >
+                <PlusIcon data-icon="inline-start" aria-hidden />
+                {t("today.addShift")}
+              </DeskShiftTrigger>
             ) : null}
           </HomeCard>
         </DeskShiftProvider>
       </div>
 
-      <SessionList sessions={day.sessions} clock={clock} />
+      <SessionList
+        sessions={listed}
+        title={t(frame.isCoachOnly ? "today.mySessions" : "dashboard.sessionsToday")}
+        clock={clock}
+      />
     </HomeSection>
   );
 }
@@ -267,18 +268,23 @@ type DaySessions = Awaited<ReturnType<typeof getTodaySessions>>["sessions"];
 
 function SessionList({
   sessions,
+  title,
   clock,
 }: {
   sessions: DaySessions;
+  title: string;
   clock: (date: Date | string) => string;
 }) {
   return (
     <section className="grid gap-3" aria-labelledby="seances-du-jour">
       <div className="flex items-baseline justify-between gap-3">
         <h3 id="seances-du-jour" className="font-semibold">
-          {t("dashboard.sessionsToday")}
+          {title}
         </h3>
-        <Link href="/planning" className="text-sm text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/planning?vue=semaine"
+          className="text-sm text-primary underline-offset-4 hover:underline"
+        >
           {t("dashboard.seeWeek")}
         </Link>
       </div>

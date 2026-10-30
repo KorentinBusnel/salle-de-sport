@@ -31,13 +31,7 @@ export async function FinanceSection({ context }: { context: TeamContext }) {
   const format = gymFormatters(frame.tz);
   const today = Date.parse(zonedDateKey(frame.now, frame.tz));
   return (
-    <HomeSection
-      id="finance"
-      title={t("today.finance")}
-      {...(frame.manager
-        ? { href: "/parametres?onglet=integrations", link: t("today.financeSources") }
-        : {})}
-    >
+    <HomeSection id="finance" title={t("today.finance")}>
       <div className={cn("grid items-start gap-4", frame.manager && "lg:grid-cols-2")}>
         <HomeCard
           title={t("today.unpaid")}

@@ -1,9 +1,9 @@
 import { type HomeBlock, homeBlocksFor } from "@salle/shared";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { SectionError } from "@/components/section-error";
+import { AssistantOff } from "@/components/today/assistant-off";
 import { BriefSection } from "@/components/today/brief-section";
 import { ClientsSection } from "@/components/today/clients-section";
 import { ClosureAlert } from "@/components/today/closure-alert";
@@ -13,7 +13,6 @@ import { HomeSectionSkeleton } from "@/components/today/home-section";
 import { LiveRefresh } from "@/components/today/live-refresh";
 import { OperationsSection } from "@/components/today/operations-section";
 import { SetupChecklist } from "@/components/today/setup-checklist";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireTeamContext } from "@/lib/auth";
 import { aiEnv } from "@/lib/env.server";
@@ -25,7 +24,7 @@ import { getTodayFrame } from "@/lib/today";
 export const metadata: Metadata = { title: t("nav.today") };
 
 /**
- * Accueil orienté action : brief du jour (gérant), puis Opérations, Clients et Finance, dans
+ * Accueil orienté action : bloc Assistant (gérant : brief du jour et question libre), puis Opérations, Clients et Finance, dans
  * l'ordre réglé par le gérant pour chaque rôle. Chaque bloc se charge à part (Suspense) : le
  * premier prêt s'affiche sans attendre les autres, une erreur reste locale au bloc.
  */
@@ -37,25 +36,23 @@ export default async function DashboardPage() {
   const firstName = context.displayName.split(" ")[0] ?? context.displayName;
 
   const blocks: Record<HomeBlock, { content: ReactNode; fallback: ReactNode } | null> = {
+    // Bloc Assistant (gérant) : brief et question libre, ou le chemin pour l'activer sans clé.
     brief: configured
       ? {
           content: <BriefSection context={context} />,
-          fallback: <Skeleton className="h-20 rounded-2xl" />,
+          fallback: <Skeleton className="h-40 rounded-2xl" />,
         }
-      : null,
+      : frame.manager
+        ? { content: <AssistantOff />, fallback: null }
+        : null,
     operations: {
       content: <OperationsSection context={context} />,
       fallback: <HomeSectionSkeleton kpis={4} cards={2} list className="lg:grid-cols-2" />,
     },
-    clients: frame.frontDesk
+    clients: frame.manager
       ? {
           content: <ClientsSection context={context} />,
-          fallback: (
-            <HomeSectionSkeleton
-              cards={frame.manager ? 2 : 1}
-              className={frame.manager ? "lg:grid-cols-2" : undefined}
-            />
-          ),
+          fallback: <HomeSectionSkeleton cards={1} className="lg:grid-cols-2" />,
         }
       : null,
     // Impayés : gérant et accueil (relancer, encaisser) ; le reste de la finance au gérant.
@@ -82,11 +79,6 @@ export default async function DashboardPage() {
           </Suspense>
         }
         description={gymFormatters(frame.tz).longDay(frame.now)}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/planning">{t("today.openPlanning")}</Link>
-          </Button>
-        }
       />
 
       {frame.manager ? (

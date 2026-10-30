@@ -16,6 +16,7 @@ import {
 import { cache } from "react";
 import type { TeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
+import { countActions } from "@/lib/home-actions";
 import { getCrmTodo } from "@/lib/nav-counts";
 import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
@@ -163,21 +164,21 @@ export const getRenewals = cache(async (context: TeamContext) => {
   return data ?? [];
 });
 
-/** Actions qui attendent l'utilisateur (titre de l'accueil). */
+/** Actions qui attendent l'utilisateur et qu'il peut mener (titre de l'accueil). */
 export async function getActionCount(context: TeamContext): Promise<number> {
   const frame = getTodayFrame(context);
   const [{ toCheck }, desk, todo, unpaid] = await Promise.all([
     getTodaySessions(context),
-    getTodayDesk(context),
+    frame.manager ? getTodayDesk(context) : null,
     frame.manager ? getCrmTodo(context.gym.id) : [],
-    frame.manager ? getUnpaid(context) : null,
+    frame.frontDesk ? getUnpaid(context) : null,
   ]);
-  return (
-    toCheck +
-    desk.gaps.length +
-    todo.reduce((sum, row) => sum + row.total, 0) +
-    (unpaid?.rows.length ?? 0)
-  );
+  return countActions(frame, {
+    toCheck,
+    deskGaps: desk?.gaps.length ?? 0,
+    crmTodo: todo.reduce((sum, row) => sum + row.total, 0),
+    unpaid: unpaid?.rows.length ?? 0,
+  });
 }
 
 /** Jours de fermeture des deux semaines à venir où des séances restent prévues (gérant). */

@@ -35,3 +35,23 @@ export function LegalSection({ title, children }: { title: string; children: Rea
 export function LegalValue({ value }: { value: string | null }) {
   return value ?? <span className="font-medium text-warning">{t("legal.toComplete")}</span>;
 }
+
+/** Liste libellé / valeur ; une valeur `false` (sans objet pour le statut) masque sa ligne. */
+export function LegalList({ rows }: { rows: { label: string; value: string | null | false }[] }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-3">
+      {rows.flatMap(({ label, value }) =>
+        value === false
+          ? []
+          : [
+              <div key={label} className="contents">
+                <dt className="font-medium text-foreground">{label}</dt>
+                <dd className="sm:col-span-2">
+                  <LegalValue value={value} />
+                </dd>
+              </div>,
+            ],
+      )}
+    </dl>
+  );
+}

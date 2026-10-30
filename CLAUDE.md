@@ -426,8 +426,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   premier (ancres `FEATURES`).
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
-  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés. `LEGAL` : mentions légales à compléter avant la
-  mise en ligne (affichées « à compléter »).
+  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés. `LEGAL` (`lib/site.ts`) : mentions légales
+  (LCEN : éditeur, forme, capital, SIREN, RCS, TVA, directeur de la publication, contact,
+  téléphone, téléphone de l'hébergeur) à compléter avant la mise en ligne ; `null` s'affiche « à
+  compléter », `false` masque une ligne sans objet (`LegalList`). Le responsable du traitement de
+  la page Confidentialité en découle.
 - Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
   `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée et animée.
 

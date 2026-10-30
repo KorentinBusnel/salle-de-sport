@@ -13,6 +13,8 @@ export const fr = {
     home: "{brand}, accueil",
     skip: "Aller au contenu",
     features: "Fonctionnalités",
+    marketplace: "Marketplace",
+    soon: "Bientôt",
     cta: "Commencez gratuitement",
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",

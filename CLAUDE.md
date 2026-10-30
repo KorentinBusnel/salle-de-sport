@@ -422,7 +422,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   texte présent dans le DOM dès le départ, styles `[data-chat]`) ; `prefers-reduced-motion` →
   opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
-  partir de `lg`, menu mobile). Fonctionnalités en rangées alternées texte / capture, l'IA en
+  partir de `lg`, menu mobile ; entrées à venir `soon` : « Marketplace » avec la pastille
+  « Bientôt », sans lien). Fonctionnalités en rangées alternées texte / capture, l'IA en
   premier (ancres `FEATURES`).
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du

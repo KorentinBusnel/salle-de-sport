@@ -11,11 +11,7 @@ const REASSURANCE = ["start.free", "start.export", "start.contactOnly"] as const
 /** « Commencez gratuitement » et « Nous contacter » mènent ici (`#demarrer`, `#contact`). */
 export function Start() {
   return (
-    <section
-      id={SECTIONS.start}
-      aria-labelledby="demarrer-titre"
-      className="bg-background py-20 sm:py-24"
-    >
+    <section id={SECTIONS.start} aria-labelledby="demarrer-titre" className="py-20 sm:py-24">
       <div className={`${CONTAINER} grid gap-12 lg:grid-cols-2`}>
         <Reveal>
           <SectionHeading

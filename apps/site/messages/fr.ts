@@ -13,8 +13,6 @@ export const fr = {
     home: "{brand}, accueil",
     skip: "Aller au contenu",
     features: "Fonctionnalités",
-    how: "Comment ça marche",
-    faq: "Questions",
     cta: "Commencez gratuitement",
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",
@@ -93,62 +91,6 @@ export const fr = {
     proposalSubject: "On vous garde une place cette semaine",
     edit: "Modifier",
     validate: "Valider l'envoi",
-  },
-  tagline: {
-    line1: "Vos coachs coachent.",
-    line2: "Votre accueil accueille.",
-    line3: "{brand} s'occupe du reste.",
-  },
-  how: {
-    eyebrow: "Comment ça marche",
-    title: "Trois étapes avant la première réservation",
-    step: "Étape {n}",
-    step1Title: "Créez votre salle",
-    step1Body:
-      "Demandez votre essai gratuit : nous ouvrons votre accès, vous saisissez horaires, disciplines, cours et offres. Les séances se génèrent sur quatre semaines.",
-    step2Title: "Invitez votre équipe",
-    step2Body:
-      "Gérant, accueil et coachs ont chacun leur accès. L'accueil ne voit pas les finances, un coach voit ses cours et ses inscrits.",
-    step3Title: "Ouvrez les réservations",
-    step3Body:
-      "Vos adhérents créent leur compte, paient leur abonnement et réservent depuis l'app.",
-  },
-  faq: {
-    eyebrow: "Questions",
-    title: "Questions fréquentes",
-    subtitle: "Une autre question ? Choisissez « Poser une question » dans le formulaire plus bas.",
-    activityQ: "Ça marche pour mon activité ?",
-    activityA:
-      "Oui. Les disciplines sont les vôtres : yoga, boxe, pilates, escalade, danse, CrossFit, running… Chacune a sa couleur, sa durée et ses places par défaut, et une offre peut viser certaines disciplines seulement.",
-    appQ: "Mes adhérents ont besoin d'une application ?",
-    appA: "Oui. Dans l'app {brand}, ils réservent, rejoignent une liste d'attente, paient leur abonnement ou un carnet et suivent leurs crédits. Le planning reste consultable sans compte.",
-    paymentsQ: "Quels moyens de paiement sont acceptés ?",
-    paymentsA:
-      "En ligne avec Stripe : carte bancaire, Apple Pay, Google Pay et prélèvement SEPA pour les abonnements. Les ventes sur place (espèces, terminal) s'enregistrent dans le back office.",
-    rejectedQ: "Et si un prélèvement est rejeté ?",
-    rejectedA:
-      "L'abonnement passe en impayé et les réservations sont suspendues jusqu'au règlement. {brand} relance l'adhérent à J+3 et J+7 et l'invite à mettre à jour son moyen de paiement ; l'accueil peut aussi le relancer à la main.",
-    offersQ: "Quelles offres sont possibles ?",
-    offersA:
-      "Abonnements illimités avec ou sans engagement, carnets avec date de validité, séances à l'unité ou d'essai, offres réservées à certaines disciplines, tarifs réduits et codes promo.",
-    coachesQ: "Comment sont comptées les heures des coachs ?",
-    coachesA:
-      "À partir des séances réalisées : durée multipliée par le taux horaire, pour chaque coach d'un cours. L'export CSV par coach sert de base à leur facture.",
-    assistantQ: "L'assistant agit seul ?",
-    assistantA:
-      "Non. Il lit les données avec les droits du gérant, propose des messages et des segments, et rien ne part sans validation. Les notes « à savoir » ne lui sont jamais transmises.",
-    rolesQ: "Qui voit quoi dans l'équipe ?",
-    rolesA:
-      "Le gérant voit tout. L'accueil gère réservations, fiches adhérents et relances d'impayés, sans accès aux finances de la salle. Un coach voit son planning, ses cours et ses inscrits.",
-    dataQ: "Mes données restent à moi ?",
-    dataA:
-      "Oui. Les adhérents et les paiements s'exportent en CSV à tout moment, et chaque export est inscrit au journal.",
-    marketplaceQ: "À quoi sert la marketplace ?",
-    marketplaceA:
-      "C'est un catalogue de matériel, de consommables et de services négociés pour les salles du réseau, avec des prix par palier et des achats groupés : plus les salles s'engagent, plus le prix baisse.",
-    priceQ: "Combien coûte {brand} ?",
-    priceA:
-      "L'essai est gratuit, sans carte bancaire. Ensuite, le tarif dépend de la taille de votre salle : nous vous le communiquons avant toute facturation.",
   },
   start: {
     eyebrow: "Commencer",

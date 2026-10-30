@@ -7,11 +7,7 @@ import { BRAND, SECTIONS } from "@/lib/site";
 const COLUMNS: { title: MessageKey; links: { href: string; label: MessageKey }[] }[] = [
   {
     title: "footer.product",
-    links: [
-      { href: `/#${SECTIONS.features}`, label: "nav.features" },
-      { href: `/#${SECTIONS.how}`, label: "nav.how" },
-      { href: `/#${SECTIONS.faq}`, label: "nav.faq" },
-    ],
+    links: [{ href: `/#${SECTIONS.features}`, label: "nav.features" }],
   },
   {
     title: "footer.legal",

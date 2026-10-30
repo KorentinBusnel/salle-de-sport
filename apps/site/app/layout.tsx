@@ -42,11 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <SiteNav
           brand={BRAND.name}
-          links={[
-            { id: SECTIONS.features, label: t("nav.features") },
-            { id: SECTIONS.how, label: t("nav.how") },
-            { id: SECTIONS.faq, label: t("nav.faq") },
-          ]}
+          links={[{ id: SECTIONS.features, label: t("nav.features") }]}
           cta={{ id: SECTIONS.start, label: t("nav.cta") }}
           labels={{
             nav: t("nav.label"),

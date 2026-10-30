@@ -403,8 +403,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   « rendez-vous »), ni mot creux, ni point d'exclamation : `lib/messages.test.ts`. Espaces
   insécables françaises posées par `t()` (`frenchSpacing`).
 - Animations : `Reveal` (IntersectionObserver, une fois, contenu visible sans JavaScript grâce à
-  `@media (scripting: enabled)`), `TaglineReveal` (mot à mot, un écouteur limité par
-  `requestAnimationFrame`), `animate-rise` au chargement du hero ; `prefers-reduced-motion` →
+  `@media (scripting: enabled)`), `animate-rise` au chargement du hero ; `prefers-reduced-motion` →
   opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
   partir de `lg`, menu mobile). Fonctionnalités en rangées alternées texte / capture, l'IA en

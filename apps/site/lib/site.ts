@@ -23,8 +23,6 @@ export const GYM_COUNT_MIN = 10;
 export const SECTIONS = {
   top: "haut",
   features: "fonctionnalites",
-  how: "comment",
-  faq: "questions",
   start: "demarrer",
   contact: "contact",
 } as const;

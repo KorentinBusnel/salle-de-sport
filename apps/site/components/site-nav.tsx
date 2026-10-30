@@ -10,12 +10,24 @@ import { useActiveSection } from "@/lib/use-active-section";
 
 type NavLink = { id: string; label: string };
 
+/** Entrée annoncée mais pas encore disponible : texte et pastille, sans lien. */
+type SoonItem = { label: string; badge: string };
+
 type Props = {
   brand: string;
   links: NavLink[];
+  soon?: SoonItem[];
   cta: { id: string; label: string };
   labels: { nav: string; home: string; open: string; close: string };
 };
+
+function SoonBadge({ children }: { children: string }) {
+  return (
+    <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-primary">
+      {children}
+    </span>
+  );
+}
 
 // Écart entre deux liens du menu mobile, et retard maximal de la cascade (skill B7).
 const STAGGER_MS = 60;
@@ -23,15 +35,17 @@ const STAGGER_MAX_MS = 400;
 
 /**
  * Barre flottante (skill B7) : pilule translucide sur flou, section courante signalée sur la
- * page d'accueil, menu mobile plein écran dont les liens arrivent en cascade.
+ * page d'accueil, entrées à venir avec une pastille « Bientôt » (sans lien), menu mobile plein
+ * écran dont les liens arrivent en cascade.
  */
-export function SiteNav({ brand, links, cta, labels }: Props) {
+export function SiteNav({ brand, links, soon = [], cta, labels }: Props) {
   const pathname = usePathname();
   const onHome = pathname === "/";
   const [open, setOpen] = useState(false);
-  // Section courante, sur la page d'accueil seulement (lib/use-active-section.ts).
+  // Section courante, sur la page d'accueil seulement (lib/use-active-section.ts). Le bouton
+  // vise le champ du hero : il n'est pas suivi.
   const current = useActiveSection(
-    [...links, cta].map((link) => link.id),
+    links.map((link) => link.id),
     onHome,
   );
 
@@ -84,6 +98,15 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
               </a>
             </li>
           ))}
+          {soon.map((item) => (
+            <li
+              key={item.label}
+              className="flex min-h-10 items-center gap-2 px-3 text-sm font-medium text-muted-foreground"
+            >
+              {item.label}
+              <SoonBadge>{item.badge}</SoonBadge>
+            </li>
+          ))}
         </ul>
         <a
           href={href(cta.id)}
@@ -127,9 +150,13 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
         )}
       >
         <ul className="flex flex-col gap-2">
-          {[...links, cta].map((link, index) => (
+          {[
+            ...links.map((link) => ({ kind: "link" as const, ...link })),
+            ...soon.map((item) => ({ kind: "soon" as const, id: item.label, ...item })),
+            { kind: "link" as const, ...cta },
+          ].map((entry, index) => (
             <li
-              key={link.id}
+              key={entry.id}
               style={{
                 transitionDelay: open ? `${Math.min(index * STAGGER_MS, STAGGER_MAX_MS)}ms` : "0ms",
               }}
@@ -138,17 +165,24 @@ export function SiteNav({ brand, links, cta, labels }: Props) {
                 open ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0",
               )}
             >
-              <a
-                href={href(link.id)}
-                aria-current={isCurrent(link.id) ? "location" : undefined}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex min-h-12 items-center text-3xl font-semibold tracking-tight transition-colors duration-300 ease-base",
-                  isCurrent(link.id) ? "text-primary" : "text-foreground",
-                )}
-              >
-                {link.label}
-              </a>
+              {entry.kind === "soon" ? (
+                <span className="flex min-h-12 items-center gap-3 text-3xl font-semibold tracking-tight text-muted-foreground">
+                  {entry.label}
+                  <SoonBadge>{entry.badge}</SoonBadge>
+                </span>
+              ) : (
+                <a
+                  href={href(entry.id)}
+                  aria-current={isCurrent(entry.id) ? "location" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex min-h-12 items-center text-3xl font-semibold tracking-tight transition-colors duration-300 ease-base",
+                    isCurrent(entry.id) ? "text-primary" : "text-foreground",
+                  )}
+                >
+                  {entry.label}
+                </a>
+              )}
             </li>
           ))}
         </ul>

@@ -1,5 +1,6 @@
 import { CaretRightIcon, SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react/ssr";
-import { ButtonLink } from "@/components/button";
+import Link from "next/link";
+import { DemoEmailForm } from "@/components/demo-email-form";
 import { PhoneFrame, ProductFrame } from "@/components/frames";
 import { PixelSpark } from "@/components/pixel-spark";
 import { CONTAINER } from "@/components/section-heading";
@@ -38,26 +39,17 @@ export async function Hero() {
             {t("hero.subtitle")}
           </p>
           <div
-            className="mt-8 flex w-full animate-rise flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row"
+            className="mt-8 flex w-full animate-rise flex-col items-center"
             style={{ animationDelay: "160ms" }}
           >
-            <ButtonLink
-              variant="outline"
-              href={`#${SECTIONS.contact}`}
-              className="w-full sm:w-auto"
-            >
-              {t("hero.contact")}
-            </ButtonLink>
-            <ButtonLink href={`#${SECTIONS.start}`} className="w-full sm:w-auto">
-              {t("hero.start")}
-            </ButtonLink>
+            <DemoEmailForm />
+            <p className="mt-4 text-sm text-muted-foreground">
+              {t("hero.note")}{" "}
+              <Link href="/confidentialite" className="font-medium text-foreground underline">
+                {t("hero.privacy")}
+              </Link>
+            </p>
           </div>
-          <p
-            className="mt-4 animate-rise text-sm text-muted-foreground"
-            style={{ animationDelay: "160ms" }}
-          >
-            {t("hero.note")}
-          </p>
           {count !== null && count >= GYM_COUNT_MIN ? (
             <p
               className="mt-6 flex animate-rise items-center gap-2 text-sm font-medium tabular-nums"

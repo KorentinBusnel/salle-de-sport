@@ -1,6 +1,7 @@
 import { CaretRightIcon, SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react/ssr";
 import { ButtonLink } from "@/components/button";
 import { PhoneFrame, ProductFrame } from "@/components/frames";
+import { PixelSpark } from "@/components/pixel-spark";
 import { CONTAINER } from "@/components/section-heading";
 import { getGymCount } from "@/lib/gym-count";
 import { t } from "@/lib/i18n";
@@ -13,11 +14,7 @@ export async function Hero() {
   const count = await getGymCount();
 
   return (
-    <section
-      id={SECTIONS.top}
-      aria-labelledby="hero-title"
-      className="overflow-hidden bg-grid pt-24 pb-20"
-    >
+    <section id={SECTIONS.top} aria-labelledby="hero-title" className="overflow-hidden pt-24 pb-20">
       <div className={`${CONTAINER} pt-12 sm:pt-16`}>
         <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
           <a
@@ -76,6 +73,8 @@ export async function Hero() {
           className="relative mx-auto mt-16 max-w-5xl animate-rise pb-8 sm:pb-12"
           style={{ animationDelay: "320ms" }}
         >
+          {/* Centre de l'éclat sur l'angle haut droit de la capture : les rayons partent de l'angle. */}
+          <PixelSpark className="absolute -top-6 -right-6 size-12 sm:-top-8 sm:-right-8 sm:size-16" />
           <ProductFrame
             src={today}
             alt={t("hero.backofficeAlt")}

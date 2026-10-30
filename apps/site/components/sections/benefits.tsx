@@ -10,6 +10,7 @@ import type { Icon } from "@phosphor-icons/react";
 import type { StaticImageData } from "next/image";
 import { AssistantIllustration } from "@/components/assistant-illustration";
 import { ProductFrame } from "@/components/frames";
+import { Orbits } from "@/components/orbits";
 import { IconChip } from "@/components/icon-chip";
 import { Reveal } from "@/components/reveal";
 import { CONTAINER, SectionHeading } from "@/components/section-heading";
@@ -39,8 +40,9 @@ export function Benefits() {
     <section
       id={SECTIONS.features}
       aria-labelledby="fonctionnalites-titre"
-      className="bg-background py-20 sm:py-24"
+      className="relative isolate py-20 sm:py-24"
     >
+      <Orbits />
       <div className={CONTAINER}>
         <Reveal>
           <SectionHeading

@@ -405,8 +405,12 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
   page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
   `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
-  Fond du hero et du formulaire : quadrillage `bg-grid` (motif SVG de 32 px, traits pleins, pas de
-  dégradé).
+  Fond : un seul quadrillage `bg-grid` sur `body` (motif SVG de 48 px, traits à 4 %, pas de
+  dégradé), continu au défilement, sans bandes de fond par section ; éclat en pixels `PixelSpark`
+  sur l'angle de la capture du hero. Haut des fonctionnalités : décor `Orbits` (arcs, logos Gmail,
+  ChatGPT, Qonto, Pennylane, Bsport choisis par le gérant, « ? » et petits carrés ; dès `md`), le
+  quadrillage s'y efface par le masque `orbit-fade` (transparence, seule exception au « pas de
+  dégradé »).
   Espacements de la table B2 seulement, échelle de texte Tailwind, ni
   italique, ni graisse 800/900, ni dégradé de fond (seul `text-hero`), ni `transition-all` :
   vérifié par `lib/design-rules.test.ts`. Textes : **aucun trait d'union** (pas de « Puis-je »,
@@ -421,7 +425,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   partir de `lg`, menu mobile). Fonctionnalités en rangées alternées texte / capture, l'IA en
   premier (ancres `FEATURES`).
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
-  inventé (le compteur de salles est lu en base). `LEGAL` : mentions légales à compléter avant la
+  inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
+  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés. `LEGAL` : mentions légales à compléter avant la
   mise en ligne (affichées « à compléter »).
 - Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
   `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée et animée.

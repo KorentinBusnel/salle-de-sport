@@ -84,3 +84,17 @@ SOFTWARE.
 
 Icônes du site vitrine (`apps/site`), paquet `@phosphor-icons/react`
 ([phosphoricons.com](https://phosphoricons.com), dépôt `phosphor-icons/react`), utilisé tel quel.
+
+## Logos de marques tierces (site vitrine)
+
+Décor des fonctionnalités du site (`apps/site/public/logos`, `components/orbits.tsx`), affiché à
+la demande du gérant (`BRIEF.md` §12, 2026-10-30). Ces logos sont des **marques de leurs
+propriétaires** ; leur présence n'indique ni partenariat ni intégration en service.
+
+- Gmail : tracé de [Simple Icons](https://simpleicons.org) (données sous licence CC0 1.0), marque
+  de Google LLC.
+- ChatGPT : marque d'OpenAI, tracé repris de chatgpt.com.
+- Qonto, Pennylane, Bsport : marques de leurs sociétés respectives, icônes reprises de leurs sites
+  (qonto.com, pennylane.com, bsport.io).
+
+À vérifier avant la mise en ligne : les règles d'usage de chaque marque.

@@ -405,7 +405,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
   page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
   `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
-  Fond : un seul quadrillage `bg-grid` sur `body` (motif SVG de 32 px, traits pleins, pas de
+  Fond : un seul quadrillage `bg-grid` sur `body` (motif SVG de 48 px, traits à 4 %, pas de
   dégradé), continu au défilement, sans bandes de fond par section ; éclat en pixels `PixelSpark`
   sur l'angle de la capture du hero.
   Espacements de la table B2 seulement, échelle de texte Tailwind, ni

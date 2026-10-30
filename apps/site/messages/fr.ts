@@ -4,48 +4,32 @@
 // phrase seulement. {brand} est rempli par t() avec le nom de lib/site.ts.
 export const fr = {
   meta: {
-    title: "{brand} · Logiciel de gestion pour salles CrossFit et Hyrox",
+    title: "{brand} · La gestion de salle de sport avec l'IA native",
     description:
-      "Planning, réservations, abonnements Stripe, impayés et app adhérent : {brand} gère votre salle CrossFit, Hyrox ou running dans un seul outil.",
+      "Planning, réservations, paiements et relation adhérent pour toutes les salles et toutes les activités, avec un assistant IA qui prépare le travail. Essai gratuit, sans carte bancaire.",
   },
   nav: {
     label: "Navigation principale",
     home: "{brand}, accueil",
     skip: "Aller au contenu",
     features: "Fonctionnalités",
-    how: "Comment ça marche",
-    faq: "Questions",
-    cta: "Demander une démo",
+    cta: "Commencez gratuitement",
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",
   },
   hero: {
-    eyebrow: "Pour les salles CrossFit, Hyrox, renfo et running",
-    titleStart: "Gérez votre salle",
-    titleEnd: "sans tableur ni relance",
+    announce: "La salle de sport à l'ère de l'IA agentique",
+    title: "Gérez votre salle avec l'IA native de {brand}.",
     subtitle:
-      "{brand} réunit planning, réservations, abonnements Stripe, impayés et fiches adhérents dans un back office pour l'équipe et une app pour vos adhérents. Un assistant répond à vos questions sur l'activité.",
-    cta: "Demander une démo",
-    ctaNote: "Gratuite et sans engagement.",
-    proof: "Conçu sur le terrain avec une salle CrossFit, Hyrox, renfo et running club.",
+      "{brand} s'adapte à toutes les salles et à toutes les activités : planning, réservations, paiements et relation adhérent dans un seul outil, avec un assistant IA qui prépare le travail et vous laisse valider.",
+    start: "Commencez gratuitement",
+    contact: "Nous contacter",
+    note: "Essai gratuit, sans carte bancaire.",
+    count:
+      "{count, plural, one {# salle gère déjà son activité} other {# salles gèrent déjà leur activité}} avec {brand}",
     backofficeAlt:
       "Page Aujourd'hui du back office {brand} : séances du jour, essais à accueillir, permanence et impayés.",
     appAlt: "Planning de la semaine dans l'app adhérent {brand}, avec les places restantes.",
-  },
-  problem: {
-    beforeLabel: "Aujourd'hui",
-    title: "Votre salle tient sur quatre outils",
-    bookings: "Les réservations dans une app, les paiements dans une autre.",
-    hours: "Les heures des coachs recopiées dans un tableur chaque fin de mois.",
-    unpaid: "Les impayés repérés trop tard et relancés un par un sur WhatsApp.",
-    questions: "« Qui n'est pas venu depuis trois semaines ? » reste sans réponse.",
-    afterLabel: "Avec {brand}",
-    solutionTitle: "Tout part du même planning",
-    solution:
-      "Une réservation débite le bon crédit. Un prélèvement rejeté suspend l'accès et prévient l'adhérent. Les heures des coachs se comptent à partir des séances réalisées.",
-    solutionBookings: "Réservations, paiements et crédits dans la même base",
-    solutionTeam: "Un accès par rôle : gérant, accueil, coach",
-    solutionApp: "Une app pour vos adhérents : planning, réservation, paiement",
   },
   benefits: {
     eyebrow: "Fonctionnalités",
@@ -94,6 +78,7 @@ export const fr = {
   },
   assistantDemo: {
     caption: "Exemple d'échange avec l'assistant {brand}",
+    placeholder: "Demandez à {brand}…",
     question: "Qui n'est pas venu depuis trois semaines ?",
     answer:
       "7 adhérents actifs n'ont rien réservé depuis 21 jours. Les trois absences les plus longues :",
@@ -108,83 +93,20 @@ export const fr = {
     edit: "Modifier",
     validate: "Valider l'envoi",
   },
-  tagline: {
-    line1: "Vos coachs coachent.",
-    line2: "Votre accueil accueille.",
-    line3: "{brand} s'occupe du reste.",
-  },
-  how: {
-    eyebrow: "Comment ça marche",
-    title: "Trois étapes avant la première réservation",
-    step: "Étape {n}",
-    step1Title: "Décrivez votre salle",
-    step1Body:
-      "Horaires, disciplines, salles, cours récurrents et offres. Les séances se génèrent sur quatre semaines, chaque nuit.",
-    step2Title: "Invitez votre équipe",
-    step2Body:
-      "Gérant, accueil et coachs ont chacun leur accès. L'accueil ne voit pas les finances, un coach voit ses cours et ses inscrits.",
-    step3Title: "Ouvrez les réservations",
-    step3Body:
-      "Vos adhérents créent leur compte, paient leur abonnement et réservent depuis l'app.",
-  },
-  proof: {
-    eyebrow: "Sur le terrain",
-    title: "Construit avec une salle en activité",
-    body: "{brand} est développé avec une salle CrossFit, Hyrox, renfo et running club, à partir de son planning, de ses offres et de ses habitudes d'accueil. Ces chiffres décrivent le produit tel qu'il fonctionne aujourd'hui.",
-    planningValue: "4 semaines",
-    planningLabel: "de planning générées chaque nuit",
-    dunningValue: "J+3 et J+7",
-    dunningLabel: "relances automatiques des impayés, réglables",
-    rolesValue: "5 rôles",
-    rolesLabel: "adhérent, coach, accueil, gérant et admin",
-    undoValue: "10 s",
-    undoLabel: "pour annuler une action faite par erreur",
-    overbookingValue: "0 place",
-    overbookingLabel: "vendue deux fois : verrou en base, testé à chaque version",
-  },
-  faq: {
-    eyebrow: "Questions",
-    title: "Questions fréquentes",
-    subtitle: "Une autre question ? Vous pouvez la poser dans votre demande de démo.",
-    appQ: "Mes adhérents ont besoin d'une application ?",
-    appA: "Oui. Dans l'app {brand}, ils réservent, rejoignent une liste d'attente, paient leur abonnement ou un carnet et suivent leurs crédits. Le planning reste consultable sans compte.",
-    paymentsQ: "Quels moyens de paiement sont acceptés ?",
-    paymentsA:
-      "En ligne avec Stripe : carte bancaire, Apple Pay, Google Pay et prélèvement SEPA pour les abonnements. Les ventes sur place (espèces, terminal) s'enregistrent dans le back office.",
-    rejectedQ: "Et si un prélèvement est rejeté ?",
-    rejectedA:
-      "L'abonnement passe en impayé et les réservations sont suspendues jusqu'au règlement. {brand} relance l'adhérent à J+3 et J+7 et l'invite à mettre à jour son moyen de paiement ; l'accueil peut aussi le relancer à la main.",
-    offersQ: "Quelles offres sont possibles ?",
-    offersA:
-      "Abonnements illimités avec ou sans engagement, carnets avec date de validité, séances à l'unité ou d'essai, offres réservées à certaines disciplines, tarifs réduits et codes promo.",
-    coachesQ: "Comment sont comptées les heures des coachs ?",
-    coachesA:
-      "À partir des séances réalisées : durée multipliée par le taux horaire, pour chaque coach d'un cours. L'export CSV par coach sert de base à leur facture.",
-    assistantQ: "L'assistant agit seul ?",
-    assistantA:
-      "Non. Il lit les données avec les droits du gérant, propose des messages et des segments, et rien ne part sans validation. Les notes « à savoir » ne lui sont jamais transmises.",
-    rolesQ: "Qui voit quoi dans l'équipe ?",
-    rolesA:
-      "Le gérant voit tout. L'accueil gère réservations, fiches adhérents et relances d'impayés, sans accès aux finances de la salle. Un coach voit son planning, ses cours et ses inscrits.",
-    dataQ: "Mes données restent à moi ?",
-    dataA:
-      "Oui. Les adhérents et les paiements s'exportent en CSV à tout moment, et chaque export est inscrit au journal.",
-    marketplaceQ: "À quoi sert la marketplace ?",
-    marketplaceA:
-      "C'est un catalogue de matériel, de consommables et de services négociés pour les salles du réseau, avec des prix par palier et des achats groupés : plus les salles s'engagent, plus le prix baisse.",
-    priceQ: "Combien coûte {brand} ?",
-    priceA:
-      "Le tarif dépend de la taille de votre salle. Nous vous le donnons pendant la démo, qui est gratuite et sans engagement.",
-  },
-  demo: {
-    eyebrow: "Démo",
-    title: "Demandez une démo de {brand}",
-    body: "Laissez vos coordonnées : nous vous écrivons pour fixer un créneau.",
-    free: "Gratuite et sans engagement",
+  start: {
+    eyebrow: "Commencer",
+    title: "Créez votre salle sur {brand}",
+    body: "Laissez vos coordonnées : nous ouvrons votre accès et vous aidons à paramétrer la salle. Une question avant de vous lancer ? Choisissez « Poser une question ».",
+    free: "Essai gratuit, sans carte bancaire",
     export: "Vos données restent exportables en CSV",
     contactOnly: "Vos coordonnées servent uniquement à vous recontacter",
   },
   form: {
+    kind: "Votre demande",
+    kinds: {
+      trial: "Créer ma salle",
+      contact: "Poser une question",
+    },
     fullName: "Nom et prénom",
     gymName: "Nom de la salle",
     email: "Email",
@@ -204,7 +126,11 @@ export const fr = {
     emailPlaceholder: "nom@salle.fr",
     toolPlaceholder: "Bsport, Deciplus, tableur…",
     messagePlaceholder: "Disciplines, nombre de sites, ce qui vous prend le plus de temps…",
-    submit: "Demander une démo",
+    questionPlaceholder: "Votre question",
+    submit: {
+      trial: "Créer ma salle",
+      contact: "Envoyer ma question",
+    },
     pending: "Envoi en cours…",
     privacyBefore: "Vos informations servent uniquement à vous recontacter. Voir la",
     privacyLink: "politique de confidentialité",
@@ -216,17 +142,21 @@ export const fr = {
       city: "Indiquez la ville de votre salle.",
       membersBand: "Choisissez le nombre d'adhérents.",
       currentTool: "80 caractères au plus.",
-      message: "1000 caractères au plus.",
+      message: "Écrivez votre message, en 1000 caractères au plus.",
       form: "Vérifiez les champs signalés.",
       tooMany: "Trop de demandes en peu de temps. Réessayez dans une heure.",
       unavailable: "L'envoi n'a pas abouti. Réessayez dans quelques minutes.",
     },
-    successTitle: "Demande envoyée",
-    successBody: "Nous vous écrivons à {email} pour fixer un créneau.",
+    success: {
+      trialTitle: "Demande envoyée",
+      trialBody: "Nous vous écrivons à {email} pour ouvrir votre accès.",
+      contactTitle: "Question envoyée",
+      contactBody: "Nous vous répondons à {email}.",
+    },
     again: "Envoyer une autre demande",
   },
   footer: {
-    tagline: "Logiciel de gestion pour salles CrossFit, Hyrox, renfo et running.",
+    tagline: "La gestion de salle de sport avec l'IA native, pour toutes les activités.",
     product: "Produit",
     contact: "Contact",
     legal: "Informations",
@@ -251,13 +181,13 @@ export const fr = {
     },
     privacy: {
       title: "Politique de confidentialité",
-      description: "Données recueillies par le formulaire de démo de {brand} et vos droits.",
+      description: "Données recueillies par le formulaire du site {brand} et vos droits.",
       collectedTitle: "Données collectées",
       collected:
-        "Le formulaire de démo recueille votre nom, le nom et la ville de votre salle, votre email, et si vous les indiquez votre téléphone, votre outil actuel et votre message. Aucune autre donnée n'est collectée sur ce site.",
+        "Le formulaire du site recueille votre nom, le nom de votre salle, votre email et, selon votre demande, sa ville, sa taille, votre téléphone, votre outil actuel et votre message. Aucune autre donnée n'est collectée sur ce site.",
       purposeTitle: "Finalité et base légale",
       purpose:
-        "Ces informations servent uniquement à vous recontacter pour organiser une démo et répondre à vos questions. Le traitement repose sur votre demande, avant tout contrat.",
+        "Ces informations servent uniquement à ouvrir votre accès d'essai et à répondre à vos questions. Le traitement repose sur votre demande, avant tout contrat.",
       recipientsTitle: "Destinataires",
       recipients:
         "Seule l'équipe {brand} y a accès. Elles sont hébergées par nos prestataires techniques, Supabase (base de données) et Vercel (site), qui agissent pour notre compte.",

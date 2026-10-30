@@ -177,11 +177,13 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `private.apply_member_stripe_event`. Edge Function `billing` : `mp_checkout`, `mp_commit`
   (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
   `billing/marketplace.ts`.
-- **Demandes de démo** (`demo_requests`, globale comme le catalogue) : déposées **uniquement via**
-  `request_demo`, **seule fonction ouverte à `anon`** (validation, doublon du jour ignoré, plafond
-  `too_many_requests` de 30 par heure) ; lues et suivies par les admins de plateforme
-  (`set_demo_request`, onglet Plateforme › Démos) ; purge à 3 ans (`demo-requests-purge`).
-  Schéma `demoRequestSchema` (`packages/shared/src/demo.ts`).
+- **Demandes du site** (`demo_requests`, globale comme le catalogue) : déposées **uniquement via**
+  `request_demo(p_kind, …)`, **seule fonction ouverte à `anon`** ; type `kind` : `trial` (essai,
+  ville et taille exigées), `contact` (question, message exigé), `demo` (premier formulaire, refusé
+  désormais) ; doublon du jour par email et type ignoré, plafond `too_many_requests` de 30 par
+  heure. Lues et suivies par les admins de plateforme (`set_demo_request`, statut `onboarded` =
+  accès ouvert, onglet Plateforme › Demandes) ; purge à 3 ans (`demo-requests-purge`). Schéma
+  `demoRequestSchema` discriminé par `kind` (`packages/shared/src/demo.ts`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -379,28 +381,40 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 
 ## Site vitrine (apps/site)
 
-- Landing page qui vend la plateforme aux gérants d'autres salles ; nom **provisoire** dans
-  `BRAND` (`lib/site.ts`, injecté dans `t()` comme `{brand}`). Une seule action : « Demander une
-  démo » (`requestDemo`, `app/actions.ts` : Zod partagé, champ piège, délai minimal, puis
-  `request_demo` avec la clé anon, côté serveur uniquement). Page statique : se construit sans
-  variables ; indexée seulement quand `VERCEL_ENV=production` (`robots`, `metadata.robots`).
-- Design : skill **`.claude/skills/landing-page-design`** (elayadesign, MIT), réservé à ce site.
-  Geist (`next/font/google`), icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`),
-  couleurs de `@salle/ui/theme.css`, mais **rayons Tailwind par défaut** et courbe `ease-base`
-  (`app/globals.css`). Espacements de la table B2 seulement, échelle de texte Tailwind, ni
+- Landing page qui vend la plateforme aux gérants de **toutes les salles et activités**,
+  positionnée **IA native** ; nom **provisoire** dans `BRAND` (`lib/site.ts`, injecté dans `t()`
+  comme `{brand}`). Deux boutons, un formulaire (`#demarrer`) : « Commencez gratuitement » (essai,
+  promesse « Essai gratuit, sans carte bancaire » ; l'équipe ouvre l'accès à la main) et « Nous
+  contacter » (`#contact`, mode question). Server Action `requestDemo` (`app/actions.ts` : Zod
+  partagé, champ piège, délai minimal, puis `request_demo` par `anonClient()`,
+  `lib/supabase.server.ts`). Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
+  `next/link` ne déclenche pas `hashchange`. Compteur de salles du hero : `getGymCount()`
+  (lecture anonyme de `gyms`), affiché à partir de `GYM_COUNT_MIN` (10) ; page statique relue
+  toutes les heures (`revalidate = 3600`, cache de `fetch`). Indexée seulement quand
+  `VERCEL_ENV=production` (`robots`, `metadata.robots`).
+- Design : **design system du produit** (couleurs, rayons et ombres de `@salle/ui/theme.css`,
+  jamais redéfinis ; police Inter par `next/font/google` ; appui `scale(0.96)`) et skill
+  **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
+  page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
+  `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
+  Espacements de la table B2 seulement, échelle de texte Tailwind, ni
   italique, ni graisse 800/900, ni dégradé de fond (seul `text-hero`), ni `transition-all` :
   vérifié par `lib/design-rules.test.ts`. Textes : **aucun trait d'union** (pas de « Puis-je »,
   « rendez-vous »), ni mot creux, ni point d'exclamation : `lib/messages.test.ts`. Espaces
   insécables françaises posées par `t()` (`frenchSpacing`).
 - Animations : `Reveal` (IntersectionObserver, une fois, contenu visible sans JavaScript grâce à
-  `@media (scripting: enabled)`), `TaglineReveal` (mot à mot, un écouteur limité par
-  `requestAnimationFrame`), `animate-rise` au chargement du hero ; `prefers-reduced-motion` →
-  opacité seule.
-- **Preuves** : faits vérifiables du produit seulement. Jamais de témoignage, logo ou chiffre
-  inventé ; `TESTIMONIALS` ne reçoit que des citations réelles et autorisées. `LEGAL` : mentions
-  légales à compléter avant la mise en ligne (affichées « à compléter »).
+  `@media (scripting: enabled)`), `animate-rise` au chargement du hero, échange avec l'assistant
+  joué une fois à l'écran (`AssistantChat` : question tapée dans le champ, réponse mot à mot,
+  texte présent dans le DOM dès le départ, styles `[data-chat]`) ; `prefers-reduced-motion` →
+  opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
+  section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
+  partir de `lg`, menu mobile). Fonctionnalités en rangées alternées texte / capture, l'IA en
+  premier (ancres `FEATURES`).
+- **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
+  inventé (le compteur de salles est lu en base). `LEGAL` : mentions légales à compléter avant la
+  mise en ligne (affichées « à compléter »).
 - Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
-  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée.
+  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée et animée.
 
 ## App mobile (Expo)
 

@@ -12,16 +12,22 @@ Seuls changements : la description ci-dessus (portée limitée à apps/site) et 
 ## Dans ce dépôt
 
 Ce skill ne s'applique qu'au site vitrine `apps/site`. Le back office et l'app mobile gardent
-leurs propres règles (`CLAUDE.md`, Inter, lucide, rayons de `packages/ui`).
+leurs propres règles (`CLAUDE.md`, lucide). Le site partage le design system du produit
+(`packages/ui`) : quand une règle visuelle de ce skill le contredit, le design system l'emporte
+(choix du gérant, `BRIEF.md` §12, 2026-10-30).
 
 - **Langue** : textes en français, toujours par une clé `t()` du catalogue `apps/site/messages/fr.ts`.
   La règle « no hyphens » vaut pour le français : écrire sans inversion (« Quelles offres sont
   possibles ? » plutôt que « Puis-je… »), sans « rendez-vous », « c'est-à-dire », « e-mail ».
   Mots bannis en français : révolutionner, booster, sans effort, de pointe, transformer votre…,
   passer au niveau supérieur, exploiter la puissance, de classe mondiale.
-- **Couleurs** : celles de `packages/ui/src/tokens.ts` (orange `primary`), importées par
-  `@salle/ui/theme.css` ; le site rétablit les rayons Tailwind par défaut et déclare `ease-base`.
-- **Police** : Geist. **Icônes** : Phosphor (`@phosphor-icons/react/ssr`).
+- **Design system du produit** : couleurs, rayons et ombres de `packages/ui/src/tokens.ts`
+  (`@salle/ui/theme.css`, jamais redéfinis), police **Inter** (comme le back office, à la place
+  de B1), appui `scale(0.96)` (à la place de B9). Le site ne déclare que `ease-base` et la largeur
+  du hero. La formule des rayons imbriqués (B3) s'applique avec les rayons des tokens.
+- **Icônes** : Phosphor (`@phosphor-icons/react/ssr`), toutes **au trait** (graisse par défaut,
+  jamais `weight`), `aria-hidden` ; 16 px à côté d'un texte `text-sm`, 20 px sinon ; pastille
+  commune `IconChip`.
 - **Preuves** : jamais de témoignage, de logo client ou de chiffre inventé sur le site public
   (B8 vaut pour les maquettes et les données de démo) ; seulement des faits vérifiables du produit.
 - Garde-fous testés : `apps/site/lib/design-rules.test.ts` et `apps/site/lib/messages.test.ts`.

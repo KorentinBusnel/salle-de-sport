@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { INDEXABLE, SITE_URL } from "@/lib/env";
@@ -7,12 +7,8 @@ import { t } from "@/lib/i18n";
 import { BRAND, SECTIONS } from "@/lib/site";
 import "./globals.css";
 
-// Une seule police (skill B1) ; graisses jusqu'au semi-gras.
-const geist = Geist({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-geist",
-});
+// Police du produit (packages/ui, fontFamily.sans), comme le back office ; une seule police.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 // Année du pied de page, figée au build (page statique).
 const YEAR = new Date().getFullYear();
@@ -36,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={geist.variable}>
+    <html lang="fr" className={inter.variable}>
       <body>
         <a
           href="#contenu"
@@ -46,12 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <SiteNav
           brand={BRAND.name}
-          links={[
-            { id: SECTIONS.features, label: t("nav.features") },
-            { id: SECTIONS.how, label: t("nav.how") },
-            { id: SECTIONS.faq, label: t("nav.faq") },
-          ]}
-          cta={{ id: SECTIONS.demo, label: t("nav.cta") }}
+          links={[{ id: SECTIONS.features, label: t("nav.features") }]}
+          cta={{ id: SECTIONS.start, label: t("nav.cta") }}
           labels={{
             nav: t("nav.label"),
             home: t("nav.home"),

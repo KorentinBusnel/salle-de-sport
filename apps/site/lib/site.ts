@@ -16,17 +16,22 @@ export const LEGAL: Record<
   contactEmail: null,
 };
 
-/**
- * Témoignages réels uniquement (jamais inventés) : la section n'apparaît que si la liste est
- * remplie, avec l'accord écrit de la personne citée.
- */
-export const TESTIMONIALS: readonly { quote: string; name: string; role: string }[] = [];
+/** Le compteur de salles du hero n'apparaît qu'à partir de ce nombre (BRIEF §12, 2026-10-30). */
+export const GYM_COUNT_MIN = 10;
 
 /** Ancres de la page d'accueil, dans l'ordre de lecture. */
 export const SECTIONS = {
   top: "haut",
   features: "fonctionnalites",
-  how: "comment",
-  faq: "questions",
-  demo: "demo",
+  start: "demarrer",
+  contact: "contact",
+} as const;
+
+/** Ancres des fonctionnalités, l'IA en premier (la pastille du hero vise la première). */
+export const FEATURES = {
+  assistant: "fonction-ia",
+  classes: "fonction-cours",
+  payments: "fonction-paiements",
+  members: "fonction-adherents",
+  coaches: "fonction-coachs",
 } as const;

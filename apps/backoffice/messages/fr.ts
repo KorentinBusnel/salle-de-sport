@@ -1494,19 +1494,19 @@ export const fr = {
   },
   platform: {
     title: "Plateforme",
-    hint: "Catalogue commun de la marketplace : fournisseurs, produits, prix négociés, devis et commandes des salles ; demandes de démo du site vitrine.",
+    hint: "Catalogue commun de la marketplace : fournisseurs, produits, prix négociés, devis et commandes des salles ; demandes du site vitrine.",
     tab: {
       catalogue: "Catalogue",
       suppliers: "Fournisseurs",
       quotes: "Devis",
       orders: "Commandes",
       campaigns: "Achats groupés",
-      demos: "Démos",
+      demos: "Demandes",
     },
     demos: {
-      title: "Demandes de démo",
-      hint: "Gérants venus du site vitrine. Une demande sans suite est effacée trois ans après le dernier échange.",
-      empty: "Aucune demande de démo pour l'instant.",
+      title: "Demandes du site",
+      hint: "Gérants venus du site vitrine : essais à ouvrir et questions. Une demande sans suite est effacée trois ans après le dernier échange.",
+      empty: "Aucune demande pour l'instant.",
       newCount: "{count, plural, =0 {Aucune nouvelle} one {# nouvelle} other {# nouvelles}}",
       received: "Reçue",
       gym: "Salle",
@@ -1526,7 +1526,13 @@ export const fr = {
         new: "Nouvelle",
         contacted: "Contactée",
         demo_done: "Démo faite",
+        onboarded: "Accès ouvert",
         dropped: "Sans suite",
+      },
+      kind: {
+        trial: "Essai",
+        contact: "Question",
+        demo: "Démo",
       },
     },
     campaigns: {

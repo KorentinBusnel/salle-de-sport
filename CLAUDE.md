@@ -178,12 +178,14 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
   `billing/marketplace.ts`.
 - **Demandes du site** (`demo_requests`, globale comme le catalogue) : déposées **uniquement via**
-  `request_demo(p_kind, …)`, **seule fonction ouverte à `anon`** ; type `kind` : `trial` (essai,
-  ville et taille exigées), `contact` (question, message exigé), `demo` (premier formulaire, refusé
-  désormais) ; doublon du jour par email et type ignoré, plafond `too_many_requests` de 30 par
-  heure. Lues et suivies par les admins de plateforme (`set_demo_request`, statut `onboarded` =
-  accès ouvert, onglet Plateforme › Demandes) ; purge à 3 ans (`demo-requests-purge`). Schéma
-  `demoRequestSchema` discriminé par `kind` (`packages/shared/src/demo.ts`).
+  `request_demo(p_kind, p_email, …)`, **seule fonction ouverte à `anon`** ; type `kind` : `demo`
+  (email seul, champ du hero, seul type envoyé par le site), `trial` (essai : nom, salle, ville et
+  taille exigés) et `contact` (question : nom, salle, message exigés), gardés valides pour l'ancien
+  formulaire (contrainte `demo_requests_named_check`) ; doublon du jour par email et type ignoré,
+  plafond `too_many_requests` de 30 par heure. Lues et suivies par les admins de plateforme
+  (`set_demo_request`, statut `onboarded` = accès ouvert, onglet Plateforme › Demandes, l'email en
+  titre pour une démo) ; purge à 3 ans (`demo-requests-purge`). Schéma `demoEmailSchema`
+  (`packages/shared/src/demo.ts`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -391,11 +393,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 
 - Landing page qui vend la plateforme aux gérants de **toutes les salles et activités**,
   positionnée **IA native** ; nom **provisoire** dans `BRAND` (`lib/site.ts`, injecté dans `t()`
-  comme `{brand}`). Deux boutons, un formulaire (`#demarrer`) : « Commencez gratuitement » (essai,
-  promesse « Essai gratuit, sans carte bancaire » ; l'équipe ouvre l'accès à la main) et « Nous
-  contacter » (`#contact`, mode question). Server Action `requestDemo` (`app/actions.ts` : Zod
-  partagé, champ piège, délai minimal, puis `request_demo` par `anonClient()`,
-  `lib/supabase.server.ts`). Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
+  comme `{brand}`). Un seul appel à l'action : le champ email « Demander une démo » du hero
+  (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), promesse « Sans
+  engagement » et lien Confidentialité ; merci sur place. Server Action `requestDemo`
+  (`app/actions.ts` : `demoEmailSchema`, champ piège, délai minimal, puis `request_demo` type
+  `demo` par `anonClient()`, `lib/supabase.server.ts`) ; fonctionne sans JavaScript. Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
   `next/link` ne déclenche pas `hashchange`. Compteur de salles du hero : `getGymCount()`
   (lecture anonyme de `gyms`), affiché à partir de `GYM_COUNT_MIN` (10) ; page statique relue
   toutes les heures (`revalidate = 3600`, cache de `fetch`). Indexée seulement quand

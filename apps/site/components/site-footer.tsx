@@ -12,7 +12,7 @@ const COLUMNS: { title: MessageKey; links: { href: string; label: MessageKey }[]
   {
     title: "footer.legal",
     links: [
-      { href: `/#${SECTIONS.start}`, label: "nav.cta" },
+      { href: `/#${SECTIONS.demo}`, label: "nav.cta" },
       { href: "/confidentialite", label: "footer.privacy" },
       { href: "/mentions-legales", label: "footer.legalNotice" },
     ],

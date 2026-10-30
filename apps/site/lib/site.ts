@@ -50,8 +50,8 @@ export const GYM_COUNT_MIN = 10;
 export const SECTIONS = {
   top: "haut",
   features: "fonctionnalites",
-  start: "demarrer",
-  contact: "contact",
+  /** Champ « Demander une démo » du hero, visé par le bouton de la barre. */
+  demo: "demo",
 } as const;
 
 /** Ancres des fonctionnalités, l'IA en premier (la pastille du hero vise la première). */

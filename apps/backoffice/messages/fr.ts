@@ -1510,7 +1510,7 @@ export const fr = {
     },
     demos: {
       title: "Demandes du site",
-      hint: "Gérants venus du site vitrine : essais à ouvrir et questions. Une demande sans suite est effacée trois ans après le dernier échange.",
+      hint: "Gérants venus du site vitrine : démos à fixer (email seul), et les essais et questions de l'ancien formulaire. Une demande sans suite est effacée trois ans après le dernier échange.",
       empty: "Aucune demande pour l'instant.",
       newCount: "{count, plural, =0 {Aucune nouvelle} one {# nouvelle} other {# nouvelles}}",
       received: "Reçue",

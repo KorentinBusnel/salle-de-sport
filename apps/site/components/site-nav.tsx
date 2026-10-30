@@ -42,9 +42,10 @@ export function SiteNav({ brand, links, soon = [], cta, labels }: Props) {
   const pathname = usePathname();
   const onHome = pathname === "/";
   const [open, setOpen] = useState(false);
-  // Section courante, sur la page d'accueil seulement (lib/use-active-section.ts).
+  // Section courante, sur la page d'accueil seulement (lib/use-active-section.ts). Le bouton
+  // vise le champ du hero : il n'est pas suivi.
   const current = useActiveSection(
-    [...links, cta].map((link) => link.id),
+    links.map((link) => link.id),
     onHome,
   );
 

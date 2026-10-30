@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           brand={BRAND.name}
           links={[{ id: SECTIONS.features, label: t("nav.features") }]}
           soon={[{ label: t("nav.marketplace"), badge: t("nav.soon") }]}
-          cta={{ id: SECTIONS.start, label: t("nav.cta") }}
+          cta={{ id: SECTIONS.demo, label: t("nav.cta") }}
           labels={{
             nav: t("nav.label"),
             home: t("nav.home"),

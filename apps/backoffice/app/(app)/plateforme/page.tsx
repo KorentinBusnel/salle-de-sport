@@ -741,7 +741,8 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                 <TableRow key={r.id} className="align-top">
                   <TableCell className="pl-2">
                     <span className="flex items-center gap-2 font-medium">
-                      {r.gym_name}
+                      {/* Démo du hero du site : l'email seul, sans nom ni salle. */}
+                      {r.gym_name ?? r.email}
                       <StatusPill tone={r.kind === "trial" ? "brand" : "neutral"}>
                         {t(`platform.demos.kind.${r.kind}`)}
                       </StatusPill>
@@ -761,7 +762,7 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="block font-medium">{r.full_name}</span>
+                    {r.full_name ? <span className="block font-medium">{r.full_name}</span> : null}
                     <a
                       href={`mailto:${r.email}`}
                       className="block text-sm text-primary underline-offset-4 hover:underline"
@@ -790,7 +791,7 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                       kind="select"
                       id={r.id}
                       field="status"
-                      label={`${t("platform.demos.status")} : ${r.gym_name}`}
+                      label={`${t("platform.demos.status")} : ${r.gym_name ?? r.email}`}
                       value={r.status}
                       options={statusOptions}
                       action={updateDemoRequest}
@@ -802,7 +803,7 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                       multiline
                       id={r.id}
                       field="note"
-                      label={`${t("platform.demos.note")} : ${r.gym_name}`}
+                      label={`${t("platform.demos.note")} : ${r.gym_name ?? r.email}`}
                       value={r.note ?? ""}
                       placeholder={t("platform.demos.notePlaceholder")}
                       maxLength={1000}

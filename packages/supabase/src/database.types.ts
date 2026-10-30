@@ -886,8 +886,8 @@ export type Database = {
           created_on: string;
           current_tool: string | null;
           email: string;
-          full_name: string;
-          gym_name: string;
+          full_name: string | null;
+          gym_name: string | null;
           id: string;
           kind: Database["public"]["Enums"]["demo_request_kind"];
           members_band: Database["public"]["Enums"]["demo_members_band"] | null;
@@ -903,8 +903,8 @@ export type Database = {
           created_on?: string;
           current_tool?: string | null;
           email: string;
-          full_name: string;
-          gym_name: string;
+          full_name?: string | null;
+          gym_name?: string | null;
           id?: string;
           kind: Database["public"]["Enums"]["demo_request_kind"];
           members_band?: Database["public"]["Enums"]["demo_members_band"] | null;
@@ -920,8 +920,8 @@ export type Database = {
           created_on?: string;
           current_tool?: string | null;
           email?: string;
-          full_name?: string;
-          gym_name?: string;
+          full_name?: string | null;
+          gym_name?: string | null;
           id?: string;
           kind?: Database["public"]["Enums"]["demo_request_kind"];
           members_band?: Database["public"]["Enums"]["demo_members_band"] | null;
@@ -3502,15 +3502,15 @@ export type Database = {
       reorder_disciplines: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
       request_demo: {
         Args: {
-          p_city: string;
+          p_city?: string;
           p_current_tool?: string;
           p_email: string;
-          p_full_name: string;
-          p_gym_name: string;
+          p_full_name?: string;
+          p_gym_name?: string;
           p_kind: Database["public"]["Enums"]["demo_request_kind"];
           p_members_band?: Database["public"]["Enums"]["demo_members_band"];
           p_message?: string;
-          p_phone: string;
+          p_phone?: string;
         };
         Returns: undefined;
       };
@@ -3699,8 +3699,8 @@ export type Database = {
           created_on: string;
           current_tool: string | null;
           email: string;
-          full_name: string;
-          gym_name: string;
+          full_name: string | null;
+          gym_name: string | null;
           id: string;
           kind: Database["public"]["Enums"]["demo_request_kind"];
           members_band: Database["public"]["Enums"]["demo_members_band"] | null;

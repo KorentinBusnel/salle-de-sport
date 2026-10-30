@@ -6,13 +6,12 @@ export const MEMBERS_BANDS = ["under_100", "100_to_300", "300_to_600", "over_600
 export type MembersBand = (typeof MEMBERS_BANDS)[number];
 
 /**
- * Types de demande du site vitrine (enum SQL `demo_request_kind`) : « Commencez gratuitement »
- * (`trial`) et « Nous contacter » (`contact`). `demo` ne désigne que les demandes du premier
- * formulaire, refusées désormais par `request_demo`.
+ * Types de demande (enum SQL `demo_request_kind`) : `demo`, l'email saisi dans le hero du site
+ * (seul type que le site envoie) ; `trial` (essai) et `contact` (question), ceux de l'ancien
+ * formulaire, que `request_demo` garde valides.
  */
-export const DEMO_REQUEST_KINDS = ["trial", "contact"] as const;
-export type SiteRequestKind = (typeof DEMO_REQUEST_KINDS)[number];
-export type DemoRequestKind = SiteRequestKind | "demo";
+export const DEMO_REQUEST_KINDS = ["demo", "trial", "contact"] as const;
+export type DemoRequestKind = (typeof DEMO_REQUEST_KINDS)[number];
 
 /** Suivi d'une demande par les admins (enum SQL `demo_request_status`). */
 export const DEMO_REQUEST_STATUSES = [
@@ -32,58 +31,11 @@ export const DEMO_REQUEST_STATUS_TONE: Record<DemoRequestStatus, Tone> = {
   dropped: "neutral",
 };
 
-/** Champ facultatif : vide → null. */
-const optionalText = (max: number, min = 1) =>
-  z
-    .string()
-    .trim()
-    .max(max)
-    .refine((value) => value === "" || value.length >= min)
-    .transform((value) => value || null);
-
-const common = {
-  fullName: z.string().trim().min(2).max(80),
-  gymName: z.string().trim().min(2).max(120),
-  email: z.string().trim().toLowerCase().pipe(z.email().max(120)),
-  phone: optionalText(30).refine((value) => value === null || /^\+?[\d\s.()-]{6,}$/.test(value)),
-  currentTool: optionalText(80),
-};
-
 /**
- * Formulaire du site vitrine ; mêmes règles que `request_demo` en SQL, qui reste la barrière.
- * Essai : ville et taille exigées. Question : message exigé, ville et taille facultatives.
+ * Champ « Demander une démo » du site : l'email seul, mêmes règles que `request_demo` en SQL, qui
+ * reste la barrière.
  */
-export const demoRequestSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("trial"),
-    ...common,
-    city: z.string().trim().min(2).max(80),
-    membersBand: z.enum(MEMBERS_BANDS),
-    message: optionalText(1000),
-  }),
-  z.object({
-    kind: z.literal("contact"),
-    ...common,
-    city: optionalText(80, 2),
-    membersBand: z
-      .union([z.enum(MEMBERS_BANDS), z.literal("")])
-      .transform((value) => value || null),
-    message: z.string().trim().min(2).max(1000),
-  }),
-]);
-
-export type DemoRequestInput = z.input<typeof demoRequestSchema>;
-export type DemoRequest = z.output<typeof demoRequestSchema>;
-
-/** Champs du formulaire, dans l'ordre d'affichage (le type se choisit à part). */
-export const DEMO_REQUEST_FIELDS = [
-  "fullName",
-  "gymName",
-  "email",
-  "phone",
-  "city",
-  "membersBand",
-  "currentTool",
-  "message",
-] as const;
-export type DemoRequestField = (typeof DEMO_REQUEST_FIELDS)[number];
+export const demoEmailSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email().max(120)),
+});
+export type DemoEmail = z.output<typeof demoEmailSchema>;

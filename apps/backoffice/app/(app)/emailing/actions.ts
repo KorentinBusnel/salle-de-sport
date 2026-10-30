@@ -206,17 +206,23 @@ const automationSchema = z.object({
   days: z.coerce.number().int().min(1).max(365).optional(),
 });
 
-export async function saveAutomation(formData: FormData) {
+export type AutomationInput = {
+  kind: "welcome" | "inactive" | "birthday";
+  enabled: boolean;
+  template_id: string;
+  days: number;
+};
+
+/**
+ * Automatisation enregistrée sur place (interrupteur, modèle, délai) : chaque changement envoie
+ * l'état complet de la carte ; activer exige un modèle.
+ */
+export async function saveAutomation(input: AutomationInput): Promise<ActionResult> {
   const context = await requireRole(isManagerRole);
-  const parsed = automationSchema.safeParse({
-    kind: formData.get("kind"),
-    template_id: formData.get("template_id") ?? "",
-    days: formData.get("days") || undefined,
-  });
-  if (!parsed.success) redirect(withFlash(AUTOMATIONS, { error: "emailing.errors.automation" }));
-  const enabled = formData.get("enabled") === "on";
-  if (enabled && !parsed.data.template_id)
-    redirect(withFlash(AUTOMATIONS, { error: "emailing.errors.automationTemplate" }));
+  const parsed = automationSchema.safeParse(input);
+  if (!parsed.success) return fail("emailing.errors.automation");
+  const enabled = input.enabled === true;
+  if (enabled && !parsed.data.template_id) return fail("emailing.errors.automationTemplate");
   const supabase = await createClient();
   const { error } = await supabase.from("automations").upsert(
     {
@@ -228,8 +234,7 @@ export async function saveAutomation(formData: FormData) {
     },
     { onConflict: "gym_id,kind" },
   );
+  if (error) return fail("common.unexpectedError");
   revalidatePath(AUTOMATIONS);
-  redirect(
-    withFlash(AUTOMATIONS, error ? { error: "common.unexpectedError" } : { ok: "common.saved" }),
-  );
+  return ok();
 }

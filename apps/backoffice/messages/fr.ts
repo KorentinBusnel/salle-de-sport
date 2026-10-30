@@ -904,6 +904,7 @@ export const fr = {
   },
   hours: {
     title: "Heures des coachs",
+    crumb: "Heures",
     hint: "Séances terminées et non annulées, valorisées au taux horaire : base des factures.",
     previousMonth: "Mois précédent",
     nextMonth: "Mois suivant",
@@ -1079,8 +1080,10 @@ export const fr = {
   },
   emailing: {
     title: "Emailing",
-    noDelivery:
-      "Pas d'envoi réel pour l'instant : les emails sont mis en file et journalisés (onglet Messages), en attendant le branchement d'un service d'envoi.",
+    campaignsHint: "Envois groupés à un segment, tout de suite ou à la date choisie.",
+    templatesHint: "Textes réutilisables, personnalisés pour chaque adhérent (prénom, nom, salle).",
+    automationsHint:
+      "Messages qui partent seuls : bienvenue, relance des inactifs, anniversaire. Chaque réglage s'enregistre aussitôt.",
     tab: {
       campaigns: "Campagnes",
       templates: "Modèles",
@@ -1184,6 +1187,8 @@ export const fr = {
     },
     on: "Activée",
     off: "Désactivée",
+    automationOn: "Automatisation activée.",
+    automationOff: "Automatisation désactivée.",
     enabled: "Activer",
     noTemplate: "Aucun modèle",
     inactiveDays: "Sans séance depuis (jours)",
@@ -1438,7 +1443,7 @@ export const fr = {
       messageHint: "Fréquence, surface, contraintes de livraison…",
       send: "Envoyer la demande",
       sent: "Demande envoyée : la réponse arrive dans l'onglet Devis.",
-      newRequest: "Nouvelle demande",
+      newRequest: "Demander un devis",
     },
     quotes: {
       empty: "Aucun devis",

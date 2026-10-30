@@ -8,7 +8,6 @@ const COLUMNS: { title: MessageKey; links: { href: string; label: MessageKey }[]
   {
     title: "footer.product",
     links: [
-      { href: `/#${SECTIONS.adaptable}`, label: "nav.adaptable" },
       { href: `/#${SECTIONS.features}`, label: "nav.features" },
       { href: `/#${SECTIONS.how}`, label: "nav.how" },
       { href: `/#${SECTIONS.faq}`, label: "nav.faq" },

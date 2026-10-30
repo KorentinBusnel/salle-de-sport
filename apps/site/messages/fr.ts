@@ -12,7 +12,6 @@ export const fr = {
     label: "Navigation principale",
     home: "{brand}, accueil",
     skip: "Aller au contenu",
-    adaptable: "Pour toutes les salles",
     features: "Fonctionnalités",
     how: "Comment ça marche",
     faq: "Questions",
@@ -33,45 +32,6 @@ export const fr = {
     backofficeAlt:
       "Page Aujourd'hui du back office {brand} : séances du jour, essais à accueillir, permanence et impayés.",
     appAlt: "Planning de la semaine dans l'app adhérent {brand}, avec les places restantes.",
-  },
-  problem: {
-    beforeLabel: "Aujourd'hui",
-    title: "Votre salle tient sur quatre outils",
-    bookings: "Les réservations dans une app, les paiements dans une autre.",
-    hours: "Les heures des coachs recopiées dans un tableur chaque fin de mois.",
-    unpaid: "Les impayés repérés trop tard et relancés un par un sur WhatsApp.",
-    questions: "« Qui n'est pas venu depuis trois semaines ? » reste sans réponse.",
-    afterLabel: "Avec {brand}",
-    solutionTitle: "Tout part du même planning",
-    solution:
-      "Une réservation débite le bon crédit. Un prélèvement rejeté suspend l'accès et prévient l'adhérent. Les heures des coachs se comptent à partir des séances réalisées.",
-    solutionBookings: "Réservations, paiements et crédits dans la même base",
-    solutionTeam: "Un accès par rôle : gérant, accueil, coach",
-    solutionApp: "Une app pour vos adhérents : planning, réservation, paiement",
-  },
-  adaptable: {
-    eyebrow: "Pour toutes les salles",
-    title: "Un outil qui s'adapte à votre salle, pas l'inverse",
-    subtitle:
-      "Box CrossFit, studio de yoga, club de boxe ou salle d'escalade : vous décrivez vos activités, vos offres et vos règles, {brand} suit.",
-    activitiesTitle: "Toutes vos activités",
-    activitiesBody:
-      "Vous créez vos disciplines, avec leur couleur, leur durée et leurs places : yoga, boxe, pilates, escalade, CrossFit, running…",
-    offersTitle: "Vos offres",
-    offersBody:
-      "Abonnements avec ou sans engagement, carnets, séances à l'unité, tarifs réduits, codes promo, offres réservées à certaines disciplines.",
-    rulesTitle: "Vos règles de réservation",
-    rulesBody:
-      "Réservations à venir autorisées, liste d'attente, retardataires, ouverture du pointage : chaque stratégie s'active dans les paramètres.",
-    teamTitle: "Votre équipe",
-    teamBody:
-      "Gérant, accueil et coachs ont chacun leurs accès, plusieurs coachs par cours, permanences de l'accueil planifiées.",
-    hoursTitle: "Votre calendrier",
-    hoursBody:
-      "Horaires d'ouverture, jours de fermeture et salles : le planning et l'accueil suivent votre calendrier.",
-    messagesTitle: "Vos messages",
-    messagesBody:
-      "Modèles d'emails, campagnes et automatisations : bienvenue, relance des inactifs, anniversaire.",
   },
   benefits: {
     eyebrow: "Fonctionnalités",

@@ -22,7 +22,6 @@ export const GYM_COUNT_MIN = 10;
 /** Ancres de la page d'accueil, dans l'ordre de lecture. */
 export const SECTIONS = {
   top: "haut",
-  adaptable: "toutes-les-salles",
   features: "fonctionnalites",
   how: "comment",
   faq: "questions",

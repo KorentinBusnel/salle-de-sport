@@ -46,6 +46,13 @@
   background-position: center top;
 }
 
+/* Passage du quadrillage au décor des fonctionnalités (components/orbits.tsx) : le décor et son
+   fond plein apparaissent et disparaissent en fondu par un masque de transparence, sans couleur
+   en dégradé, pour que le quadrillage s'efface sans rupture au défilement. */
+@utility orbit-fade {
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+
 /* Titre du hero (B5) : le seul dégradé du site, sur le texte et jamais sur un fond. */
 @utility text-hero {
   background-image: linear-gradient(to right, #000000, #666666);

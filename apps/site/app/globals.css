@@ -68,6 +68,43 @@
   }
 }
 
+/* Échange avec l'assistant (components/assistant-chat.tsx) : chaque élément apparaît à son tour,
+   les mots de la réponse en fondu seul. Sans JavaScript, l'échange reste affiché en entier. */
+[data-chat] {
+  transition:
+    opacity 500ms var(--ease-base),
+    transform 500ms var(--ease-base);
+}
+[data-chat="word"] {
+  transition-duration: 300ms;
+}
+@media (scripting: enabled) {
+  [data-chat]:not([data-on]) {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@utility animate-caret {
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@utility animate-dot {
+  animation: dot 1s var(--ease-base) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -77,7 +114,8 @@
       opacity: 0;
     }
   }
-  [data-reveal]:not([data-revealed]) {
+  [data-reveal]:not([data-revealed]),
+  [data-chat]:not([data-on]) {
     transform: none;
   }
 }

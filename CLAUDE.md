@@ -403,7 +403,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   « rendez-vous »), ni mot creux, ni point d'exclamation : `lib/messages.test.ts`. Espaces
   insécables françaises posées par `t()` (`frenchSpacing`).
 - Animations : `Reveal` (IntersectionObserver, une fois, contenu visible sans JavaScript grâce à
-  `@media (scripting: enabled)`), `animate-rise` au chargement du hero ; `prefers-reduced-motion` →
+  `@media (scripting: enabled)`), `animate-rise` au chargement du hero, échange avec l'assistant
+  joué une fois à l'écran (`AssistantChat` : question tapée dans le champ, réponse mot à mot,
+  texte présent dans le DOM dès le départ, styles `[data-chat]`) ; `prefers-reduced-motion` →
   opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
   partir de `lg`, menu mobile). Fonctionnalités en rangées alternées texte / capture, l'IA en
@@ -412,7 +414,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   inventé (le compteur de salles est lu en base). `LEGAL` : mentions légales à compléter avant la
   mise en ligne (affichées « à compléter »).
 - Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
-  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée.
+  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée et animée.
 
 ## App mobile (Expo)
 

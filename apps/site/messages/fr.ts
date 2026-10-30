@@ -78,6 +78,7 @@ export const fr = {
   },
   assistantDemo: {
     caption: "Exemple d'échange avec l'assistant {brand}",
+    placeholder: "Demandez à {brand}…",
     question: "Qui n'est pas venu depuis trois semaines ?",
     answer:
       "7 adhérents actifs n'ont rien réservé depuis 21 jours. Les trois absences les plus longues :",

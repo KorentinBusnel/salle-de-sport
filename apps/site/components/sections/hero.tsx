@@ -1,5 +1,4 @@
 import { CaretRightIcon, SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react/ssr";
-import Link from "next/link";
 import { DemoEmailForm } from "@/components/demo-email-form";
 import { PhoneFrame, ProductFrame } from "@/components/frames";
 import { PixelSpark } from "@/components/pixel-spark";
@@ -43,12 +42,6 @@ export async function Hero() {
             style={{ animationDelay: "160ms" }}
           >
             <DemoEmailForm />
-            <p className="mt-4 text-sm text-muted-foreground">
-              {t("hero.note")}{" "}
-              <Link href="/confidentialite" className="font-medium text-foreground underline">
-                {t("hero.privacy")}
-              </Link>
-            </p>
           </div>
           {count !== null && count >= GYM_COUNT_MIN ? (
             <p

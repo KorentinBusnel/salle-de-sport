@@ -1,6 +1,8 @@
 "use server";
 
 import { bookingErrorCode, demoEmailSchema } from "@salle/shared";
+import { after } from "next/server";
+import { notifyDemoRequest } from "@/lib/notify.server";
 import { anonClient } from "@/lib/supabase.server";
 
 /** État du champ « Demander une démo » ; l'email saisi revient pour le réafficher. */
@@ -16,7 +18,8 @@ const MIN_SECONDS = 3;
 /**
  * « Demander une démo » du hero : l'email seul, filtre anti robots (champ piège, envoi trop
  * rapide), puis `request_demo` (type `demo`) avec la clé anon. La base valide à nouveau, ignore un
- * doublon du jour et plafonne le nombre de demandes par heure.
+ * doublon du jour et plafonne le nombre de demandes par heure. Une nouvelle demande déclenche
+ * l'alerte email de l'équipe, envoyée après la réponse (le merci n'attend pas).
  */
 export async function requestDemo(
   _previous: DemoEmailState,
@@ -38,7 +41,7 @@ export async function requestDemo(
     console.error("Demande de démo : NEXT_PUBLIC_SUPABASE_URL ou _ANON_KEY manquante.");
     return { status: "failed", error: "unavailable", email };
   }
-  const { error } = await supabase.rpc("request_demo", {
+  const { data: inserted, error } = await supabase.rpc("request_demo", {
     p_kind: "demo",
     p_email: parsed.data.email,
   });
@@ -49,5 +52,7 @@ export async function requestDemo(
     console.error("Demande de démo : request_demo a échoué.", error.message);
     return { status: "failed", error: "unavailable", email };
   }
+  // Pas de seconde alerte pour un doublon du jour (`false`).
+  if (inserted !== false) after(() => notifyDemoRequest(parsed.data.email));
   return { status: "sent", email: parsed.data.email };
 }

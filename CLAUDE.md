@@ -17,7 +17,7 @@ Conventions de code et de travail pour ce dépôt. Le cahier des charges est `BR
 ```
 apps/backoffice     Next.js 16 (App Router) + Tailwind v4 + shadcn/ui — équipe de la salle
 apps/mobile         Expo SDK 57 + Expo Router + NativeWind 4 — adhérents
-apps/site           Next.js 16 + Tailwind v4 — site vitrine « Chalk » pour les gérants d'autres salles
+apps/site           Next.js 16 + Tailwind v4 — site vitrine « Chalq » pour les gérants d'autres salles
 packages/shared     règles métier, schémas Zod, dates, i18n — TypeScript pur
 packages/supabase   types générés + type du client
 packages/ui         tokens de design (tokens.ts) et thème Tailwind v4 (theme.css)
@@ -178,7 +178,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
   `billing/marketplace.ts`.
 - **Demandes du site** (`demo_requests`, globale comme le catalogue) : déposées **uniquement via**
-  `request_demo(p_kind, p_email, …)`, **seule fonction ouverte à `anon`** ; type `kind` : `demo`
+  `request_demo(p_kind, p_email, …)` (renvoie `true` si la demande est enregistrée, `false` pour un
+  doublon du jour), **seule fonction ouverte à `anon`** ; type `kind` : `demo`
   (email seul, champ du hero, seul type envoyé par le site), `trial` (essai : nom, salle, ville et
   taille exigés) et `contact` (question : nom, salle, message exigés), gardés valides pour l'ancien
   formulaire (contrainte `demo_requests_named_check`) ; doublon du jour par email et type ignoré,
@@ -227,7 +228,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 
 - **Aucun secret côté client.** Seules les variables `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*` (URL et
   clé anon, filtrées par la RLS) atteignent le navigateur ou l'app. Clés Stripe, Anthropic, Meta,
-  Google, Pennylane, `service_role` : Edge Functions ou code serveur Next.js uniquement.
+  Google, Pennylane, Resend, `service_role` : Edge Functions ou code serveur Next.js uniquement.
 - Toute variable lue dans le code est documentée dans **`.env.example`** (racine) ; `pnpm env:check`
   le vérifie, en CI aussi.
 - Les valeurs réelles vont dans la configuration de l'environnement (session cloud, Vercel, EAS,
@@ -394,10 +395,13 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - Landing page qui vend la plateforme aux gérants de **toutes les salles et activités**,
   positionnée **IA native** ; nom **provisoire** dans `BRAND` (`lib/site.ts`, injecté dans `t()`
   comme `{brand}`). Un seul appel à l'action : le champ email « Demander une démo » du hero
-  (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), promesse « Sans
-  engagement » et lien Confidentialité ; merci sur place. Server Action `requestDemo`
+  (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), sans note dessous
+  (Confidentialité reste au pied de page) ; merci sur place. Server Action `requestDemo`
   (`app/actions.ts` : `demoEmailSchema`, champ piège, délai minimal, puis `request_demo` type
-  `demo` par `anonClient()`, `lib/supabase.server.ts`) ; fonctionne sans JavaScript. Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
+  `demo` par `anonClient()`, `lib/supabase.server.ts`) ; fonctionne sans JavaScript. Alerte email
+  de l'équipe pour chaque nouvelle demande (pas pour un doublon) : `after()` puis
+  `notifyDemoRequest` (`lib/notify.server.ts`, API Resend par `fetch`, message et envoi testés dans
+  `lib/demo-notification.ts`) ; sans `RESEND_API_KEY` / `DEMO_NOTIFY_EMAIL`, rien n'est envoyé. Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
   `next/link` ne déclenche pas `hashchange`. Compteur de salles du hero : `getGymCount()`
   (lecture anonyme de `gyms`), affiché à partir de `GYM_COUNT_MIN` (10) ; page statique relue
   toutes les heures (`revalidate = 3600`, cache de `fetch`). Indexée seulement quand
@@ -406,7 +410,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   jamais redéfinis ; police Inter par `next/font/google` ; appui `scale(0.96)`) et skill
   **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
   page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
-  `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
+  `weight`), `aria-hidden`, tuile commune `IconChip` (fond carte, `shadow-border`, icône couleur du
+  texte, `sm` / `md` ; l'orange reste aux accents) ; courbe `ease-base` (`app/globals.css`).
   Fond : un seul quadrillage `bg-grid` sur `body` (motif SVG de 48 px, traits à 4 %, pas de
   dégradé), continu au défilement, sans bandes de fond par section ; éclat en pixels `PixelSpark`
   sur l'angle de la capture du hero. Haut des fonctionnalités : décor `Orbits` (arcs, logos Gmail,
@@ -425,11 +430,16 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
   partir de `lg`, menu mobile ; entrées à venir `soon` : « Marketplace » avec la pastille
-  « Bientôt », sans lien). Fonctionnalités en rangées alternées texte / capture, l'IA en
-  premier (ancres `FEATURES`).
+  « Bientôt », sans lien). Fonctionnalités en rangées alternées (ancres `FEATURES`) : l'IA en
+  premier (pastille « Nouveauté », texte, trois points à icône, échange animé), puis `FeatureRow` (`benefits.tsx`) : étiquette à
+  point, titre court, une phrase, et deux cartes (`card1` / `card2`, pastille « Fait », réglage ou
+  action) posées sur la capture côté texte dès `lg`, dessous sur mobile, apparues l'une après
+  l'autre. Chaque titre de fonctionnalité finit par un point orange (`TitleDot`).
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
-  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés. `LEGAL` (`lib/site.ts`) : mentions légales
+  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés.
+  Autre exception (gérant, 2026-10-31) : les rangées de fonctionnalités reprennent ses textes, qui
+  annoncent aussi des fonctions à venir (BRIEF §12) ; les chiffres des cartes sont des exemples. `LEGAL` (`lib/site.ts`) : mentions légales
   (LCEN : éditeur, forme, capital, SIREN, RCS, TVA, directeur de la publication, contact,
   téléphone, téléphone de l'hébergeur) à compléter avant la mise en ligne ; `null` s'affiche « à
   compléter », `false` masque une ligne sans objet (`LegalList`). Le responsable du traitement de

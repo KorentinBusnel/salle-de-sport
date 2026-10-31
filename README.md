@@ -15,7 +15,7 @@ pnpm db:test        # tests RLS (pgTAP)
 
 ## Site vitrine (apps/site)
 
-Landing page « Chalk » destinée aux gérants de toutes les salles, avec un formulaire « Commencez
+Landing page « Chalq » destinée aux gérants de toutes les salles, avec un formulaire « Commencez
 gratuitement » / « Nous contacter » (demandes lues dans le back office, Plateforme › Demandes,
 compte `admin@demo.local`).
 

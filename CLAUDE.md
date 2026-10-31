@@ -429,11 +429,16 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   opacité seule. Section courante : **`useActiveSection`** (`lib/use-active-section.ts`, dernière
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
   partir de `lg`, menu mobile ; entrées à venir `soon` : « Marketplace » avec la pastille
-  « Bientôt », sans lien). Fonctionnalités en rangées alternées texte / capture, l'IA en
-  premier (ancres `FEATURES`).
+  « Bientôt », sans lien). Fonctionnalités en rangées alternées (ancres `FEATURES`) : l'IA en
+  premier (texte, trois points, échange animé), puis `FeatureRow` (`benefits.tsx`) : étiquette à
+  point, titre court, une phrase, et deux cartes (`card1` / `card2`, pastille « Fait », réglage ou
+  action) posées sur la capture côté texte dès `lg`, dessous sur mobile, apparues l'une après
+  l'autre.
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
-  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés. `LEGAL` (`lib/site.ts`) : mentions légales
+  décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés.
+  Autre exception (gérant, 2026-10-31) : les rangées de fonctionnalités reprennent ses textes, qui
+  annoncent aussi des fonctions à venir (BRIEF §12) ; les chiffres des cartes sont des exemples. `LEGAL` (`lib/site.ts`) : mentions légales
   (LCEN : éditeur, forme, capital, SIREN, RCS, TVA, directeur de la publication, contact,
   téléphone, téléphone de l'hébergeur) à compléter avant la mise en ligne ; `null` s'affiche « à
   compléter », `false` masque une ligne sans objet (`LegalList`). Le responsable du traitement de

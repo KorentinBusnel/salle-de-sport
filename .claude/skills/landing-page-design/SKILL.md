@@ -29,7 +29,8 @@ leurs propres règles (`CLAUDE.md`, lucide). Le site partage le design system du
   jamais `weight`), `aria-hidden` ; 16 px à côté d'un texte `text-sm`, 20 px sinon ; pastille
   commune `IconChip`.
 - **Preuves** : jamais de témoignage, de logo client ou de chiffre inventé sur le site public
-  (B8 vaut pour les maquettes et les données de démo) ; seulement des faits vérifiables du produit.
+  (B8 vaut pour les maquettes et les données de démo) ; seulement des faits vérifiables du produit,
+  sauf les exceptions décidées par le gérant (`CLAUDE.md`, Site vitrine, « Preuves »).
 - Garde-fous testés : `apps/site/lib/design-rules.test.ts` et `apps/site/lib/messages.test.ts`.
 
 # Landing Page Design

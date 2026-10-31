@@ -1,10 +1,14 @@
 import {
-  CalendarCheckIcon,
+  CalculatorIcon,
+  ChartLineUpIcon,
   CheckIcon,
-  ClockIcon,
+  CopyIcon,
   CreditCardIcon,
-  IdentificationCardIcon,
+  FirstAidIcon,
+  HandCoinsIcon,
   SparkleIcon,
+  TargetIcon,
+  TimerIcon,
 } from "@phosphor-icons/react/ssr";
 import type { Icon } from "@phosphor-icons/react";
 import type { StaticImageData } from "next/image";
@@ -22,18 +26,58 @@ import member from "@/public/captures/fiche-adherent.jpg";
 import payments from "@/public/captures/paiements.jpg";
 import planning from "@/public/captures/planning.jpg";
 
-type Benefit =
-  | { key: "classes" | "payments" | "members" | "coaches"; icon: Icon; capture: StaticImageData }
-  | { key: "assistant"; icon: Icon; capture?: undefined };
+/** Pastille d'une carte : étape faite, réglage de la salle, ou action proposée. */
+type CardTone = "success" | "brand" | "action";
+type FeatureCard = { icon: Icon; tone: CardTone };
+type Feature = {
+  key: "classes" | "members" | "payments" | "coaches";
+  capture: StaticImageData;
+  cards: readonly [FeatureCard, FeatureCard];
+};
 
-// L'IA en premier : c'est la promesse du hero.
-const BENEFITS: Benefit[] = [
-  { key: "assistant", icon: SparkleIcon },
-  { key: "classes", icon: CalendarCheckIcon, capture: planning },
-  { key: "payments", icon: CreditCardIcon, capture: payments },
-  { key: "members", icon: IdentificationCardIcon, capture: member },
-  { key: "coaches", icon: ClockIcon, capture: coaches },
+// Sous l'assistant (la promesse du hero, en premier) : étiquette, titre court, une phrase, et
+// deux cartes posées sur la capture pour montrer l'outil au travail.
+const FEATURE_ROWS: Feature[] = [
+  {
+    key: "classes",
+    capture: planning,
+    cards: [
+      { icon: CopyIcon, tone: "success" },
+      { icon: TimerIcon, tone: "brand" },
+    ],
+  },
+  {
+    key: "members",
+    capture: member,
+    cards: [
+      { icon: TargetIcon, tone: "brand" },
+      { icon: FirstAidIcon, tone: "brand" },
+    ],
+  },
+  {
+    key: "payments",
+    capture: payments,
+    cards: [
+      { icon: CreditCardIcon, tone: "success" },
+      { icon: ChartLineUpIcon, tone: "brand" },
+    ],
+  },
+  {
+    key: "coaches",
+    capture: coaches,
+    cards: [
+      { icon: CalculatorIcon, tone: "success" },
+      { icon: HandCoinsIcon, tone: "action" },
+    ],
+  },
 ];
+
+const TONE_CLASSES: Record<CardTone, string> = {
+  success: "rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success",
+  brand: "rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground",
+  // Illustration d'un bouton du back office : pas un lien du site.
+  action: "rounded-lg bg-primary px-3 py-1 text-sm font-semibold text-primary-foreground",
+};
 
 export function Benefits() {
   return (
@@ -54,8 +98,9 @@ export function Benefits() {
           />
         </Reveal>
         <div className="mt-16 space-y-20 sm:mt-20 sm:space-y-24">
-          {BENEFITS.map((benefit, index) => (
-            <BenefitRow key={benefit.key} benefit={benefit} flipped={index % 2 === 1} />
+          <AssistantRow />
+          {FEATURE_ROWS.map((feature, index) => (
+            <FeatureRow key={feature.key} feature={feature} flipped={index % 2 === 0} />
           ))}
         </div>
       </div>
@@ -63,42 +108,99 @@ export function Benefits() {
   );
 }
 
-/** Une fonctionnalité : texte et capture côte à côte, en alternance d'une rangée à l'autre. */
-function BenefitRow({ benefit, flipped }: { benefit: Benefit; flipped: boolean }) {
-  const { key, icon: Icon } = benefit;
-  const message = (part: "title" | "body" | "point1" | "point2" | "point3") =>
-    t(`benefits.${key}.${part}`);
-
+/** L'assistant : texte, trois points et l'échange animé. */
+function AssistantRow() {
   return (
     <article
-      id={FEATURES[key]}
-      aria-labelledby={`${FEATURES[key]}-titre`}
+      id={FEATURES.assistant}
+      aria-labelledby={`${FEATURES.assistant}-titre`}
       className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16"
     >
-      <Reveal className={cn("lg:col-span-2", flipped && "lg:order-last")}>
-        <IconChip icon={Icon} />
+      <Reveal className="lg:col-span-2">
+        <IconChip icon={SparkleIcon} />
         <h3
-          id={`${FEATURES[key]}-titre`}
+          id={`${FEATURES.assistant}-titre`}
           className="mt-6 text-2xl font-semibold tracking-tight sm:text-3xl"
         >
-          {message("title")}
+          {t("benefits.assistant.title")}
         </h3>
-        <p className="mt-4 text-lg text-muted-foreground">{message("body")}</p>
+        <p className="mt-4 text-lg text-muted-foreground">{t("benefits.assistant.body")}</p>
         <ul className="mt-6 space-y-3">
           {(["point1", "point2", "point3"] as const).map((point) => (
             <li key={point} className="flex gap-3 text-base">
               <CheckIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
-              {message(point)}
+              {t(`benefits.assistant.${point}`)}
             </li>
           ))}
         </ul>
       </Reveal>
       <Reveal delay={80} className="lg:col-span-3">
-        {benefit.capture ? (
-          <ProductFrame src={benefit.capture} alt={t(`benefits.${benefit.key}.alt`)} />
-        ) : (
-          <AssistantIllustration />
-        )}
+        <AssistantIllustration />
+      </Reveal>
+    </article>
+  );
+}
+
+/**
+ * Une fonctionnalité : étiquette, titre et phrase à côté de la capture, en alternance. Les deux
+ * cartes débordent de la capture côté texte (dès `lg`), et se posent dessous sur petit écran.
+ */
+function FeatureRow({ feature, flipped }: { feature: Feature; flipped: boolean }) {
+  const { key, capture, cards } = feature;
+  const id = FEATURES[key];
+
+  return (
+    <article
+      id={id}
+      aria-labelledby={`${id}-titre`}
+      className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16"
+    >
+      <Reveal className={cn("lg:col-span-2", flipped && "lg:order-last")}>
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+          {t(`benefits.${key}.label`)}
+        </p>
+        <h3
+          id={`${id}-titre`}
+          className="mt-4 text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
+        >
+          {t(`benefits.${key}.title`)}
+        </h3>
+        <p className="mt-4 text-lg text-pretty text-muted-foreground">
+          {t(`benefits.${key}.body`)}
+        </p>
+      </Reveal>
+      <Reveal delay={80} className="relative lg:col-span-3">
+        <ProductFrame src={capture} alt={t(`benefits.${key}.alt`)} />
+        <ul
+          className={cn(
+            "mt-4 grid gap-2 sm:max-w-md lg:absolute lg:-bottom-8 lg:mt-0 lg:w-112",
+            flipped ? "lg:-right-8" : "lg:-left-8",
+          )}
+        >
+          {cards.map((card, index) => {
+            const n = index === 0 ? "card1" : "card2";
+            return (
+              <li key={n}>
+                <Reveal
+                  delay={240 + index * 120}
+                  className="flex items-center gap-3 rounded-2xl bg-card p-2 pr-3 shadow-border-hover"
+                >
+                  <IconChip icon={card.icon} />
+                  <span className="grid min-w-0 flex-1">
+                    <span className="text-sm font-semibold">{t(`benefits.${key}.${n}`)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {t(`benefits.${key}.${n}Detail`)}
+                    </span>
+                  </span>
+                  <span className={cn("shrink-0 tabular-nums", TONE_CLASSES[card.tone])}>
+                    {t(`benefits.${key}.${n}Status`)}
+                  </span>
+                </Reveal>
+              </li>
+            );
+          })}
+        </ul>
       </Reveal>
     </article>
   );

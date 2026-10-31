@@ -24,10 +24,8 @@ export const fr = {
     title: "Gérez votre salle avec l'IA native de {brand}.",
     subtitle:
       "{brand} s'adapte à toutes les salles et à toutes les activités : planning, réservations, paiements et relation adhérent dans un seul outil, avec un assistant IA qui prépare le travail et vous laisse valider.",
-    note: "Sans engagement. Votre email sert uniquement à organiser la démo.",
-    privacy: "Confidentialité",
     demo: {
-      label: "Votre email professionnel",
+      label: "Votre email",
       submit: "Demander une démo",
       pending: "Envoi…",
       sent: "Merci. Nous vous écrivons à {email} pour fixer la démo.",
@@ -116,7 +114,7 @@ export const fr = {
     member3: "Sarah Benali",
     member3Last: "dernière séance le 27 septembre",
     proposal: "Message proposé à 7 adhérents",
-    proposalSubject: "On vous garde une place cette semaine",
+    proposalSubject: "Nouvelle programmation Hyrox semaine prochaine, on vous garde une place ?",
     edit: "Modifier",
     validate: "Valider l'envoi",
   },

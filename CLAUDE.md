@@ -395,8 +395,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - Landing page qui vend la plateforme aux gérants de **toutes les salles et activités**,
   positionnée **IA native** ; nom **provisoire** dans `BRAND` (`lib/site.ts`, injecté dans `t()`
   comme `{brand}`). Un seul appel à l'action : le champ email « Demander une démo » du hero
-  (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), promesse « Sans
-  engagement » et lien Confidentialité ; merci sur place. Server Action `requestDemo`
+  (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), sans note dessous
+  (Confidentialité reste au pied de page) ; merci sur place. Server Action `requestDemo`
   (`app/actions.ts` : `demoEmailSchema`, champ piège, délai minimal, puis `request_demo` type
   `demo` par `anonClient()`, `lib/supabase.server.ts`) ; fonctionne sans JavaScript. Alerte email
   de l'équipe pour chaque nouvelle demande (pas pour un doublon) : `after()` puis

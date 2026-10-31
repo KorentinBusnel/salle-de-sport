@@ -1413,6 +1413,105 @@ export type Database = {
           },
         ];
       };
+      member_field_values: {
+        Row: {
+          field_id: string;
+          gym_id: string;
+          member_id: string;
+          updated_at: string;
+          updated_by: string | null;
+          value: NonNullable<Json>;
+        };
+        Insert: {
+          field_id: string;
+          gym_id: string;
+          member_id: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          value: NonNullable<Json>;
+        };
+        Update: {
+          field_id?: string;
+          gym_id?: string;
+          member_id?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          value?: NonNullable<Json>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "member_field_values_field_id_gym_id_fkey";
+            columns: ["field_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "member_fields";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "member_field_values_member_id_gym_id_fkey";
+            columns: ["member_id", "gym_id"];
+            isOneToOne: false;
+            referencedRelation: "members";
+            referencedColumns: ["id", "gym_id"];
+          },
+          {
+            foreignKeyName: "member_field_values_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      member_fields: {
+        Row: {
+          created_at: string;
+          gym_id: string;
+          id: string;
+          is_active: boolean;
+          key: string;
+          label: string;
+          options: NonNullable<Json>;
+          position: number;
+          staff_can_edit: boolean;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          gym_id: string;
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          label: string;
+          options?: NonNullable<Json>;
+          position?: number;
+          staff_can_edit?: boolean;
+          type: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          gym_id?: string;
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          label?: string;
+          options?: NonNullable<Json>;
+          position?: number;
+          staff_can_edit?: boolean;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "member_fields_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       members: {
         Row: {
           acquisition_source: string | null;
@@ -2888,6 +2987,10 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_member_field: {
+        Args: { p_gym_id: string; p_label: string; p_options?: Json; p_type: string };
+        Returns: string;
+      };
       create_session: {
         Args: {
           p_capacity?: number;
@@ -2945,6 +3048,7 @@ export type Database = {
           total: number;
         }[];
       };
+      delete_member_field: { Args: { p_id: string }; Returns: undefined };
       export_members: {
         Args: { p_gym_id: string; p_member_ids: string[] };
         Returns: {
@@ -3067,6 +3171,14 @@ export type Database = {
           p_tools: string[];
         };
         Returns: undefined;
+      };
+      member_field_usage: {
+        Args: { p_gym_id: string };
+        Returns: {
+          field_id: string;
+          option_counts: Json;
+          values_count: number;
+        }[];
       };
       member_overview: { Args: { p_member_id: string }; Returns: Json };
       move_session: {
@@ -3500,6 +3612,7 @@ export type Database = {
         };
       };
       reorder_disciplines: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
+      reorder_member_fields: { Args: { p_gym_id: string; p_ids: string[] }; Returns: undefined };
       request_demo: {
         Args: {
           p_city?: string;
@@ -3538,6 +3651,7 @@ export type Database = {
       };
       search_members: {
         Args: {
+          p_filters?: Json;
           p_gym_id: string;
           p_limit?: number;
           p_offset?: number;
@@ -3550,6 +3664,7 @@ export type Database = {
           created_at: string;
           credits: number;
           email: string;
+          fields: Json;
           first_name: string;
           id: string;
           last_name: string;
@@ -3717,6 +3832,10 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      set_member_field: {
+        Args: { p_key: string; p_member_id: string; p_value?: Json };
+        Returns: Json;
+      };
       set_member_status: {
         Args: { p_member_id: string; p_status: Database["public"]["Enums"]["member_status"] };
         Returns: {
@@ -3859,6 +3978,7 @@ export type Database = {
         Args: { p_gym_id: string; p_private?: Json; p_settings?: Json };
         Returns: undefined;
       };
+      update_member_field: { Args: { p_changes: Json; p_id: string }; Returns: undefined };
       update_session: {
         Args: { p_changes: Json; p_scope?: string; p_session_id: string };
         Returns: number;

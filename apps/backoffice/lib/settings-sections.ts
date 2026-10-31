@@ -6,6 +6,7 @@ export const SETTINGS_SECTIONS = [
   "accueil",
   "suivi",
   "catalogue",
+  "champs",
   "offres",
   "equipe",
   "integrations",

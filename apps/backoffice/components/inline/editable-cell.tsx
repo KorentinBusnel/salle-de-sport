@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMoney } from "@salle/shared";
+import { formatMoney, type Tone } from "@salle/shared";
 import { disciplineColors } from "@salle/ui";
 import { CalendarIcon, CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon } from "lucide-react";
 import {
@@ -35,6 +35,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StatusPill } from "@/components/status-pill";
 import { Switch } from "@/components/ui/switch";
 import { type MessageKey, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,8 @@ export type CellOption = {
   /** Pastille de couleur (discipline) ou avatar à initiales (coach). */
   color?: string | undefined;
   person?: boolean | undefined;
+  /** Ton sémantique (option d'un champ personnalisé) : la valeur s'affiche en pastille. */
+  tone?: Tone | undefined;
 };
 export type CellScope = "one" | "following";
 export type CellSave = (input: {
@@ -91,10 +94,13 @@ type Props = Common &
         maxLength?: number;
         /** Plusieurs lignes : Entrée passe à la ligne, Ctrl ou ⌘ + Entrée enregistre. */
         multiline?: boolean | undefined;
+        /** Un champ vidé enregistre "" (sinon la saisie vide est annulée). */
+        clearable?: boolean | undefined;
       }
     | {
         kind: "number";
-        value: number;
+        /** `null` : pas de valeur (champ personnalisé non renseigné). */
+        value: number | null;
         unit?: string | undefined;
         min: number;
         max: number;
@@ -105,6 +111,8 @@ type Props = Common &
         money?: boolean | undefined;
         /** Libellé de la valeur 0 (« Sans » pour un engagement ou une limite). */
         zeroLabel?: string | undefined;
+        /** Un champ vidé enregistre `null`. */
+        clearable?: boolean | undefined;
       }
     | { kind: "time"; value: string }
     | { kind: "date"; value: string | null; clearable?: boolean | undefined }
@@ -429,6 +437,7 @@ function textValue(props: Props, value: CellValue): string {
     case "date":
       return typeof value === "string" && value ? formatDateKey(value) : "";
     case "number":
+      if (value === null) return "";
       if (props.zeroLabel && Number(value) === 0) return props.zeroLabel;
       return `${numberText(props.money, value)}${props.unit ? ` ${props.unit}` : ""}`;
     default:
@@ -439,6 +448,10 @@ function textValue(props: Props, value: CellValue): string {
 function renderValue(props: Props, value: CellValue): ReactNode {
   switch (props.kind) {
     case "number":
+      if (value === null)
+        return (
+          <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.empty")}</span>
+        );
       if (props.zeroLabel && Number(value) === 0)
         return <span className="text-muted-foreground">{props.zeroLabel}</span>;
       return (
@@ -461,12 +474,16 @@ function renderValue(props: Props, value: CellValue): ReactNode {
     case "select": {
       const option = props.options.find((o) => o.value === value);
       return option ? (
-        <span className="flex min-w-0 items-center gap-2">
-          <OptionVisual option={option} />
-          <span className="truncate">{option.label}</span>
-        </span>
+        option.tone ? (
+          <StatusPill tone={option.tone}>{option.label}</StatusPill>
+        ) : (
+          <span className="flex min-w-0 items-center gap-2">
+            <OptionVisual option={option} />
+            <span className="truncate">{option.label}</span>
+          </span>
+        )
       ) : (
-        <span className="text-muted-foreground">{t("inline.none")}</span>
+        <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.none")}</span>
       );
     }
     case "multi": {
@@ -479,6 +496,12 @@ function renderValue(props: Props, value: CellValue): ReactNode {
         <span className="flex flex-wrap gap-1">
           {values.map((v) => {
             const option = props.options.find((o) => o.value === v);
+            if (option?.tone)
+              return (
+                <StatusPill key={v} tone={option.tone}>
+                  {option.label}
+                </StatusPill>
+              );
             return (
               <span
                 key={v}
@@ -502,7 +525,7 @@ function renderValue(props: Props, value: CellValue): ReactNode {
       return value ? (
         <span className="tabular-nums">{formatDateKey(String(value))}</span>
       ) : (
-        <span className="text-muted-foreground">{t("inline.none")}</span>
+        <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.none")}</span>
       );
     default:
       return value === "" || value === null ? (
@@ -532,7 +555,14 @@ function InlineInput({
     if (done.current) return;
     done.current = true;
     if (props.kind === "number") {
-      const value = Number(text.replace(",", "."));
+      const raw = text.replace(",", ".").trim();
+      if (raw === "") {
+        // Champ vidé : « aucune valeur » si la cellule l'autorise, sinon rien ne change.
+        if (props.clearable) onCommit(null, byKeyboard);
+        else onCancel(byKeyboard);
+        return;
+      }
+      const value = Number(raw);
       if (!Number.isFinite(value) || value < props.min || value > props.max) {
         toast.error(t("inline.outOfRange", { min: props.min, max: props.max }), {
           closeButton: true,
@@ -545,7 +575,8 @@ function InlineInput({
       return;
     }
     if (props.kind === "text" && text.trim() === "") {
-      onCancel(byKeyboard);
+      if (props.clearable) onCommit("", byKeyboard);
+      else onCancel(byKeyboard);
       return;
     }
     onCommit(props.kind === "text" ? text.trim() : text, byKeyboard);

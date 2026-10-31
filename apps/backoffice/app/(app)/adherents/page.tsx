@@ -113,6 +113,8 @@ export default async function MembersPage({
               email: m.email ?? "",
               phone: m.phone ?? "",
               credits: null,
+              // Même forme que search_members : valeurs des champs personnalisés par clé.
+              fields: {},
               total_count: data?.length ?? 0,
             })),
           }))

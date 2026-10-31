@@ -3,8 +3,12 @@ import {
   formatMoney,
   formatPrice,
   MEMBER_STATUS_TONE,
+  NUMBER_BOUNDS,
+  parseMemberField,
   PAYMENT_STATUS_TONE,
   SUBSCRIPTION_STATUS_TONE,
+  TEXT_MAX,
+  type MemberField,
 } from "@salle/shared";
 import {
   CalendarCheckIcon,
@@ -24,6 +28,7 @@ import { MemberSummary } from "@/components/assistant/member-summary";
 import { EditableCell } from "@/components/inline/editable-cell";
 import { ActivateButton } from "@/components/members/activate-button";
 import { CreditsDialog } from "@/components/members/credits-dialog";
+import { FieldValue, typedFieldValue } from "@/components/members/field-value";
 import { MemberOverview } from "@/components/members/member-overview";
 import { SectionError } from "@/components/section-error";
 import { ReceiptLink } from "@/components/payments/receipt-link";
@@ -45,10 +50,17 @@ import { currentTime } from "@/lib/clock";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { getGymConfig } from "@/lib/settings";
+import { settingsHref } from "@/lib/settings-sections";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { adjustCredits } from "../actions";
-import { addNote, bookFromProfile, saveCareNote, updateMemberField } from "./actions";
+import {
+  addNote,
+  bookFromProfile,
+  saveCareNote,
+  setMemberField,
+  updateMemberField,
+} from "./actions";
 
 export const metadata: Metadata = { title: t("memberProfile.title") };
 
@@ -269,6 +281,8 @@ export default async function MemberProfilePage({
             path={path}
             tab={tab}
             timeZone={context.gym.timezone}
+            gymId={context.gym.id}
+            canEditAll={manager}
           />
         )}
       </Suspense>
@@ -741,22 +755,46 @@ type ProfileMember = {
   profiles: { birth_date: string | null } | null;
 };
 
-/** Profil : note « à savoir », coordonnées modifiables sur place, étiquettes, consentements. */
-function ProfileTab({
+/**
+ * Profil : note « à savoir », coordonnées modifiables sur place, informations (champs
+ * personnalisés de la salle), étiquettes, consentements.
+ */
+async function ProfileTab({
   member,
   careNote,
   path,
   tab,
   timeZone,
+  gymId,
+  canEditAll,
 }: {
   member: ProfileMember;
   careNote: string;
   path: string;
   tab: Tab;
   timeZone: string;
+  gymId: string;
+  /** Gérant : modifie aussi les champs fermés à l'accueil (staff_can_edit). */
+  canEditAll: boolean;
 }) {
   const format = gymFormatters(timeZone);
   const cell = { id: member.id, action: updateMemberField };
+  const supabase = await createClient();
+  const [{ data: fieldRows }, { data: valueRows }] = await Promise.all([
+    supabase
+      .from("member_fields")
+      .select("id, key, label, type, options, position, staff_can_edit, is_active")
+      .eq("gym_id", gymId)
+      .eq("is_active", true)
+      .order("position")
+      .order("label"),
+    supabase.from("member_field_values").select("field_id, value").eq("member_id", member.id),
+  ]);
+  const fields = (fieldRows ?? []).flatMap((row) => {
+    const field = parseMemberField(row);
+    return field ? [field] : [];
+  });
+  const values = new Map((valueRows ?? []).map((row) => [row.field_id, row.value]));
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
       <Card className="lg:col-span-2">
@@ -824,6 +862,46 @@ function ProfileTab({
       </Card>
 
       <div className="grid gap-6">
+        {fields.length ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("memberProfile.fields")}</CardTitle>
+              <CardDescription>{t("memberProfile.fieldsHint")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-1 text-sm">
+                {fields.map((field) => {
+                  const value = typedFieldValue(field, values.get(field.id));
+                  return (
+                    <div
+                      key={field.id}
+                      className="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-2 max-sm:grid-cols-1"
+                    >
+                      <dt className="text-muted-foreground">{field.label}</dt>
+                      <dd className="min-w-0">
+                        {canEditAll || field.staff_can_edit ? (
+                          <FieldCell memberId={member.id} field={field} value={value} />
+                        ) : (
+                          <span className="flex min-h-8 items-center px-2">
+                            <FieldValue field={field} value={value} timeZone={timeZone} />
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </CardContent>
+          </Card>
+        ) : canEditAll ? (
+          <p className="text-sm text-muted-foreground">
+            {t("memberProfile.noFields")}{" "}
+            <Link href={settingsHref("champs")} className="underline hover:text-foreground">
+              {t("memberProfile.manageFields")}
+            </Link>
+          </p>
+        ) : null}
+
         <Card>
           <CardHeader>
             <CardTitle>{t("memberProfile.tags")}</CardTitle>
@@ -873,4 +951,79 @@ function ProfileTab({
       </div>
     </div>
   );
+}
+
+/** Cellule éditable d'un champ personnalisé : le type du champ fixe le genre de cellule. */
+function FieldCell({
+  memberId,
+  field,
+  value,
+}: {
+  memberId: string;
+  field: MemberField;
+  value: ReturnType<typeof typedFieldValue>;
+}) {
+  // Même libellé pour toute valeur absente, quel que soit le type de cellule.
+  const common = {
+    id: memberId,
+    field: field.key,
+    label: field.label,
+    action: setMemberField,
+    emptyLabel: t("memberProfile.fieldEmpty"),
+  };
+  switch (field.type) {
+    case "text":
+      return (
+        <EditableCell
+          {...common}
+          kind="text"
+          value={typeof value === "string" ? value : ""}
+          maxLength={TEXT_MAX}
+          clearable
+        />
+      );
+    case "number":
+      return (
+        <EditableCell
+          {...common}
+          kind="number"
+          value={typeof value === "number" ? value : null}
+          min={NUMBER_BOUNDS.min}
+          max={NUMBER_BOUNDS.max}
+          decimals={NUMBER_BOUNDS.decimals}
+          clearable
+        />
+      );
+    case "date":
+      return (
+        <EditableCell
+          {...common}
+          kind="date"
+          value={typeof value === "string" ? value : null}
+          clearable
+        />
+      );
+    case "boolean":
+      // Absent vaut faux : seules les valeurs vrai / faux sont enregistrées.
+      return <EditableCell {...common} kind="switch" value={value === true} />;
+    case "select":
+      return (
+        <EditableCell
+          {...common}
+          kind="select"
+          value={typeof value === "string" ? value : null}
+          options={field.options}
+          clearable
+        />
+      );
+    case "multi_select":
+      return (
+        <EditableCell
+          {...common}
+          kind="multi"
+          value={Array.isArray(value) ? value : []}
+          options={field.options}
+        />
+      );
+  }
 }

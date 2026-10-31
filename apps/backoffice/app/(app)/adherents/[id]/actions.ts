@@ -1,9 +1,10 @@
 "use server";
 
-import { normalizeTags } from "@salle/shared";
+import { FIELD_KEY_PATTERN, normalizeTags } from "@salle/shared";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import type { Json } from "@salle/supabase";
 import type { CellValue } from "@/components/inline/editable-cell";
 import { type ActionResult, fail, ok } from "@/lib/action-result";
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
@@ -139,6 +140,37 @@ export async function updateMemberField(input: {
     .update(changes)
     .eq("id", id.data)
     .eq("gym_id", context.gym.id);
+  refresh();
+  return error ? { error: errorMessageKey(error) } : { error: null, message: "common.saved" };
+}
+
+/** Valeur saisie dans une cellule : vide ("" / [] / null) = aucune valeur (ligne supprimée). */
+function fieldPayload(value: CellValue): Json {
+  if (value === null || value === "") return null;
+  if (Array.isArray(value)) return value.length ? value : null;
+  return value;
+}
+
+/**
+ * Champ personnalisé modifié sur place (carte « Informations ») : la fonction SQL
+ * set_member_field valide la valeur selon le type du champ et le droit de l'accueil
+ * (staff_can_edit) ; une valeur vide supprime la ligne.
+ */
+export async function setMemberField(input: {
+  id: string;
+  field: string;
+  value: CellValue;
+}): Promise<{ error: MessageKey | null; message?: MessageKey }> {
+  await requireRole(isFrontDeskRole);
+  const id = z.guid().safeParse(input.id);
+  const key = z.string().regex(FIELD_KEY_PATTERN).safeParse(input.field);
+  if (!id.success || !key.success) return { error: "common.unexpectedError" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_member_field", {
+    p_member_id: id.data,
+    p_key: key.data,
+    p_value: fieldPayload(input.value),
+  });
   refresh();
   return error ? { error: errorMessageKey(error) } : { error: null, message: "common.saved" };
 }

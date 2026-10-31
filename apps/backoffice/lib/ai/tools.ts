@@ -290,7 +290,7 @@ export const assistantTools: AgentTool<ToolContext>[] = [
   defineTool({
     name: "count_segment",
     description:
-      "Compte les adhérents correspondant à des filtres de segment (statuses, tags, inactive_days, discipline_id, max_credits, joined_since, birthday_month, email_consent) et donne un échantillon.",
+      "Compte les adhérents correspondant à des filtres de segment (statuses, tags, inactive_days, discipline_id, max_credits, joined_since, birthday_month, email_consent, fields : conditions sur les champs personnalisés [{ key, op, value }]) et donne un échantillon.",
     schema: z.object({ filters: segmentFiltersSchema }),
     step: t("assistant.steps.segment"),
     async run(ctx, input) {
@@ -466,7 +466,8 @@ export const assistantTools: AgentTool<ToolContext>[] = [
 
   defineTool({
     name: "propose_segment",
-    description: "Prépare la création d'un segment enregistré, affichée au gérant pour validation.",
+    description:
+      "Prépare la création d'un segment enregistré (mêmes filtres que count_segment, dont fields : conditions sur les champs personnalisés [{ key, op, value }]), affichée au gérant pour validation.",
     schema: z.object({ name: z.string().trim().min(1).max(80), filters: segmentFiltersSchema }),
     step: t("assistant.steps.proposal"),
     proposes: true,

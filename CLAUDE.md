@@ -410,7 +410,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   jamais redéfinis ; police Inter par `next/font/google` ; appui `scale(0.96)`) et skill
   **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en
   page. Icônes **Phosphor** (`@phosphor-icons/react/ssr`, noms en `…Icon`), toutes au trait (jamais
-  `weight`), `aria-hidden`, pastille commune `IconChip` ; courbe `ease-base` (`app/globals.css`).
+  `weight`), `aria-hidden`, tuile commune `IconChip` (fond carte, `shadow-border`, icône couleur du
+  texte, `sm` / `md` ; l'orange reste aux accents) ; courbe `ease-base` (`app/globals.css`).
   Fond : un seul quadrillage `bg-grid` sur `body` (motif SVG de 48 px, traits à 4 %, pas de
   dégradé), continu au défilement, sans bandes de fond par section ; éclat en pixels `PixelSpark`
   sur l'angle de la capture du hero. Haut des fonctionnalités : décor `Orbits` (arcs, logos Gmail,
@@ -433,7 +434,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   premier (pastille « Nouveauté », texte, trois points à icône, échange animé), puis `FeatureRow` (`benefits.tsx`) : étiquette à
   point, titre court, une phrase, et deux cartes (`card1` / `card2`, pastille « Fait », réglage ou
   action) posées sur la capture côté texte dès `lg`, dessous sur mobile, apparues l'une après
-  l'autre.
+  l'autre. Chaque titre de fonctionnalité finit par un point orange (`TitleDot`).
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
   décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés.

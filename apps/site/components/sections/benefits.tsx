@@ -117,6 +117,11 @@ export function Benefits() {
   );
 }
 
+/** Point orange qui clôt chaque titre de fonctionnalité. */
+function TitleDot() {
+  return <span className="text-primary">.</span>;
+}
+
 /** L'assistant : pastille « Nouveauté », texte, trois points et l'échange animé. */
 function AssistantRow() {
   return (
@@ -137,14 +142,13 @@ function AssistantRow() {
           className="mt-4 text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
         >
           {t("benefits.assistant.title")}
+          <TitleDot />
         </h3>
         <p className="mt-4 text-lg text-muted-foreground">{t("benefits.assistant.body")}</p>
         <ul className="mt-6 space-y-3">
-          {ASSISTANT_POINTS.map(({ key, icon: Icon }) => (
+          {ASSISTANT_POINTS.map(({ key, icon }) => (
             <li key={key} className="flex items-start gap-3 text-base">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
-                <Icon aria-hidden="true" className="size-4" />
-              </span>
+              <IconChip icon={icon} size="sm" />
               <span className="pt-1">{t(`benefits.assistant.${key}`)}</span>
             </li>
           ))}
@@ -181,6 +185,7 @@ function FeatureRow({ feature, flipped }: { feature: Feature; flipped: boolean }
           className="mt-4 text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
         >
           {t(`benefits.${key}.title`)}
+          <TitleDot />
         </h3>
         <p className="mt-4 text-lg text-pretty text-muted-foreground">
           {t(`benefits.${key}.body`)}

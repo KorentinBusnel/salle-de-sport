@@ -112,6 +112,10 @@ export const fr = {
     legalNotice: "Mentions légales",
     copyright: "© {year} {brand}",
   },
+  notify: {
+    subject: "Nouvelle demande de démo : {email}",
+    body: "{email} a demandé une démo sur le site {brand}, le {date}.\n\nRépondez à cet email pour lui écrire.",
+  },
   legal: {
     back: "Retour à l'accueil",
     toComplete: "à compléter",
@@ -147,7 +151,7 @@ export const fr = {
         "Votre email sert uniquement à vous recontacter pour organiser une démonstration. Le traitement repose sur votre demande, avant tout contrat.",
       recipientsTitle: "Destinataires",
       recipients:
-        "Seule l'équipe {brand} y a accès. Elles sont hébergées par nos prestataires techniques, Supabase (base de données) et Vercel (site), qui agissent pour notre compte.",
+        "Seule l'équipe {brand} y a accès. Elles sont hébergées par nos prestataires techniques, Supabase (base de données) et Vercel (site), et Resend envoie à l'équipe l'alerte de chaque demande ; tous agissent pour notre compte.",
       retentionTitle: "Durée de conservation",
       retention: "Une demande restée sans suite est effacée trois ans après le dernier échange.",
       cookiesTitle: "Cookies",

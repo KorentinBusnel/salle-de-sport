@@ -178,7 +178,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (Checkout « setup »), `mp_close_campaign` (débits hors session, `idempotencyKey` par commande),
   `billing/marketplace.ts`.
 - **Demandes du site** (`demo_requests`, globale comme le catalogue) : déposées **uniquement via**
-  `request_demo(p_kind, p_email, …)`, **seule fonction ouverte à `anon`** ; type `kind` : `demo`
+  `request_demo(p_kind, p_email, …)` (renvoie `true` si la demande est enregistrée, `false` pour un
+  doublon du jour), **seule fonction ouverte à `anon`** ; type `kind` : `demo`
   (email seul, champ du hero, seul type envoyé par le site), `trial` (essai : nom, salle, ville et
   taille exigés) et `contact` (question : nom, salle, message exigés), gardés valides pour l'ancien
   formulaire (contrainte `demo_requests_named_check`) ; doublon du jour par email et type ignoré,
@@ -227,7 +228,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 
 - **Aucun secret côté client.** Seules les variables `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*` (URL et
   clé anon, filtrées par la RLS) atteignent le navigateur ou l'app. Clés Stripe, Anthropic, Meta,
-  Google, Pennylane, `service_role` : Edge Functions ou code serveur Next.js uniquement.
+  Google, Pennylane, Resend, `service_role` : Edge Functions ou code serveur Next.js uniquement.
 - Toute variable lue dans le code est documentée dans **`.env.example`** (racine) ; `pnpm env:check`
   le vérifie, en CI aussi.
 - Les valeurs réelles vont dans la configuration de l'environnement (session cloud, Vercel, EAS,
@@ -397,7 +398,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), promesse « Sans
   engagement » et lien Confidentialité ; merci sur place. Server Action `requestDemo`
   (`app/actions.ts` : `demoEmailSchema`, champ piège, délai minimal, puis `request_demo` type
-  `demo` par `anonClient()`, `lib/supabase.server.ts`) ; fonctionne sans JavaScript. Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
+  `demo` par `anonClient()`, `lib/supabase.server.ts`) ; fonctionne sans JavaScript. Alerte email
+  de l'équipe pour chaque nouvelle demande (pas pour un doublon) : `after()` puis
+  `notifyDemoRequest` (`lib/notify.server.ts`, API Resend par `fetch`, message et envoi testés dans
+  `lib/demo-notification.ts`) ; sans `RESEND_API_KEY` / `DEMO_NOTIFY_EMAIL`, rien n'est envoyé. Liens vers une ancre de la page : `<a>` natif (`ButtonLink`), car
   `next/link` ne déclenche pas `hashchange`. Compteur de salles du hero : `getGymCount()`
   (lecture anonyme de `gyms`), affiché à partir de `GYM_COUNT_MIN` (10) ; page statique relue
   toutes les heures (`revalidate = 3600`, cache de `fetch`). Indexée seulement quand

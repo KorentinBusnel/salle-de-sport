@@ -186,6 +186,19 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`set_demo_request`, statut `onboarded` = accès ouvert, onglet Plateforme › Demandes, l'email en
   titre pour une démo) ; purge à 3 ans (`demo-requests-purge`). Schéma `demoEmailSchema`
   (`packages/shared/src/demo.ts`).
+- **Champs personnalisés** des adhérents : définitions `member_fields` (par salle, équipe en
+  lecture ; `key` slug immuable, `type` texte / nombre / date / oui-non / liste / liste multiple,
+  `options` `[{ value, label, tone }]`, ≤ 30 champs actifs), valeurs `member_field_values` (une
+  ligne par adhérent et champ, lues par l'accueil, le gérant et les coachs de l'adhérent via
+  `private.coaches_member`, **jamais par l'adhérent**). Écriture **uniquement via**
+  `create_member_field`, `update_member_field` (une option retirée efface ses valeurs),
+  `delete_member_field`, `reorder_member_fields` (gérant, journalisés dans `audit_log`) et
+  `set_member_field(member, clé, valeur jsonb)` (accueil si `staff_can_edit` ; `null` supprime).
+  Filtres : clé `fields` de `segmentFiltersSchema`, évaluée par `private.member_field_match`
+  dans `filter_members` ; `search_members(…, p_filters)` renvoie `fields` (objet clé → valeur,
+  `{}` sans droit). Usage par champ : `member_field_usage`. Miroir TypeScript :
+  `packages/shared/src/fields.ts` (bornes, `fieldValueSchema`, `slugifyFieldKey`,
+  `FIELD_OPS_BY_TYPE`, `fieldToCellKind`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -275,10 +288,15 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`NewMenu`). Sections des Paramètres : `SETTINGS_SECTIONS` / `settingsHref`
   (`lib/settings-sections.ts`). `PageHeader`, `metadata` par page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
   (`isManagerRole`, `isFrontDeskRole`) dans `lib/auth-roles.ts` (testables, sans `server-only`).
-- Paramètres : une page à sections (`/parametres?onglet=salle|reservations|strategies|accueil|suivi|catalogue|equipe|integrations`,
+- Paramètres : une page à sections (`/parametres?onglet=salle|reservations|strategies|accueil|suivi|catalogue|champs|offres|equipe|integrations`,
   navigation verticale `SettingsNav` avec une phrase d'aide) ; une nouvelle section de réglages y
   devient une section, pas une entrée de menu. Configuration lue par `getGymConfig`
   (`lib/settings.ts` : identité, logo, règles, réglages internes, horaires), mémorisée par requête.
+- Champs personnalisés : section Paramètres › Champs (`FieldsSection`, dialogue `NewFieldDialog`,
+  options `FieldOptions`, ordre `FieldOrder`, actions `champs-actions.ts`) ; fiche adhérent, carte
+  « Informations » de l'onglet Profil (`EditableCell` du `kind` donné par `fieldToCellKind`, action
+  `setMemberField`) ; rendu en lecture seule `FieldValue` (`components/members/field-value.tsx`).
+  Options de `Combobox` / `EditableCell` : `tone` (pastille `StatusPill`) plutôt qu'une couleur brute.
 - **Kit de champs** (Watermelon recomposé sur Radix, jamais installé depuis son registre) :
   `components/forms/` — `Combobox` (simple ou multiple, groupes, pastille ou avatar, « Créer »,
   recherche sans accents), `DateField` / `DateRangeField` (raccourcis `dateRangePreset`) /

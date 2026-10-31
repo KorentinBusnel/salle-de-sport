@@ -24,7 +24,7 @@ export function SiteFooter({ year }: { year: number }) {
     <footer className="border-t border-border">
       <div className={`${CONTAINER} grid grid-cols-2 gap-10 py-12 sm:grid-cols-4`}>
         <div className="col-span-2">
-          <Link href="/" className="flex w-fit items-center gap-2 text-base font-semibold">
+          <Link href="/" className="flex min-h-10 w-fit items-center gap-2 text-base font-semibold">
             <ChalkMark className="size-7" />
             {BRAND.name}
           </Link>

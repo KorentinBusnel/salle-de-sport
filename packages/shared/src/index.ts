@@ -11,3 +11,4 @@ export * from "./settings.ts";
 export * from "./billing.ts";
 export * from "./marketplace.ts";
 export * from "./demo.ts";
+export * from "./fields.ts";

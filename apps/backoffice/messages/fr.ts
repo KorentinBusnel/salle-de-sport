@@ -2076,6 +2076,11 @@ export const fr = {
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",
     too_many_requests: "Trop de demandes en peu de temps. Réessayez dans une heure.",
     demo_request_not_found: "Demande de démo introuvable.",
+    too_many_fields:
+      "La salle a déjà 30 champs actifs : désactivez ou supprimez un champ avant d'en créer un autre.",
+    unknown_field: "Ce champ n'existe pas ou n'est plus actif.",
+    field_not_found: "Champ introuvable.",
+    invalid_field_value: "Valeur refusée pour ce champ (type, bornes ou option inconnue).",
   },
   roles: {
     member: "Adhérent",

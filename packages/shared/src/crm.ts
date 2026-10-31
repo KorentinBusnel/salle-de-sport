@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { fieldConditionSchema, MAX_FIELD_CONDITIONS } from "./fields.ts";
 
 /**
  * Filtres d'un segment (segments.filters), combinés en ET. Miroir de la fonction SQL
- * public.filter_members : une clé absente n'applique aucun filtre.
+ * public.filter_members : une clé absente n'applique aucun filtre. `fields` : conditions sur
+ * les champs personnalisés (`private.member_field_match`), elles aussi combinées en ET.
  */
 export const segmentFiltersSchema = z
   .object({
@@ -14,17 +16,31 @@ export const segmentFiltersSchema = z
     joined_since: z.iso.date(),
     birthday_month: z.literal(true),
     email_consent: z.literal(true),
+    fields: z.array(fieldConditionSchema).max(MAX_FIELD_CONDITIONS),
   })
   .partial()
   .strict();
 
 export type SegmentFilters = z.infer<typeof segmentFiltersSchema>;
 
-/** Lit des filtres enregistrés : les clés invalides sont ignorées plutôt que de tout rejeter. */
+/**
+ * Lit des filtres enregistrés : les clés invalides sont ignorées plutôt que de tout rejeter ;
+ * dans `fields`, seules les conditions invalides sont écartées.
+ */
 export function parseSegmentFilters(raw: unknown): SegmentFilters {
   const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const filters: SegmentFilters = {};
   for (const key of Object.keys(segmentFiltersSchema.shape) as (keyof SegmentFilters)[]) {
+    if (key === "fields") {
+      const conditions = Array.isArray(source.fields)
+        ? source.fields.flatMap((entry) => {
+            const parsed = fieldConditionSchema.safeParse(entry);
+            return parsed.success ? [parsed.data] : [];
+          })
+        : [];
+      if (conditions.length) filters.fields = conditions.slice(0, MAX_FIELD_CONDITIONS);
+      continue;
+    }
     const parsed = segmentFiltersSchema.shape[key].safeParse(source[key]);
     if (parsed.success && parsed.data !== undefined) Object.assign(filters, { [key]: parsed.data });
   }

@@ -118,6 +118,11 @@ export const BOOKING_ERROR_CODES = [
   // Demandes de démo du site vitrine
   "too_many_requests",
   "demo_request_not_found",
+  // Champs personnalisés des adhérents
+  "too_many_fields",
+  "unknown_field",
+  "field_not_found",
+  "invalid_field_value",
 ] as const;
 
 export type BookingErrorCode = (typeof BOOKING_ERROR_CODES)[number];

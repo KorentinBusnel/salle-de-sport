@@ -1,12 +1,14 @@
 import {
   CalculatorIcon,
   ChartLineUpIcon,
-  CheckIcon,
   CopyIcon,
   CreditCardIcon,
   FirstAidIcon,
   HandCoinsIcon,
+  LockSimpleIcon,
+  ShieldCheckIcon,
   SparkleIcon,
+  SunHorizonIcon,
   TargetIcon,
   TimerIcon,
 } from "@phosphor-icons/react/ssr";
@@ -72,6 +74,13 @@ const FEATURE_ROWS: Feature[] = [
   },
 ];
 
+// Points de l'assistant : une icône par promesse (validation, brief du matin, notes protégées).
+const ASSISTANT_POINTS = [
+  { key: "point1", icon: ShieldCheckIcon },
+  { key: "point2", icon: SunHorizonIcon },
+  { key: "point3", icon: LockSimpleIcon },
+] as const;
+
 const TONE_CLASSES: Record<CardTone, string> = {
   success: "rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success",
   brand: "rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground",
@@ -108,7 +117,7 @@ export function Benefits() {
   );
 }
 
-/** L'assistant : texte, trois points et l'échange animé. */
+/** L'assistant : pastille « Nouveauté », texte, trois points et l'échange animé. */
 function AssistantRow() {
   return (
     <article
@@ -117,19 +126,26 @@ function AssistantRow() {
       className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16"
     >
       <Reveal className="lg:col-span-2">
-        <IconChip icon={SparkleIcon} />
+        <p className="inline-flex items-center gap-2 rounded-full bg-accent py-1 pr-3 pl-1 text-sm font-medium text-accent-foreground">
+          <span className="flex size-6 items-center justify-center rounded-full bg-card text-primary shadow-border">
+            <SparkleIcon aria-hidden="true" className="size-4" />
+          </span>
+          {t("benefits.assistant.badge")}
+        </p>
         <h3
           id={`${FEATURES.assistant}-titre`}
-          className="mt-6 text-2xl font-semibold tracking-tight sm:text-3xl"
+          className="mt-4 text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
         >
           {t("benefits.assistant.title")}
         </h3>
         <p className="mt-4 text-lg text-muted-foreground">{t("benefits.assistant.body")}</p>
         <ul className="mt-6 space-y-3">
-          {(["point1", "point2", "point3"] as const).map((point) => (
-            <li key={point} className="flex gap-3 text-base">
-              <CheckIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
-              {t(`benefits.assistant.${point}`)}
+          {ASSISTANT_POINTS.map(({ key, icon: Icon }) => (
+            <li key={key} className="flex items-start gap-3 text-base">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
+                <Icon aria-hidden="true" className="size-4" />
+              </span>
+              <span className="pt-1">{t(`benefits.assistant.${key}`)}</span>
             </li>
           ))}
         </ul>

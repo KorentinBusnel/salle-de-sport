@@ -430,7 +430,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   section dont le haut a passé la ligne de lecture), utilisé par la barre (`SiteNav`, liens à
   partir de `lg`, menu mobile ; entrées à venir `soon` : « Marketplace » avec la pastille
   « Bientôt », sans lien). Fonctionnalités en rangées alternées (ancres `FEATURES`) : l'IA en
-  premier (texte, trois points, échange animé), puis `FeatureRow` (`benefits.tsx`) : étiquette à
+  premier (pastille « Nouveauté », texte, trois points à icône, échange animé), puis `FeatureRow` (`benefits.tsx`) : étiquette à
   point, titre court, une phrase, et deux cartes (`card1` / `card2`, pastille « Fait », réglage ou
   action) posées sur la capture côté texte dès `lg`, dessous sur mobile, apparues l'une après
   l'autre.

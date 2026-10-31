@@ -94,6 +94,7 @@ export const fr = {
       alt: "Heures réalisées par coach sur le mois, avec le montant à facturer.",
     },
     assistant: {
+      badge: "Nouveauté",
       title: "L'IA qui connaît votre salle",
       body: "Demandez « Qui décroche en ce moment ? ». En quelques secondes, l'IA vous montre les adhérents concernés et prépare la relance.",
       point1: "Vous validez, elle envoie. Jamais l'inverse.",

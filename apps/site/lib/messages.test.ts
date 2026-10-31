@@ -44,7 +44,7 @@ describe("catalogue du site", () => {
 
 describe("t()", () => {
   it("remplit le nom du produit et pose les espaces insécables", () => {
-    expect(t("hero.backofficeAlt")).toMatch(/^Page Aujourd'hui du back office Chalk\u00a0: /);
+    expect(t("hero.backofficeAlt")).toMatch(/^Page Aujourd'hui du back office Chalq\u00a0: /);
     expect(frenchSpacing("« Tous présents » : oui")).toBe("«\u00a0Tous présents\u00a0»\u00a0: oui");
   });
 });

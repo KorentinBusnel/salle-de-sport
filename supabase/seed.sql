@@ -734,7 +734,7 @@ from (values
   ('1', 'trial', 'Inès Moreau', 'Box Garonne', 'ines.moreau@box-garonne.example', '06 12 48 73 05', 'Toulouse', '100_to_300', 'Bsport',
     'Deux créneaux Hyrox le samedi, on veut sortir des relances WhatsApp.', 'new', null, interval '3 hours'),
   ('2', 'contact', 'Julien Ferrand', 'Atelier 41 Yoga', 'julien@atelier41.example', null, 'Nantes', null, 'Tableur',
-    'Cours de yoga à la carte et ateliers du dimanche : c''est gérable dans Chalk ?', 'new', null, interval '1 day 2 hours'),
+    'Cours de yoga à la carte et ateliers du dimanche : c''est gérable dans Chalq ?', 'new', null, interval '1 day 2 hours'),
   ('3', 'demo', 'Camille Rousset', 'Rousset Training Club', 'camille.rousset@rtc.example', '07 81 26 39 14', 'Annecy', '300_to_600', 'Deciplus',
     'Trois salles, un seul planning souhaité.', 'contacted', 'Rappel mardi 10 h, intéressée par les achats groupés.', interval '4 days'),
   ('4', 'trial', 'Mehdi Chaouch', 'Run Factory', 'mehdi@runfactory.example', '06 54 17 92 38', 'Lille', '100_to_300', null,

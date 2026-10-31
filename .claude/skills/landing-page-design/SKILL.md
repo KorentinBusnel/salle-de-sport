@@ -1,6 +1,6 @@
 ---
 name: landing-page-design
-description: "Complete system for building high converting landing pages: intake questions, page structure, layout selection, conversion copywriting, SEO, plus strict visual rules for typography, spacing, corner radius, backgrounds, hero layout, icons, and motion. In this repository, use it ONLY for the public marketing site in apps/site (the Chalk landing page): building, editing, styling, reviewing, or writing copy for it. Never apply it to apps/backoffice or apps/mobile, which follow CLAUDE.md and make-interfaces-feel-better."
+description: "Complete system for building high converting landing pages: intake questions, page structure, layout selection, conversion copywriting, SEO, plus strict visual rules for typography, spacing, corner radius, backgrounds, hero layout, icons, and motion. In this repository, use it ONLY for the public marketing site in apps/site (the Chalq landing page): building, editing, styling, reviewing, or writing copy for it. Never apply it to apps/backoffice or apps/mobile, which follow CLAUDE.md and make-interfaces-feel-better."
 ---
 
 <!--

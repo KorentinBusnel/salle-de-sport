@@ -1,5 +1,5 @@
 /** Nom du produit (provisoire, BRIEF §11) : un seul endroit à changer. */
-export const BRAND = { name: "Chalk" } as const;
+export const BRAND = { name: "Chalq" } as const;
 
 /**
  * Mentions légales (LCEN, art. 6) : à compléter avant la mise en ligne ; le site n'est indexé

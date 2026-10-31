@@ -3,8 +3,8 @@ import { demoNotification, sendDemoNotification } from "./demo-notification";
 
 const config = {
   apiKey: "re_test",
-  to: "equipe@chalk.test",
-  from: "Chalk <onboarding@resend.dev>",
+  to: "equipe@chalq.test",
+  from: "Chalq <onboarding@resend.dev>",
 };
 // 31 octobre 2026, 14 h 06 UTC : 15 h 06 à Paris (heure d'hiver).
 const at = new Date("2026-10-31T14:06:00Z");
@@ -13,7 +13,7 @@ describe("demoNotification", () => {
   it("objet, texte à l'heure de Paris et réponse au demandeur", () => {
     const message = demoNotification("lea@studio-nord.fr", at);
     expect(message.subject).toBe("Nouvelle demande de démo\u00a0: lea@studio-nord.fr");
-    expect(message.text).toContain("lea@studio-nord.fr a demandé une démo sur le site Chalk");
+    expect(message.text).toContain("lea@studio-nord.fr a demandé une démo sur le site Chalq");
     expect(message.text).toContain("31 octobre 2026");
     expect(message.text).toContain("15:06");
     expect(message.text).toContain("Répondez à cet email pour lui écrire.");
@@ -32,8 +32,8 @@ describe("sendDemoNotification", () => {
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer re_test");
     expect(JSON.parse(init.body as string)).toEqual({
-      from: "Chalk <onboarding@resend.dev>",
-      to: ["equipe@chalk.test"],
+      from: "Chalq <onboarding@resend.dev>",
+      to: ["equipe@chalq.test"],
       subject: message.subject,
       text: message.text,
       reply_to: "lea@studio-nord.fr",

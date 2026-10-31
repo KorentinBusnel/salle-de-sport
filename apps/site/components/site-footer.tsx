@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChalkMark } from "@/components/chalk-mark";
+import { BrandMark } from "@/components/brand-mark";
 import { CONTAINER } from "@/components/section-heading";
 import { t, type MessageKey } from "@/lib/i18n";
 import { BRAND, SECTIONS } from "@/lib/site";
@@ -25,7 +25,7 @@ export function SiteFooter({ year }: { year: number }) {
       <div className={`${CONTAINER} grid grid-cols-2 gap-10 py-12 sm:grid-cols-4`}>
         <div className="col-span-2">
           <Link href="/" className="flex min-h-10 w-fit items-center gap-2 text-base font-semibold">
-            <ChalkMark className="size-7" />
+            <BrandMark className="size-7" />
             {BRAND.name}
           </Link>
           <p className="mt-4 max-w-xs text-sm text-muted-foreground">{t("footer.tagline")}</p>

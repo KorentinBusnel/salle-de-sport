@@ -17,7 +17,7 @@ Conventions de code et de travail pour ce dépôt. Le cahier des charges est `BR
 ```
 apps/backoffice     Next.js 16 (App Router) + Tailwind v4 + shadcn/ui — équipe de la salle
 apps/mobile         Expo SDK 57 + Expo Router + NativeWind 4 — adhérents
-apps/site           Next.js 16 + Tailwind v4 — site vitrine « Chalk » pour les gérants d'autres salles
+apps/site           Next.js 16 + Tailwind v4 — site vitrine « Chalq » pour les gérants d'autres salles
 packages/shared     règles métier, schémas Zod, dates, i18n — TypeScript pur
 packages/supabase   types générés + type du client
 packages/ui         tokens de design (tokens.ts) et thème Tailwind v4 (theme.css)

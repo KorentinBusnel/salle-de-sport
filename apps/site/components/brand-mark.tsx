@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /** Marque du produit : un « C » tracé à la craie sur un carré orange. Même dessin que app/icon.svg. */
-export function ChalkMark({ className }: { className?: string }) {
+export function BrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true" className={cn("size-8 shrink-0", className)}>
       <rect width="32" height="32" rx="8" className="fill-primary" />

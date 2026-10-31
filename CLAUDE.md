@@ -406,6 +406,15 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (lecture anonyme de `gyms`), affiché à partir de `GYM_COUNT_MIN` (10) ; page statique relue
   toutes les heures (`revalidate = 3600`, cache de `fetch`). Indexée seulement quand
   `VERCEL_ENV=production` (`robots`, `metadata.robots`).
+- **SEO et assistants IA** : adresse du site `SITE_URL` (`lib/env.ts`, `resolveSiteUrl` :
+  `NEXT_PUBLIC_SITE_URL`, sinon `VERCEL_PROJECT_PRODUCTION_URL` en production, sinon `VERCEL_URL`,
+  sinon localhost), base des balises, du sitemap et de `/llms.txt`. Production : `robots.txt` tout
+  ouvert (robots des assistants IA compris), `googleBot` avec grande image et extrait complet,
+  canonique par page, données structurées schema.org sur l'accueil (`Organization`, `WebSite`,
+  `SoftwareApplication`, sans prix ni note), `/llms.txt` (`lib/llms.ts`, `app/llms.txt/route.ts`,
+  format llmstxt.org). Données structurées et llms.txt ne décrivent que ce que le produit fait
+  déjà (`meta.feature*`). Pages légales en `noindex`, hors sitemap et llms.txt tant que
+  `LEGAL_COMPLETE` est faux. Icônes : `icon.svg`, `favicon.ico`, `apple-icon.png` (`app/`).
 - Design : **design system du produit** (couleurs, rayons et ombres de `@salle/ui/theme.css`,
   jamais redéfinis ; police Inter par `next/font/google` ; appui `scale(0.96)`) et skill
   **`.claude/skills/landing-page-design`** (elayadesign, MIT, réservé à ce site) pour la mise en

@@ -43,6 +43,12 @@ export const LEGAL: Record<
   hostPhone: null,
 };
 
+/**
+ * Mentions légales toutes renseignées (aucune valeur `null`). D'ici là, les pages légales ne sont
+ * ni indexées ni listées dans le sitemap et llms.txt : elles afficheraient « à compléter ».
+ */
+export const LEGAL_COMPLETE = Object.values(LEGAL).every((value) => value !== null);
+
 /** Le compteur de salles du hero n'apparaît qu'à partir de ce nombre (BRIEF §12, 2026-10-30). */
 export const GYM_COUNT_MIN = 10;
 

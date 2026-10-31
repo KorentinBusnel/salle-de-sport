@@ -94,11 +94,11 @@ export const fr = {
       alt: "Heures réalisées par coach sur le mois, avec le montant à facturer.",
     },
     assistant: {
-      title: "Vos questions, répondues en une phrase",
-      body: "Demandez « Qui n'est pas venu depuis trois semaines ? » : l'assistant lit vos données avec vos droits, répond avec les fiches concernées et prépare la relance.",
-      point1: "Rien ne part sans votre validation.",
-      point2: "Un brief du jour : opérations, clients et finances.",
-      point3: "Les notes « à savoir » ne lui sont jamais transmises.",
+      title: "L'IA qui connaît votre salle",
+      body: "Demandez « Qui décroche en ce moment ? ». En quelques secondes, l'IA vous montre les adhérents concernés et prépare la relance.",
+      point1: "Vous validez, elle envoie. Jamais l'inverse.",
+      point2: "Chaque matin, votre journée résumée en un coup d'œil.",
+      point3: "Les notes sensibles restent entre vous et vos coachs.",
     },
   },
   assistantDemo: {

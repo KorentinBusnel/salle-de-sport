@@ -4,9 +4,37 @@
 // phrase seulement. {brand} est rempli par t() avec le nom de lib/site.ts.
 export const fr = {
   meta: {
-    title: "{brand} · La gestion de salle de sport avec l'IA native",
+    title: "{brand} · Logiciel de gestion de salle de sport, IA native",
     description:
-      "Planning, réservations, paiements et relation adhérent pour toutes les salles et toutes les activités, avec un assistant IA qui prépare le travail. Demandez une démo.",
+      "Planning, réservations, paiements et suivi des adhérents pour toutes les salles et activités, avec un assistant IA qui prépare le travail. Demandez une démo.",
+    // Données structurées (schema.org) et llms.txt : ce que le produit fait déjà, rien d'autre.
+    category: "Logiciel de gestion de salle de sport",
+    feature1: "Assistant IA qui répond sur les données de la salle et prépare les relances",
+    feature2: "Planning, réservations en ligne et liste d'attente automatique",
+    feature3: "Paiements par carte et prélèvement SEPA, carnets de séances, relance des impayés",
+    feature4: "Fiche adhérent : présences, abonnement, crédits et note « à savoir »",
+    feature5: "Heures des coachs calculées et exportées",
+    feature6: "App pour les adhérents : places en direct, réservation et paiement",
+  },
+  // Fichier /llms.txt (llmstxt.org) : présentation lisible par les assistants IA.
+  llms: {
+    summary:
+      "{brand} est un logiciel de gestion de salle de sport avec un assistant IA intégré : planning, réservations, paiements et relation adhérent, pour toutes les salles et toutes les activités (CrossFit, Hyrox, yoga, fitness, run club…).",
+    details:
+      "{brand} réunit un back office pour l'équipe de la salle (gérant, accueil, coachs) et une app pour les adhérents, sur une seule base de données. L'assistant lit les données avec les droits de la personne connectée et ne fait rien partir sans sa validation. Le site est en français, pour les salles en France.",
+    featuresTitle: "Fonctionnalités",
+    pagesTitle: "Pages",
+    home: "Accueil",
+    homeDescription: "présentation du produit et demande de démo",
+    features: "Fonctionnalités",
+    featuresDescription: "assistant IA, planning, adhérents, encaissement et coachs",
+    privacy: "Confidentialité",
+    privacyDescription: "données collectées par le site et droits des personnes",
+    legalNotice: "Mentions légales",
+    legalNoticeDescription: "éditeur et hébergeur du site",
+    contactTitle: "Contact",
+    contact:
+      "Pour une démo, saisir son email dans le champ « Demander une démo » de la page d'accueil. Le tarif est donné pendant la démo.",
   },
   nav: {
     label: "Navigation principale",

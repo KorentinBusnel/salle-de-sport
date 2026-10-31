@@ -3512,7 +3512,7 @@ export type Database = {
           p_message?: string;
           p_phone?: string;
         };
-        Returns: undefined;
+        Returns: boolean;
       };
       reset_attendance: {
         Args: { p_booking_id: string };

@@ -420,8 +420,16 @@ const PALETTE = [
   "#9333ea",
 ] as const;
 
-function numberText(money: boolean | undefined, value: CellValue): string {
-  return money ? formatMoney(Math.round(Number(value) * 100)) : String(value);
+/** Nombre affiché : montant formaté, sinon décimales à la française (« 72,5 »), sans séparateur de milliers. */
+function numberText(
+  props: { money?: boolean | undefined; decimals?: number | undefined },
+  value: CellValue,
+): string {
+  if (props.money) return formatMoney(Math.round(Number(value) * 100));
+  return new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: props.decimals ?? 0,
+    useGrouping: false,
+  }).format(Number(value));
 }
 
 /** Valeur lue par les lecteurs d'écran (nom accessible de la cellule). */
@@ -439,7 +447,7 @@ function textValue(props: Props, value: CellValue): string {
     case "number":
       if (value === null) return "";
       if (props.zeroLabel && Number(value) === 0) return props.zeroLabel;
-      return `${numberText(props.money, value)}${props.unit ? ` ${props.unit}` : ""}`;
+      return `${numberText(props, value)}${props.unit ? ` ${props.unit}` : ""}`;
     default:
       return value === null ? "" : String(value);
   }
@@ -456,7 +464,7 @@ function renderValue(props: Props, value: CellValue): ReactNode {
         return <span className="text-muted-foreground">{props.zeroLabel}</span>;
       return (
         <span className="tabular-nums">
-          {numberText(props.money, value)}
+          {numberText(props, value)}
           {props.unit ? ` ${props.unit}` : ""}
         </span>
       );
@@ -548,7 +556,14 @@ function InlineInput({
   onCancel: (byKeyboard: boolean) => void;
   onCommit: (value: CellValue, byKeyboard: boolean) => void;
 }) {
-  const [text, setText] = useState(initial === null ? "" : String(initial));
+  // Saisie d'un nombre décimal à la française (la virgule est acceptée à la lecture).
+  const [text, setText] = useState(() =>
+    initial === null
+      ? ""
+      : props.kind === "number" && !props.money && typeof initial === "number"
+        ? String(initial).replace(".", ",")
+        : String(initial),
+  );
   const done = useRef(false);
 
   function finish(byKeyboard: boolean) {
@@ -556,10 +571,9 @@ function InlineInput({
     done.current = true;
     if (props.kind === "number") {
       const raw = text.replace(",", ".").trim();
-      if (raw === "") {
-        // Champ vidé : « aucune valeur » si la cellule l'autorise, sinon rien ne change.
-        if (props.clearable) onCommit(null, byKeyboard);
-        else onCancel(byKeyboard);
+      if (raw === "" && props.clearable) {
+        // Champ vidé : « aucune valeur » (les autres cellules gardent leur comportement : 0 ou bornes).
+        onCommit(null, byKeyboard);
         return;
       }
       const value = Number(raw);

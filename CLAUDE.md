@@ -192,7 +192,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   ligne par adhérent et champ, lues par l'accueil, le gérant et les coachs de l'adhérent via
   `private.coaches_member`, **jamais par l'adhérent**). Écriture **uniquement via**
   `create_member_field`, `update_member_field` (une option retirée efface ses valeurs),
-  `delete_member_field`, `reorder_member_fields` (gérant, journalisés dans `audit_log`) et
+  `delete_member_field` (gérant, journalisés dans `audit_log`), `reorder_member_fields` (gérant) et
   `set_member_field(member, clé, valeur jsonb)` (accueil si `staff_can_edit` ; `null` supprime).
   Filtres : clé `fields` de `segmentFiltersSchema`, évaluée par `private.member_field_match`
   dans `filter_members` ; `search_members(…, p_filters)` renvoie `fields` (objet clé → valeur,

@@ -260,7 +260,14 @@ select
   to_jsonb(s.first_name || ' ' || s.last_name),
   m.created_at, pg_temp.sid('u:staff:gerant')
 from seed_members m
-join seed_members s on s.n = 1 + ((m.n + floor(pg_temp.rnd('parrain', m.n::text) * 109)::int) % 110)
+-- Parrain choisi de façon stable parmi les adhérents actifs (jamais soi-même).
+join lateral (
+  select s.first_name, s.last_name
+  from seed_members s
+  where s.status = 'active' and s.n <> m.n
+  order by pg_temp.rnd('parrain', m.n::text, s.n::text)
+  limit 1
+) s on true
 where pg_temp.rnd('has-parrain', m.n::text) < 0.1;
 
 -- ---------------------------------------------------------------------------

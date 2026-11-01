@@ -7,11 +7,13 @@ import {
   fieldToCellKind,
   fieldValueSchema,
   MEMBER_FIELD_TYPES,
+  normalizeOptionLabels,
   optionLabel,
   parseFieldOptions,
   parseMemberField,
   slugifyFieldKey,
   slugifyOptionValue,
+  uniqueOptionValue,
 } from "./fields.ts";
 
 const options = [
@@ -33,6 +35,25 @@ describe("slugifyFieldKey", () => {
   it("une option peut commencer par un chiffre", () => {
     expect(slugifyOptionValue("3 fois par semaine")).toBe("3_fois_par_semaine");
     expect(slugifyOptionValue("Élite")).toBe("elite");
+  });
+});
+
+describe("options : libellés et valeurs", () => {
+  it("garde la casse, réduit les espaces, écarte vides et doublons sans casse ni accents", () => {
+    expect(
+      normalizeOptionLabels([" CrossFit ", "RDV  médecin", "", "crossfit", "Rdv medecin"]),
+    ).toEqual(["CrossFit", "RDV médecin"]);
+    expect(normalizeOptionLabels(["a".repeat(50)])[0]).toHaveLength(40);
+  });
+  it("valeur libre : slug, repli « option », suffixes sans dépasser 40 caractères", () => {
+    expect(uniqueOptionValue("Perte de poids", [])).toBe("perte_de_poids");
+    expect(uniqueOptionValue("Perte de poids", ["perte_de_poids"])).toBe("perte_de_poids_2");
+    expect(uniqueOptionValue("Perte de poids", ["perte_de_poids", "perte_de_poids_2"])).toBe(
+      "perte_de_poids_3",
+    );
+    expect(uniqueOptionValue("!!!", [])).toBe("option");
+    const long = "a".repeat(40);
+    expect(uniqueOptionValue(long, [long])).toBe(`${"a".repeat(38)}_2`);
   });
 });
 

@@ -976,6 +976,8 @@ export const fr = {
       "Champs définis par la salle (Paramètres › Champs). Cliquez sur une valeur pour la modifier ; une valeur effacée disparaît de la fiche.",
     noFields: "Aucun champ personnalisé pour l'instant.",
     fieldEmpty: "Non renseigné",
+    fieldsReadOnlyHint:
+      "Champs définis par la salle (Paramètres › Champs) ; votre rôle les consulte sans les modifier.",
     manageFields: "Définir des champs dans Paramètres › Champs",
     tags: "Tags",
     tagsHint: "Pour retrouver et cibler les adhérents ; « essai » place un prospect en essai.",
@@ -1330,7 +1332,6 @@ export const fr = {
     moveUp: "Monter : {name}",
     moveDown: "Descendre : {name}",
     reordered: "Ordre des champs enregistré.",
-    saved: "Champ enregistré.",
     delete: "Supprimer",
     deleteTitle: "Supprimer le champ « {name} » ?",
     deleteConfirm:
@@ -1347,6 +1348,9 @@ export const fr = {
     removeConfirm:
       "{count, plural, one {Cette option est choisie sur # fiche : la valeur sera effacée.} other {Cette option est choisie sur # fiches : la valeur sera effacée.}}",
     optionsSaved: "Options enregistrées.",
+    addOptionHint: "Entrée pour ajouter l'option.",
+    removeConfirmUnknown: "Si des fiches portent cette option, leur valeur sera effacée.",
+    deleteConfirmUnknown: "Les valeurs saisies pour ce champ seront perdues.",
     type: {
       text: "Texte",
       number: "Nombre",

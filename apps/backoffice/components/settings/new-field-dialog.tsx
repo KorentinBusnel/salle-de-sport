@@ -1,6 +1,12 @@
 "use client";
 
-import { LABEL_MAX, MAX_OPTIONS, MEMBER_FIELD_TYPES, isChoiceField } from "@salle/shared";
+import {
+  LABEL_MAX,
+  MAX_OPTIONS,
+  MEMBER_FIELD_TYPES,
+  isChoiceField,
+  normalizeOptionLabels,
+} from "@salle/shared";
 import type { MemberFieldType } from "@salle/shared";
 import { PlusIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -135,6 +141,8 @@ function NewFieldForm({ action, onCreated }: { action: NewFieldAction; onCreated
               name="options"
               defaultValue={values.options}
               max={MAX_OPTIONS}
+              // Libellés d'options : casse conservée (pas la normalisation des étiquettes).
+              normalize={normalizeOptionLabels}
               suggest={false}
               placeholder={t("fields.optionsPlaceholder")}
               invalid={Boolean(fieldErrors.options)}

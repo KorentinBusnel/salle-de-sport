@@ -41,13 +41,16 @@ export function FieldValue({
   field,
   value,
   timeZone,
+  emptyLabel,
 }: {
   field: FieldShape;
   value: unknown;
   timeZone: string;
+  /** Texte d'une valeur absente (« — » par défaut ; la fiche dit « Non renseigné »). */
+  emptyLabel?: string | undefined;
 }) {
   const typed = typedFieldValue(field, value);
-  const dash = <span className="text-muted-foreground">{t("common.none")}</span>;
+  const dash = <span className="text-muted-foreground">{emptyLabel ?? t("common.none")}</span>;
   if (typed === null) return dash;
   switch (field.type) {
     case "boolean":

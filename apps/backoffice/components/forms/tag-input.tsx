@@ -50,6 +50,7 @@ export function TagInput({
   defaultValue = [],
   onChange,
   max = 20,
+  normalize = normalizeTags,
   suggest = true,
   disabled,
   invalid,
@@ -64,6 +65,8 @@ export function TagInput({
   defaultValue?: string[] | undefined;
   onChange?: ((tags: string[]) => void) | undefined;
   max?: number | undefined;
+  /** Normalisation des saisies (étiquettes par défaut : minuscules, dédoublonnage). */
+  normalize?: ((tags: string[]) => string[]) | undefined;
   suggest?: boolean | undefined;
   disabled?: boolean | undefined;
   invalid?: boolean | undefined;
@@ -76,7 +79,7 @@ export function TagInput({
   const inputId = id ?? generatedId;
   const listId = `${inputId}-suggestions`;
   const hintId = `${inputId}-hint`;
-  const [inner, setInner] = useState(() => normalizeTags(defaultValue));
+  const [inner, setInner] = useState(() => normalize(defaultValue));
   const tags = value ?? inner;
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
@@ -85,7 +88,7 @@ export function TagInput({
   const full = tags.length >= max;
 
   function commit(next: string[]) {
-    const normalized = normalizeTags(next)
+    const normalized = normalize(next)
       .map((tag) => tag.slice(0, 40))
       .slice(0, max);
     setInner(normalized);
@@ -98,7 +101,7 @@ export function TagInput({
     setActive(0);
   }
 
-  const typed = normalizeTags([text])[0];
+  const typed = normalize([text])[0];
   const choices = suggestions.filter((s) => !tags.includes(s.tag));
   // Première proposition : créer l'étiquette tapée si elle n'existe pas encore.
   const items: { tag: string; uses: number | null }[] = [

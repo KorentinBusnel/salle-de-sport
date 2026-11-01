@@ -359,8 +359,11 @@ begin
   if not private.is_gym_staff(v_member.gym_id) then
     raise exception 'forbidden';
   end if;
+  -- Verrou partagé : un retrait d'option (update_member_field, for update) attend la fin de la
+  -- saisie plutôt que de laisser passer une valeur validée contre d'anciennes options.
   select * into v_field from public.member_fields f
-  where f.gym_id = v_member.gym_id and f.key = p_key and f.is_active;
+  where f.gym_id = v_member.gym_id and f.key = p_key and f.is_active
+  for share;
   if not found then
     raise exception 'unknown_field';
   end if;
@@ -633,10 +636,11 @@ as $$
       jsonb_typeof(p_filters -> 'fields') is distinct from 'array'
       or not exists (
         select 1
-        from jsonb_array_elements(p_filters -> 'fields') as c
-        left join public.member_fields f on f.gym_id = m.gym_id and f.key = c ->> 'key'
+        -- Dix conditions au plus (MAX_FIELD_CONDITIONS du schéma Zod) : le reste est ignoré.
+        from jsonb_array_elements(p_filters -> 'fields') with ordinality as c(c, ord)
+        left join public.member_fields f on f.gym_id = m.gym_id and f.key = c.c ->> 'key'
         left join public.member_field_values v on v.member_id = m.id and v.field_id = f.id
-        where not private.member_field_match(v.value, c)
+        where c.ord <= 10 and not private.member_field_match(v.value, c.c)
       )
     )
   order by m.last_name, m.first_name, m.id;

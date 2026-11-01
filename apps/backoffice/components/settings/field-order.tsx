@@ -74,8 +74,8 @@ export function FieldRowMenu({
 }: {
   id: string;
   name: string;
-  /** Fiches qui portent une valeur pour ce champ (member_field_usage). */
-  valuesCount: number;
+  /** Fiches qui portent une valeur pour ce champ (member_field_usage) ; `null` : inconnu. */
+  valuesCount: number | null;
 }) {
   const [confirm, setConfirm] = useState(false);
 
@@ -106,7 +106,11 @@ export function FieldRowMenu({
         open={confirm}
         onOpenChange={setConfirm}
         title={t("fields.deleteTitle", { name })}
-        description={t("fields.deleteConfirm", { count: valuesCount })}
+        description={
+          valuesCount === null
+            ? t("fields.deleteConfirmUnknown")
+            : t("fields.deleteConfirm", { count: valuesCount })
+        }
         confirmLabel={t("common.delete")}
         action={remove}
       />

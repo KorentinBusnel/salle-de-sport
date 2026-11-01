@@ -866,7 +866,13 @@ async function ProfileTab({
           <Card>
             <CardHeader>
               <CardTitle>{t("memberProfile.fields")}</CardTitle>
-              <CardDescription>{t("memberProfile.fieldsHint")}</CardDescription>
+              <CardDescription>
+                {t(
+                  fields.some((field) => canEditAll || field.staff_can_edit)
+                    ? "memberProfile.fieldsHint"
+                    : "memberProfile.fieldsReadOnlyHint",
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-1 text-sm">
@@ -883,7 +889,12 @@ async function ProfileTab({
                           <FieldCell memberId={member.id} field={field} value={value} />
                         ) : (
                           <span className="flex min-h-8 items-center px-2">
-                            <FieldValue field={field} value={value} timeZone={timeZone} />
+                            <FieldValue
+                              field={field}
+                              value={value}
+                              timeZone={timeZone}
+                              emptyLabel={t("memberProfile.fieldEmpty")}
+                            />
                           </span>
                         )}
                       </dd>

@@ -32,6 +32,7 @@ export const MAX_FIELDS = 30;
 export const LABEL_MAX = 60;
 export const TEXT_MAX = 300;
 export const OPTION_LABEL_MAX = 40;
+export const OPTION_VALUE_MAX = 40;
 export const MAX_OPTIONS = 30;
 export const MAX_FIELD_CONDITIONS = 10;
 export const NUMBER_BOUNDS = { min: -1_000_000_000, max: 1_000_000_000, decimals: 2 } as const;
@@ -65,8 +66,39 @@ export function slugifyOptionValue(label: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
-    .slice(0, 40)
+    .slice(0, OPTION_VALUE_MAX)
     .replace(/_+$/g, "");
+}
+
+/** Comparaison de libellés sans casse ni accents (doublons d'options). */
+export function sameOptionLabel(a: string, b: string): boolean {
+  const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  return fold(a) === fold(b);
+}
+
+/**
+ * Libellés d'options tels que saisis : espaces réduits, 40 caractères au plus, vides et doublons
+ * (sans casse ni accents) écartés. La casse est conservée (« CrossFit », « RDV médecin »).
+ */
+export function normalizeOptionLabels(labels: readonly string[]): string[] {
+  const kept: string[] = [];
+  for (const raw of labels) {
+    const label = raw.trim().replace(/\s+/g, " ").slice(0, OPTION_LABEL_MAX);
+    if (label && !kept.some((other) => sameOptionLabel(other, label))) kept.push(label);
+  }
+  return kept;
+}
+
+/** Valeur libre d'une option : slug du libellé (« option » à défaut), puis `_2`, `_3`… si prise. */
+export function uniqueOptionValue(label: string, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  const base = slugifyOptionValue(label) || "option";
+  let candidate = base;
+  for (let n = 2; used.has(candidate); n++) {
+    const suffix = `_${n}`;
+    candidate = `${base.slice(0, OPTION_VALUE_MAX - suffix.length)}${suffix}`;
+  }
+  return candidate;
 }
 
 export const memberFieldOptionSchema = z.object({

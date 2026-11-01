@@ -7,7 +7,8 @@ import {
   memberFieldOptionSchema,
   OPTION_LABEL_MAX,
   isChoiceField,
-  slugifyOptionValue,
+  normalizeOptionLabels,
+  uniqueOptionValue,
   type MemberFieldOption,
 } from "@salle/shared";
 import { refresh, revalidatePath } from "next/cache";
@@ -32,18 +33,14 @@ import { createClient } from "@/lib/supabase/server";
 type Result = { error: MessageKey | null; message?: MessageKey | undefined };
 
 const labelSchema = z.string().trim().min(1).max(LABEL_MAX);
-const optionLabelSchema = z
-  .string()
-  .trim()
-  .transform((value) => value.replace(/\s+/g, " "))
-  .pipe(z.string().min(1).max(OPTION_LABEL_MAX));
 
+/** Cellule modifiée sur place : enregistrement silencieux, comme le Catalogue et les Offres. */
 function done(error: { message?: string } | null): Result {
   revalidatePath("/parametres");
   // Les fiches affichent libellés, options et champs actifs.
   revalidatePath("/adherents", "layout");
   refresh();
-  return error ? { error: errorMessageKey(error) } : { error: null, message: "fields.saved" };
+  return error ? { error: errorMessageKey(error) } : { error: null };
 }
 
 function settle(error: { message?: string } | null, message: MessageKey): ActionResult {
@@ -52,23 +49,6 @@ function settle(error: { message?: string } | null, message: MessageKey): Action
   revalidatePath("/adherents", "layout");
   refresh();
   return ok(message);
-}
-
-/** Valeur libre d'une option : slug du libellé, puis `_2`, `_3`… si elle est déjà prise. */
-function freeOptionValue(label: string, taken: Set<string>): string {
-  const base = slugifyOptionValue(label) || "option";
-  let candidate = base;
-  for (let n = 2; taken.has(candidate); n++) {
-    const suffix = `_${n}`;
-    candidate = `${base.slice(0, 40 - suffix.length)}${suffix}`;
-  }
-  taken.add(candidate);
-  return candidate;
-}
-
-/** Libellé d'option tel que saisi (TagInput le met en minuscules) : initiale en capitale. */
-function capitalize(label: string): string {
-  return label.charAt(0).toLocaleUpperCase("fr-FR") + label.slice(1);
 }
 
 /** Création d'un champ (dialogue « Nouveau champ ») : libellé, type immuable, premières options. */
@@ -87,19 +67,20 @@ export async function createMemberField(
   const label = labelSchema.safeParse(values.label);
   if (!label.success) fieldErrors.label = "fields.errors.label";
   if (!type.success) fieldErrors.type = "fields.errors.type";
+  // Libellés tels que saisis (casse conservée), sans vide ni doublon ; valeur = slug unique.
   const optionLabels = z
-    .array(optionLabelSchema)
+    .array(z.string().max(OPTION_LABEL_MAX * 2))
     .max(MAX_OPTIONS)
     .safeParse(type.success && isChoiceField(type.data) ? values.options : []);
   if (!optionLabels.success) fieldErrors.options = "fields.errors.options";
   if (!label.success || !type.success || !optionLabels.success) return { values, fieldErrors };
 
   const taken = new Set<string>();
-  const options: MemberFieldOption[] = optionLabels.data.map((text) => ({
-    value: freeOptionValue(text, taken),
-    label: capitalize(text),
-    tone: "neutral",
-  }));
+  const options: MemberFieldOption[] = normalizeOptionLabels(optionLabels.data).map((text) => {
+    const value = uniqueOptionValue(text, taken);
+    taken.add(value);
+    return { value, label: text, tone: "neutral" };
+  });
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_member_field", {

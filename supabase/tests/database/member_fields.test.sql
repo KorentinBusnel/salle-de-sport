@@ -1,7 +1,7 @@
 -- Champs personnalisés des adhérents : définitions (gérant), valeurs (accueil, gérant, coachs de
 -- l'adhérent ; jamais l'adhérent), validation par type, filtres, recherche, usage, isolation.
 begin;
-select plan(139);
+select plan(148);
 
 insert into auth.users (id, email) values
   ('f0000001-0000-0000-0000-000000000001', 'f-gerant@test.local'),
@@ -260,10 +260,23 @@ select is((select count(*) from public.member_field_values where member_id = 'f1
 select ok((select count(*) from public.member_fields) > 0, 'coach : lit les définitions');
 select pg_temp.login_as('f0000001-0000-0000-0000-000000000004');
 select is((select count(*) from public.member_field_values), 0::bigint, 'autre coach : aucune valeur');
+-- Identifiant lu hors RLS : le gérant de l'autre salle ne voit pas le champ, mais pourrait en
+-- connaître l'identifiant.
+select pg_temp.logout();
+create temp table f_ids as select pg_temp.fid('objectif') as objectif;
+grant select on f_ids to authenticated;
 select pg_temp.login_as('f0000001-0000-0000-0000-000000000006');
 select is((select count(*) from public.member_fields where gym_id = 'fa000001-0000-0000-0000-000000000000'), 0::bigint,
   'autre salle : 0 champ');
 select is((select count(*) from public.member_field_values), 0::bigint, 'autre salle : 0 valeur');
+select throws_ok($$select public.update_member_field((select objectif from f_ids), '{"label": "But"}')$$,
+  'P0001', 'forbidden', 'autre salle : ne modifie pas un champ');
+select throws_ok($$select public.delete_member_field((select objectif from f_ids))$$,
+  'P0001', 'forbidden', 'autre salle : ne supprime pas un champ');
+select throws_ok($$select public.reorder_member_fields('fa000001-0000-0000-0000-000000000000', array[(select objectif from f_ids)])$$,
+  'P0001', 'forbidden', 'autre salle : ne réordonne pas les champs');
+select throws_ok($$select * from public.member_field_usage('fa000001-0000-0000-0000-000000000000')$$,
+  'P0001', 'forbidden', 'autre salle : pas d''usage des champs');
 select pg_temp.login_as('f0000001-0000-0000-0000-000000000002');
 select is((select count(*) from public.member_fields), 9::bigint, 'accueil : les champs de sa salle, pas ceux d''ailleurs');
 select throws_ok($$update public.member_field_values set value = '"x"'$$, '42501', null, 'accueil : pas d''écriture directe sur les valeurs');
@@ -299,6 +312,19 @@ select is(pg_temp.names('{"fields": [{"key": "poids", "op": "gte", "value": "75"
 select is(pg_temp.names('{"fields": [{"key": "objectif", "op": "is_not_empty"}, {"key": "poids", "op": "gte", "value": 75}]}'), 'Bruno', 'conditions combinées en ET');
 select is(pg_temp.names('{"statuses": ["prospect"], "fields": [{"key": "objectif", "op": "is_empty"}]}'), 'Zoé', 'combiné aux filtres existants');
 select is(pg_temp.names('{"fields": "objectif"}'), 'Alice,Bruno,Zoé', 'fields qui n''est pas un tableau : ignoré');
+-- Totalité : aucune condition, même absurde, ne lève d'erreur.
+select is(pg_temp.names('{"fields": [{"key": "objectif", "op": "is"}]}'), '', 'is sans valeur : personne, aucune erreur');
+select is(pg_temp.names('{"fields": [1, "x", null, [], {"op": "is_empty"}, {"key": "objectif"}]}'), '',
+  'conditions mal formées : aucun résultat, aucune erreur');
+select is(pg_temp.names('{"fields": [{"key": "poids", "op": "gte", "value": "abc"}, {"key": "certificat_medical", "op": "after", "value": 5}]}'), '',
+  'types inattendus : aucun résultat, aucune erreur');
+select is(pg_temp.names(jsonb_build_object('fields',
+  (select jsonb_agg(jsonb_build_object('key', 'objectif', 'op', 'is_not_empty')) from generate_series(1, 10)))),
+  'Alice,Bruno', 'dix conditions : toutes évaluées');
+select is(pg_temp.names(jsonb_build_object('fields',
+  (select jsonb_agg(jsonb_build_object('key', 'objectif', 'op', 'is_not_empty')) from generate_series(1, 10))
+  || '[{"key": "objectif", "op": "is", "value": "zzz"}]'::jsonb)),
+  'Alice,Bruno', 'au-delà de dix conditions : ignorées');
 
 -- ---------------------------------------------------------------------------
 -- search_members : fields et p_filters

@@ -43,7 +43,7 @@ function optionCounts(raw: unknown): Record<string, number> {
  */
 export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: string | null }) {
   const supabase = await createClient();
-  const [{ data: rows }, { data: usage }] = await Promise.all([
+  const [{ data: rows }, usageResult] = await Promise.all([
     supabase
       .from("member_fields")
       .select("id, key, label, type, options, position, staff_can_edit, is_active")
@@ -56,10 +56,14 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
     const field = parseMemberField(row);
     return field ? [field] : [];
   });
-  const usageById = new Map((usage ?? []).map((row) => [row.field_id, row]));
+  // Usage indisponible (erreur) : comptes inconnus, les retraits et suppressions demandent
+  // toujours confirmation plutôt que de passer pour « aucune fiche ».
+  const usageById = usageResult.error
+    ? null
+    : new Map((usageResult.data ?? []).map((row) => [row.field_id, row]));
   const ids = fields.map((field) => field.id);
   const freshId = fresh && ids.includes(fresh) ? fresh : null;
-  const dash = <span className="px-2 text-muted-foreground">—</span>;
+  const dash = <span className="px-2 text-muted-foreground">{t("common.none")}</span>;
 
   return (
     <div className="grid gap-6">
@@ -102,7 +106,7 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
               </TableHeader>
               <TableBody>
                 {fields.map((field, index) => {
-                  const use = usageById.get(field.id);
+                  const use = usageById?.get(field.id);
                   return (
                     <TableRow
                       key={field.id}
@@ -116,7 +120,7 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
                       <TableCell className="p-1">
                         <FieldOrder ids={ids} index={index} name={field.label} />
                       </TableCell>
-                      <TableCell className="p-1 align-top">
+                      <TableCell data-focus-target className="p-1 align-top">
                         <EditableCell
                           kind="text"
                           id={field.id}
@@ -127,9 +131,11 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
                           action={updateMemberField}
                           className="font-medium"
                         />
-                        <span className="block px-2 text-xs text-muted-foreground tabular-nums">
-                          {t("fields.usage", { count: use?.values_count ?? 0 })}
-                        </span>
+                        {usageById ? (
+                          <span className="block px-2 text-xs text-muted-foreground tabular-nums">
+                            {t("fields.usage", { count: use?.values_count ?? 0 })}
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="px-3 py-2 align-top text-sm">
                         {t(`fields.type.${field.type}`)}
@@ -140,7 +146,7 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
                             id={field.id}
                             name={field.label}
                             options={field.options}
-                            counts={optionCounts(use?.option_counts)}
+                            counts={usageById ? optionCounts(use?.option_counts) : null}
                           />
                         ) : (
                           dash
@@ -170,7 +176,7 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
                         <FieldRowMenu
                           id={field.id}
                           name={field.label}
-                          valuesCount={use?.values_count ?? 0}
+                          valuesCount={usageById ? (use?.values_count ?? 0) : null}
                         />
                       </TableCell>
                     </TableRow>

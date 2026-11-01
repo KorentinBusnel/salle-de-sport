@@ -205,8 +205,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   d'équipe : lue par l'équipe, écrite par le gérant ; `created_by`, `gym_id` et `object`
   immuables par les grants ; suppression d'un profil : ses vues personnelles partent, ses vues
   d'équipe restent sans auteur). Les vues intégrées (onglets de statut) vivent dans
-  `packages/shared/src/views.ts` (`BUILTIN_MEMBER_VIEWS`), jamais en base ; `parseMemberView`
-  lit une vue en ignorant les colonnes d'un champ disparu.
+  `packages/shared/src/views.ts` (`BUILTIN_MEMBER_VIEWS`, `BUILTIN_KANBAN_VIEWS`), jamais en
+  base ; `parseMemberView` lit une vue en ignorant les colonnes d'un champ disparu. Kanban :
+  `group_by` = `stage` ou `f:<clé>` d'un champ liste simple (`kanbanGroupField`), colonnes par
+  `groupKanban` (options dans leur ordre puis « Sans valeur », `KANBAN_NONE`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -226,7 +228,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `send_campaign`, `add_team_role` /
   `remove_team_role`, `set_attendance_many` (« Tous présents » : `set_attendance` pour chaque
   confirmé, renvoie les réservations pointées), `add_member_tag` (étiquette en lot). Lectures
-  agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`, `filter_members` (filtres JSON =
+  agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline(gym, p_filters)` (étape déduite, `tags`,
+  `fields` ; filtres d'une vue), `filter_members` (filtres JSON =
   `segmentFiltersSchema` de `packages/shared`, droits de l'appelant), `session_coach_options`,
   `search_members` (tri `p_sort`, solde `credits` pour le gérant, null sinon),
   `template_change_preview` (séances à venir d'un cours avant de changer son créneau).
@@ -373,6 +376,13 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   alias `?statut=` / `?tag=` toujours compris ; clés de filtre mono-valeur (`statuses=a,b`).
   Libellés des vues intégrées : `lib/member-views.ts` ; `lib/segments.ts` n'est que l'adaptateur
   `URLSearchParams` de `filtersToPairs` / `filtersFromSearch` (shared).
+- **Pipeline** `/crm` (gérant) : kanban des vues `layout = 'kanban'` (`ViewBar layout="kanban"`,
+  vue intégrée « Étapes »), `FilterBar`, « Grouper par » (`GroupBySelect`, `?groupe=`, étapes ou
+  champ liste ; lien vers Paramètres › Champs sans champ liste). `PipelineBoard` générique
+  (`BoardColumn`, `BoardMode`) : par étapes, transitions `pipelineMove` (`moveMemberStage`,
+  résilier confirmé) ; par champ, toute colonne permise (`moveMemberToOption` →
+  `set_member_field`, « Sans valeur » efface), « Annuler » dans le toast ; « Voir les N autres »
+  ouvre `/adherents` filtré (`kanbanColumnFilters`). Au-delà de cinq colonnes, le tableau défile.
 - **Tableaux** (`components/data-table/`) : `DataTableFrame` + `ColumnsMenu` (colonnes affichées
   portées par l'URL `?cols=` puis par la vue ; densité mémorisée dans `localStorage` sous
   `tableau:<nom>`), `SortHead` (lien et

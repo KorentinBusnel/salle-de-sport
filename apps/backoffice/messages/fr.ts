@@ -1241,7 +1241,11 @@ export const fr = {
     add: "Ajouter",
     added: "Rôle ajouté.",
     removed: "Rôle retiré.",
-    remove: "Retirer le rôle {role}",
+    remove: "Retirer le rôle {role} à {name}",
+    removeTitle: "Retirer le rôle {role} à {name} ?",
+    removeBody:
+      "{name} perd aussitôt les accès du rôle {role} au back office. Vous pourrez le lui redonner depuis cette page.",
+    removeConfirm: "Retirer le rôle",
     inviteLater:
       "La personne doit déjà avoir un compte (inscription depuis l'app). L'invitation par email arrivera avec le service d'envoi.",
     errors: {

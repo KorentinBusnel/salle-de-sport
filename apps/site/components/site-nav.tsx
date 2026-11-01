@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClasses } from "@/components/button";
-import { ChalkMark } from "@/components/chalk-mark";
+import { BrandMark } from "@/components/brand-mark";
 import { cn } from "@/lib/cn";
 import { useActiveSection } from "@/lib/use-active-section";
 
@@ -78,7 +78,7 @@ export function SiteNav({ brand, links, soon = [], cta, labels }: Props) {
           onClick={() => setOpen(false)}
           className="flex min-h-10 items-center gap-2 rounded-full px-2 text-base font-semibold"
         >
-          <ChalkMark className="size-7" />
+          <BrandMark className="size-7" />
           <span aria-hidden="true">{brand}</span>
         </Link>
         <ul className="hidden items-center gap-1 lg:flex">

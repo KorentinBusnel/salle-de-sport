@@ -51,13 +51,13 @@ select throws_ok(
 select throws_ok(
   $$select public.request_demo(p_kind => 'contact', p_full_name => 'Inès Moreau', p_gym_name => 'Box Garonne', p_email => 'i@test.local', p_message => '  ')$$,
   'P0001', 'invalid_input', 'question sans message refusée');
-select lives_ok(
-  $$select public.request_demo(p_kind => 'demo', p_email => ' Lea@Studio-Nord.test.local ')$$,
-  'anonyme : demande une démo avec son email seul');
-select lives_ok(
-  $$select public.request_demo(p_kind => 'demo', p_email => 'lea@studio-nord.test.local',
-    p_full_name => 'Léa Martin', p_city => 'Lille')$$,
-  'anonyme : même démo le même jour, sans erreur');
+select is(
+  public.request_demo(p_kind => 'demo', p_email => ' Lea@Studio-Nord.test.local '),
+  true, 'anonyme : demande une démo avec son email seul, enregistrée');
+select is(
+  public.request_demo(p_kind => 'demo', p_email => 'lea@studio-nord.test.local',
+    p_full_name => 'Léa Martin', p_city => 'Lille'),
+  false, 'anonyme : même démo le même jour, ignorée sans erreur');
 select throws_ok(
   $$select public.request_demo(p_kind => 'demo', p_email => 'pas-un-email')$$,
   'P0001', 'invalid_input', 'démo : email invalide refusé');

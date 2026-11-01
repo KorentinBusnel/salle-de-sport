@@ -1,6 +1,6 @@
 ---
 name: landing-page-design
-description: "Complete system for building high converting landing pages: intake questions, page structure, layout selection, conversion copywriting, SEO, plus strict visual rules for typography, spacing, corner radius, backgrounds, hero layout, icons, and motion. In this repository, use it ONLY for the public marketing site in apps/site (the Chalk landing page): building, editing, styling, reviewing, or writing copy for it. Never apply it to apps/backoffice or apps/mobile, which follow CLAUDE.md and make-interfaces-feel-better."
+description: "Complete system for building high converting landing pages: intake questions, page structure, layout selection, conversion copywriting, SEO, plus strict visual rules for typography, spacing, corner radius, backgrounds, hero layout, icons, and motion. In this repository, use it ONLY for the public marketing site in apps/site (the Chalq landing page): building, editing, styling, reviewing, or writing copy for it. Never apply it to apps/backoffice or apps/mobile, which follow CLAUDE.md and make-interfaces-feel-better."
 ---
 
 <!--
@@ -29,7 +29,8 @@ leurs propres règles (`CLAUDE.md`, lucide). Le site partage le design system du
   jamais `weight`), `aria-hidden` ; 16 px à côté d'un texte `text-sm`, 20 px sinon ; pastille
   commune `IconChip`.
 - **Preuves** : jamais de témoignage, de logo client ou de chiffre inventé sur le site public
-  (B8 vaut pour les maquettes et les données de démo) ; seulement des faits vérifiables du produit.
+  (B8 vaut pour les maquettes et les données de démo) ; seulement des faits vérifiables du produit,
+  sauf les exceptions décidées par le gérant (`CLAUDE.md`, Site vitrine, « Preuves »).
 - Garde-fous testés : `apps/site/lib/design-rules.test.ts` et `apps/site/lib/messages.test.ts`.
 
 # Landing Page Design

@@ -1,5 +1,5 @@
 /** Nom du produit (provisoire, BRIEF §11) : un seul endroit à changer. */
-export const BRAND = { name: "Chalk" } as const;
+export const BRAND = { name: "Chalq" } as const;
 
 /**
  * Mentions légales (LCEN, art. 6) : à compléter avant la mise en ligne ; le site n'est indexé
@@ -43,6 +43,12 @@ export const LEGAL: Record<
   hostPhone: null,
 };
 
+/**
+ * Mentions légales toutes renseignées (aucune valeur `null`). D'ici là, les pages légales ne sont
+ * ni indexées ni listées dans le sitemap et llms.txt : elles afficheraient « à compléter ».
+ */
+export const LEGAL_COMPLETE = Object.values(LEGAL).every((value) => value !== null);
+
 /** Le compteur de salles du hero n'apparaît qu'à partir de ce nombre (BRIEF §12, 2026-10-30). */
 export const GYM_COUNT_MIN = 10;
 
@@ -50,7 +56,7 @@ export const GYM_COUNT_MIN = 10;
 export const SECTIONS = {
   top: "haut",
   features: "fonctionnalites",
-  /** Champ « Demander une démo » du hero, visé par le bouton de la barre. */
+  /** Champ « Avoir un accès anticipé » du hero, visé par le bouton de la barre. */
   demo: "demo",
 } as const;
 

@@ -26,8 +26,14 @@ export const metadata: Metadata = {
     description: t("meta.description"),
   },
   twitter: { card: "summary_large_image" },
-  // Indexé seulement en production : mentions légales à compléter avant (lib/site.ts).
-  robots: INDEXABLE ? { index: true, follow: true } : { index: false, follow: false },
+  // Indexé seulement en production ; aperçus riches autorisés (grande image, extrait complet).
+  robots: INDEXABLE
+    ? {
+        index: true,
+        follow: true,
+        googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+      }
+    : { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

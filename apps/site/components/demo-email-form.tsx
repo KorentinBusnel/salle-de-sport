@@ -12,7 +12,7 @@ import { SECTIONS } from "@/lib/site";
 const INITIAL: DemoEmailState = { status: "idle" };
 
 /**
- * « Demander une démo » du hero : un champ email et un bouton, seul appel à l'action du site.
+ * « Avoir un accès anticipé » du hero : un champ email et un bouton, seul appel à l'action du site.
  * Le bouton de la barre mène ici (`#demo`) et donne le focus au champ. Sans JavaScript, le
  * formulaire s'envoie quand même (Server Action).
  */

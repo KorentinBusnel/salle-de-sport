@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { LegalList, LegalPage, LegalSection } from "@/components/legal-page";
 import { t } from "@/lib/i18n";
-import { LEGAL } from "@/lib/site";
+import { LEGAL, LEGAL_COMPLETE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: t("legal.notice.title"),
   description: t("legal.notice.description"),
   alternates: { canonical: "/mentions-legales" },
+  // Pas d'indexation tant que des mentions restent « à compléter » (lib/site.ts).
+  ...(LEGAL_COMPLETE ? {} : { robots: { index: false, follow: true } }),
 };
 
 /** Mentions légales (LCEN, art. 6) : éditeur et hébergeur, valeurs dans lib/site.ts. */

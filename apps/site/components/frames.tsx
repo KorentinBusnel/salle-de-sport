@@ -1,6 +1,9 @@
 import Image, { type StaticImageData } from "next/image";
 import { cn } from "@/lib/cn";
 
+/** Qualité des captures (next.config.ts, `images.qualities`) : texte net sur écran haute densité. */
+const CAPTURE_QUALITY = 90;
+
 // Rayons imbriqués des tokens (packages/ui) : rayon intérieur = rayon extérieur − marge
 // (2xl 18 − 8 = lg 10, 4xl 26 − 8 = 2xl 18).
 
@@ -24,6 +27,7 @@ export function ProductFrame({
         src={src}
         alt={alt}
         sizes={sizes}
+        quality={CAPTURE_QUALITY}
         preload={preload}
         placeholder="blur"
         className="h-auto w-full rounded-lg"
@@ -48,6 +52,7 @@ export function PhoneFrame({
         src={src}
         alt={alt}
         sizes="224px"
+        quality={CAPTURE_QUALITY}
         placeholder="blur"
         className="h-auto w-full rounded-2xl"
       />

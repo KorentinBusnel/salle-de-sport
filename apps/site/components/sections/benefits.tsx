@@ -176,8 +176,8 @@ function FeatureRow({ feature, flipped }: { feature: Feature; flipped: boolean }
       className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16"
     >
       <Reveal className={cn("lg:col-span-2", flipped && "lg:order-last")}>
-        <p className="flex items-center gap-2 text-sm font-medium">
-          <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+        <p className="flex items-center gap-2 text-lg font-medium">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-primary" />
           {t(`benefits.${key}.label`)}
         </p>
         <h3

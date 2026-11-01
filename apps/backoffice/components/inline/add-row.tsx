@@ -81,7 +81,14 @@ export function FocusRow({ id }: { id: string }) {
   useEffect(() => {
     const row = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(id)}"]`);
     row?.scrollIntoView({ block: "nearest" });
-    row?.querySelector<HTMLElement>("button, input, [tabindex='0']")?.focus();
+    // La cellule marquée data-focus-target d'abord (le libellé), sinon la première commande
+    // active de la ligne : une commande désactivée (« Monter » du premier champ) ne prend pas le focus.
+    const target = row?.querySelector<HTMLElement>("[data-focus-target]") ?? row;
+    target
+      ?.querySelector<HTMLElement>(
+        "button:not(:disabled), input:not(:disabled), [tabindex='0']:not([aria-disabled='true'])",
+      )
+      ?.focus();
   }, [id]);
   return null;
 }

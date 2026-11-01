@@ -1,4 +1,24 @@
-import { MEMBER_STATUS_TONE, type MemberStatus } from "@salle/shared";
+import {
+  BUILTIN_MEMBER_VIEWS,
+  builtinMemberView,
+  DEFAULT_MEMBER_VIEW,
+  fieldColumn,
+  fieldKeyOfColumn,
+  hasFilters,
+  isBuiltinMemberView,
+  isViewDirty,
+  MEMBER_STATUS_TONE,
+  parseMemberField,
+  parseMemberView,
+  viewStateFromSearch,
+  viewStatePairs,
+  type BuiltinMemberViewId,
+  type MemberSort,
+  type MemberStatus,
+  type MemberView,
+  type SegmentFilters,
+} from "@salle/shared";
+import type { Json } from "@salle/supabase";
 import { UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -9,11 +29,11 @@ import { ColumnsMenu, DataTableFrame } from "@/components/data-table/table-prefs
 import { Flash } from "@/components/flash";
 import { ActivateButton } from "@/components/members/activate-button";
 import { CreditsDialog } from "@/components/members/credits-dialog";
+import { FieldValue } from "@/components/members/field-value";
 import { MemberRowMenu } from "@/components/members/member-row-menu";
 import { MembersBulkBar } from "@/components/members/members-bulk-bar";
 import { MembersSearch } from "@/components/members/members-search";
 import { NewMemberSheet } from "@/components/members/new-member-sheet";
-import { TagFilter } from "@/components/members/tag-filter";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,42 +52,44 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FilterBar } from "@/components/views/filter-bar";
+import { ViewBar, type ViewTab } from "@/components/views/view-bar";
 import { PendingRegion, UrlStateProvider } from "@/hooks/use-url-state";
 import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { BUILTIN_VIEW_LABELS } from "@/lib/member-views";
 import { getCrmTodo } from "@/lib/nav-counts";
 import { pageSizeOf } from "@/lib/pagination";
+import { filtersToSearch } from "@/lib/segments";
 import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 import { adjustCredits, createMember } from "./actions";
+import { createMemberView, updateMemberView } from "./vues-actions";
 
 export const metadata: Metadata = { title: t("members.title") };
 
 const STATUSES = ["prospect", "active", "suspended", "cancelled"] as const;
 /** Listes « CRM à compléter » de l'accueil (gérant) : `?a_faire=<kind>`. */
 const TODO_KINDS = ["incomplete", "unanswered", "trials_to_call"] as const;
-const SORTS = ["name", "name_desc", "recent", "status", "credits", "credits_desc"] as const;
-type Sort = (typeof SORTS)[number];
 const TABLE = "adherents";
 
-type Search = {
-  q?: string;
-  statut?: string;
-  tag?: string;
-  page?: string;
-  taille?: string;
-  tri?: string;
+/** Statut compté sur l'onglet d'une vue intégrée. */
+const BUILTIN_STATUS: Partial<Record<BuiltinMemberViewId, MemberStatus>> = {
+  "a-activer": "prospect",
+  actifs: "active",
+  suspendus: "suspended",
+  resilies: "cancelled",
 };
 
-export default async function MembersPage({
-  searchParams,
-}: {
-  searchParams: Promise<
-    Search & { ok?: string; nouveau?: string; a_faire?: string; erreur?: string }
-  >;
-}) {
+type Search = Record<string, string | string[] | undefined>;
+
+/**
+ * Adhérents : une vue (intégrée ou enregistrée) donne filtres, tri et colonnes ; l'URL porte
+ * les écarts à cette vue (`viewStateFromSearch`), la recherche et la page. Les anciens liens
+ * `?statut=` / `?tag=` restent compris comme des filtres.
+ */
+export default async function MembersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const params = await searchParams;
   const context = await requireRole(isFrontDeskRole);
   const manager = isManagerRole(context.role);
@@ -79,26 +101,90 @@ export default async function MembersPage({
   const canSuspend = manager || settings.staff_can_suspend_members;
   const supabase = await createClient();
 
-  const search = (params.q ?? "").trim().slice(0, 80);
-  const status = STATUSES.find((s) => s === params.statut);
-  const tag = (params.tag ?? "").trim().toLowerCase().slice(0, 40);
-  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
-  const size = pageSizeOf(params.taille);
-  const requested = SORTS.find((s) => s === params.tri) ?? "name";
-  // Crédits : finances du gérant uniquement.
-  const sort: Sort = !manager && requested.startsWith("credits") ? "name" : requested;
+  const [viewsRes, fieldsRes, disciplinesRes] = await Promise.all([
+    supabase
+      .from("saved_views")
+      .select(
+        "id, name, layout, filters, sort, columns, group_by, visibility, created_by, position",
+      )
+      .eq("gym_id", context.gym.id)
+      .eq("object", "members")
+      .eq("layout", "table")
+      .order("position")
+      .order("name"),
+    supabase
+      .from("member_fields")
+      .select("id, key, label, type, options, position, staff_can_edit, is_active")
+      .eq("gym_id", context.gym.id)
+      .eq("is_active", true)
+      .order("position")
+      .order("label"),
+    supabase
+      .from("disciplines")
+      .select("id, name")
+      .eq("gym_id", context.gym.id)
+      .order("position")
+      .order("name"),
+  ]);
+  const fields = (fieldsRes.data ?? []).flatMap((row) => {
+    const field = parseMemberField(row);
+    return field ? [field] : [];
+  });
+  const fieldKeys = fields.map((field) => field.key);
+  const savedViews = (viewsRes.data ?? []).map((row) => parseMemberView(row, fieldKeys));
+  const disciplines = disciplinesRes.data ?? [];
 
-  const countFor = (s: MemberStatus) =>
+  // Vue ouverte : slug d'une vue intégrée ou identifiant d'une vue enregistrée.
+  const requested = typeof params.vue === "string" ? params.vue : DEFAULT_MEMBER_VIEW;
+  const builtin = (id: BuiltinMemberViewId) => builtinMemberView(id, t(BUILTIN_VIEW_LABELS[id]));
+  const openedView: MemberView = isBuiltinMemberView(requested)
+    ? builtin(requested)
+    : (savedViews.find((saved) => saved.id === requested) ?? builtin(DEFAULT_MEMBER_VIEW));
+
+  // Colonnes disponibles ; crédits (colonne, tri, filtre) : finances du gérant uniquement.
+  const availableColumns = [
+    { key: "contact", label: t("members.contact") },
+    { key: "status", label: t("members.status") },
+    ...(manager ? [{ key: "credits", label: t("members.credits") }] : []),
+    ...fields.map((field) => ({ key: fieldColumn(field.key), label: field.label })),
+  ];
+  const availableKeys = availableColumns.map((column) => column.key);
+  // La vue telle que ce rôle peut la voir : c'est elle que l'URL et « Modifiée » comparent, sinon
+  // l'accueil verrait une vue intégrée « Modifiée » dès un tri ou une page (colonne crédits).
+  const forRole = <T extends { columns: string[]; sort: MemberSort; filters: SegmentFilters }>(
+    value: T,
+  ): T => {
+    if (manager)
+      return { ...value, columns: value.columns.filter((k) => availableKeys.includes(k)) };
+    const filters = { ...value.filters };
+    delete filters.max_credits;
+    return {
+      ...value,
+      columns: value.columns.filter((k) => availableKeys.includes(k)),
+      sort: value.sort.startsWith("credits") ? "name" : value.sort,
+      filters,
+    };
+  };
+  const view = forRole(openedView);
+  const state = forRole(viewStateFromSearch(params, view));
+  const dirty = isViewDirty(view, state);
+  const visible = availableKeys.filter((key) => state.columns.includes(key));
+  const sort: MemberSort = state.sort;
+
+  const page = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const size = pageSizeOf(typeof params.taille === "string" ? params.taille : undefined);
+
+  const countFor = (status: MemberStatus) =>
     supabase
       .from("members")
       .select("id", { count: "exact", head: true })
       .eq("gym_id", context.gym.id)
-      .eq("status", s);
-  const todoKind = manager ? TODO_KINDS.find((k) => k === params.a_faire) : undefined;
+      .eq("status", status);
+  const todoKind = manager ? TODO_KINDS.find((kind) => kind === params.a_faire) : undefined;
   const todoIds = todoKind
     ? ((await getCrmTodo(context.gym.id)).find((row) => row.kind === todoKind)?.member_ids ?? [])
     : null;
-  const [result, tagRows, ...counts] = await Promise.all([
+  const [result, ...counts] = await Promise.all([
     todoIds
       ? supabase
           .from("members")
@@ -113,72 +199,64 @@ export default async function MembersPage({
               email: m.email ?? "",
               phone: m.phone ?? "",
               credits: null,
+              // Même forme que search_members : valeurs des champs personnalisés par clé.
+              fields: {} as Json,
               total_count: data?.length ?? 0,
             })),
           }))
       : supabase.rpc("search_members", {
           p_gym_id: context.gym.id,
-          ...(search ? { p_query: search } : {}),
-          ...(status ? { p_statuses: [status] } : {}),
-          ...(tag ? { p_tag: tag } : {}),
+          ...(state.query ? { p_query: state.query } : {}),
+          ...(hasFilters(state.filters) ? { p_filters: state.filters as Json } : {}),
           p_limit: size,
           p_offset: (page - 1) * size,
           p_sort: sort,
         }),
-    supabase
-      .rpc("tag_suggestions", { p_gym_id: context.gym.id, p_query: "", p_limit: 30 })
-      .then(({ data }) => data ?? []),
     ...STATUSES.map(countFor),
   ]);
-  const statusCount = new Map(STATUSES.map((s, i) => [s, counts[i]?.count ?? 0]));
+  const statusCount = new Map(STATUSES.map((status, i) => [status, counts[i]?.count ?? 0]));
   const members = result.data ?? [];
   const total = members[0]?.total_count ?? 0;
   const pages = Math.max(1, Math.ceil(total / size));
 
-  const href = (overrides: Omit<Partial<Search>, "page"> & { page?: number }) => {
-    const query = new URLSearchParams();
-    const merged = {
-      q: search,
-      statut: status ?? "",
-      tag,
-      taille: size === 25 ? "" : String(size),
-      tri: sort === "name" ? "" : sort,
-      ...overrides,
-      page: overrides.page && overrides.page > 1 ? String(overrides.page) : "",
-    };
-    for (const [key, value] of Object.entries(merged)) if (value) query.set(key, value);
+  // Adresses : la vue et ses écarts, puis la taille, la page et la liste « à faire ».
+  const href = (overrides: { page?: number; tri?: MemberSort }) => {
+    const query = new URLSearchParams(
+      viewStatePairs(view, { ...state, sort: overrides.tri ?? sort }),
+    );
+    if (size !== 25) query.set("taille", String(size));
+    if (todoKind) query.set("a_faire", todoKind);
+    if (overrides.page && overrides.page > 1) query.set("page", String(overrides.page));
     const text = query.toString();
     return `/adherents${text ? `?${text}` : ""}`;
   };
   const returnQuery = href({ page }).split("?")[1] ?? "";
-  const sortHref = (asc: Sort, desc: Sort) => href({ tri: sort === asc ? desc : asc });
-  const directionOf = (asc: Sort, desc: Sort) =>
+  const sortHref = (asc: MemberSort, desc: MemberSort) => href({ tri: sort === asc ? desc : asc });
+  const directionOf = (asc: MemberSort, desc: MemberSort) =>
     sort === asc ? ("asc" as const) : sort === desc ? ("desc" as const) : null;
 
-  const filters: { value: MemberStatus | undefined; label: string; count?: number }[] = [
-    {
-      value: "prospect",
-      label: t("members.filterProspects"),
-      count: statusCount.get("prospect") ?? 0,
-    },
-    { value: "active", label: t("members.filterActive"), count: statusCount.get("active") ?? 0 },
-    {
-      value: "suspended",
-      label: t("members.filterSuspended"),
-      count: statusCount.get("suspended") ?? 0,
-    },
-    {
-      value: "cancelled",
-      label: t("members.filterCancelled"),
-      count: statusCount.get("cancelled") ?? 0,
-    },
-    { value: undefined, label: t("members.allStatuses") },
+  const tabs: ViewTab[] = [
+    ...BUILTIN_MEMBER_VIEWS.map((entry) => {
+      const status = BUILTIN_STATUS[entry.id];
+      const count = status ? (statusCount.get(status) ?? 0) : undefined;
+      return {
+        id: entry.id,
+        name: t(BUILTIN_VIEW_LABELS[entry.id]),
+        builtin: true,
+        visibility: "team" as const,
+        count,
+        highlight: entry.id === "a-activer" && (count ?? 0) > 0,
+      };
+    }),
+    ...savedViews.map((saved) => ({
+      id: saved.id,
+      name: saved.name,
+      builtin: false,
+      visibility: saved.visibility,
+    })),
   ];
-  const columns = [
-    { key: "contact", label: t("members.contact") },
-    { key: "status", label: t("members.status") },
-    ...(manager ? [{ key: "credits", label: t("members.credits") }] : []),
-  ];
+  const segmentHref =
+    manager && hasFilters(state.filters) ? `/segments?${filtersToSearch(state.filters)}` : null;
   const ids = members.map((m) => m.id);
 
   return (
@@ -195,53 +273,44 @@ export default async function MembersPage({
             }
           />
 
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            {/* Défilement des onglets au téléphone sans élargir la colonne. */}
-            <div className="w-full min-w-0 overflow-x-auto xl:w-auto">
-              <nav
-                aria-label={t("members.status")}
-                className="flex w-fit gap-1 rounded-xl bg-muted p-1"
-              >
-                {filters.map((filter) => {
-                  const active = filter.value === status;
-                  return (
-                    <Link
-                      key={filter.label}
-                      href={href({ statut: filter.value ?? "" })}
-                      scroll={false}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors pointer-coarse:py-2.5",
-                        active
-                          ? "bg-card font-medium text-foreground shadow-border"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {filter.label}
-                      {filter.count !== undefined ? (
-                        <span
-                          className={cn(
-                            "rounded-full px-1.5 text-xs tabular-nums",
-                            filter.value === "prospect" && filter.count > 0
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-background",
-                          )}
-                        >
-                          {filter.count}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
+          <ViewBar
+            tabs={tabs}
+            current={view}
+            saveState={{
+              filters: state.filters,
+              sort: state.sort,
+              columns: state.columns,
+              group_by: null,
+            }}
+            dirty={dirty}
+            userId={context.userId}
+            manager={manager}
+            basePath="/adherents"
+            // Recherche et taille de page gardées en changeant de vue.
+            tabQuery={
+              new URLSearchParams([
+                ...(state.query ? [["q", state.query]] : []),
+                ...(size !== 25 ? [["taille", String(size)]] : []),
+              ]).toString() || undefined
+            }
+            layout="table"
+            create={createMemberView}
+            update={updateMemberView}
+            segmentHref={segmentHref}
+          />
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <MembersSearch initial={search} />
-              <div className="flex gap-2">
-                <TagFilter tags={tagRows} value={tag} />
-                <ColumnsMenu table={TABLE} columns={columns} />
-              </div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <FilterBar
+              canFilterCredits={manager}
+              filters={state.filters}
+              baseFilters={view.filters}
+              disciplines={disciplines}
+              fields={fields}
+              className="min-w-0 flex-1"
+            />
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <MembersSearch initial={state.query} />
+              <ColumnsMenu table={TABLE} columns={availableColumns} visible={visible} />
             </div>
           </div>
 
@@ -258,7 +327,10 @@ export default async function MembersPage({
               </Link>
             </p>
           ) : null}
-          <Flash ok={params.ok} error={params.erreur} />
+          <Flash
+            ok={typeof params.ok === "string" ? params.ok : undefined}
+            error={typeof params.erreur === "string" ? params.erreur : undefined}
+          />
 
           <PendingRegion>
             {result.error ? (
@@ -271,8 +343,8 @@ export default async function MembersPage({
                   </EmptyMedia>
                   <EmptyTitle>{t("members.empty")}</EmptyTitle>
                   <EmptyDescription>
-                    {search
-                      ? t("members.emptySearch", { query: search })
+                    {state.query
+                      ? t("members.emptySearch", { query: state.query })
                       : t("members.emptyFilter")}
                   </EmptyDescription>
                 </EmptyHeader>
@@ -291,24 +363,38 @@ export default async function MembersPage({
                           href={sortHref("name", "name_desc")}
                           direction={directionOf("name", "name_desc")}
                         />
-                        <TableHead data-col="contact">{t("members.contact")}</TableHead>
-                        <SortHead
-                          col="status"
-                          label={t("members.status")}
-                          href={href({ tri: sort === "status" ? "" : "status" })}
-                          direction={sort === "status" ? "asc" : null}
-                        />
-                        {manager ? (
-                          <SortHead
-                            col="credits"
-                            label={t("members.credits")}
-                            href={sortHref("credits_desc", "credits")}
-                            direction={
-                              sort === "credits_desc" ? "desc" : sort === "credits" ? "asc" : null
-                            }
-                            className="text-right"
-                          />
-                        ) : null}
+                        {visible.map((column) => {
+                          if (column === "contact")
+                            return <TableHead key={column}>{t("members.contact")}</TableHead>;
+                          if (column === "status")
+                            return (
+                              <SortHead
+                                key={column}
+                                label={t("members.status")}
+                                href={href({ tri: sort === "status" ? view.sort : "status" })}
+                                direction={sort === "status" ? "asc" : null}
+                              />
+                            );
+                          if (column === "credits")
+                            return (
+                              <SortHead
+                                key={column}
+                                label={t("members.credits")}
+                                href={sortHref("credits_desc", "credits")}
+                                direction={
+                                  sort === "credits_desc"
+                                    ? "desc"
+                                    : sort === "credits"
+                                      ? "asc"
+                                      : null
+                                }
+                                className="text-right"
+                              />
+                            );
+                          const key = fieldKeyOfColumn(column);
+                          const field = fields.find((f) => f.key === key);
+                          return <TableHead key={column}>{field?.label ?? column}</TableHead>;
+                        })}
                         <TableHead className="pr-4 text-right">
                           <span className="sr-only">{t("members.actions")}</span>
                         </TableHead>
@@ -317,6 +403,10 @@ export default async function MembersPage({
                     <TableBody>
                       {members.map((member) => {
                         const name = `${member.first_name} ${member.last_name}`;
+                        const values =
+                          member.fields && typeof member.fields === "object"
+                            ? (member.fields as Record<string, unknown>)
+                            : {};
                         return (
                           <TableRow key={member.id}>
                             <TableCell className="pl-4">
@@ -345,37 +435,59 @@ export default async function MembersPage({
                                 </span>
                               </span>
                             </TableCell>
-                            <TableCell data-col="contact" className="text-muted-foreground">
-                              {member.email ? (
-                                <a
-                                  href={`mailto:${member.email}`}
-                                  className="block hover:text-foreground hover:underline"
-                                >
-                                  {member.email}
-                                </a>
-                              ) : null}
-                              {member.phone ? (
-                                <a
-                                  href={`tel:${member.phone.replace(/[^\d+]/g, "")}`}
-                                  className="block tabular-nums hover:text-foreground hover:underline"
-                                >
-                                  {member.phone}
-                                </a>
-                              ) : null}
-                            </TableCell>
-                            <TableCell data-col="status">
-                              <StatusPill tone={MEMBER_STATUS_TONE[member.status]}>
-                                {t(`memberStatus.${member.status}`)}
-                              </StatusPill>
-                            </TableCell>
-                            {manager ? (
-                              <TableCell
-                                data-col="credits"
-                                className="text-right font-medium tabular-nums"
-                              >
-                                {member.credits ?? "—"}
-                              </TableCell>
-                            ) : null}
+                            {visible.map((column) => {
+                              if (column === "contact")
+                                return (
+                                  <TableCell key={column} className="text-muted-foreground">
+                                    {member.email ? (
+                                      <a
+                                        href={`mailto:${member.email}`}
+                                        className="block hover:text-foreground hover:underline"
+                                      >
+                                        {member.email}
+                                      </a>
+                                    ) : null}
+                                    {member.phone ? (
+                                      <a
+                                        href={`tel:${member.phone.replace(/[^\d+]/g, "")}`}
+                                        className="block tabular-nums hover:text-foreground hover:underline"
+                                      >
+                                        {member.phone}
+                                      </a>
+                                    ) : null}
+                                  </TableCell>
+                                );
+                              if (column === "status")
+                                return (
+                                  <TableCell key={column}>
+                                    <StatusPill tone={MEMBER_STATUS_TONE[member.status]}>
+                                      {t(`memberStatus.${member.status}`)}
+                                    </StatusPill>
+                                  </TableCell>
+                                );
+                              if (column === "credits")
+                                return (
+                                  <TableCell
+                                    key={column}
+                                    className="text-right font-medium tabular-nums"
+                                  >
+                                    {member.credits ?? "—"}
+                                  </TableCell>
+                                );
+                              const key = fieldKeyOfColumn(column);
+                              const field = fields.find((f) => f.key === key);
+                              return (
+                                <TableCell key={column}>
+                                  {field && key ? (
+                                    <FieldValue
+                                      field={field}
+                                      value={values[key]}
+                                      timeZone={context.gym.timezone}
+                                    />
+                                  ) : null}
+                                </TableCell>
+                              );
+                            })}
                             <TableCell className="pr-4">
                               <div className="flex items-center justify-end gap-1">
                                 {member.status === "prospect" ? (

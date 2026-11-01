@@ -60,6 +60,22 @@ export const disciplineColors = {
   run: "#16a34a",
 } as const;
 
+/**
+ * Couleurs de catégorie (disciplines, coachs) : celles des disciplines, puis huit teintes
+ * distinctes. Choix d'une couleur de discipline, couleur d'un coach dans le planning.
+ */
+export const categoryPalette = [
+  ...Object.values(disciplineColors),
+  "#7c3aed",
+  "#db2777",
+  "#0891b2",
+  "#65a30d",
+  "#ea580c",
+  "#475569",
+  "#0d9488",
+  "#9333ea",
+] as const;
+
 /** Back office uniquement : le mobile garde la police système (BRIEF §12). */
 export const fontFamily = {
   sans: "Inter",

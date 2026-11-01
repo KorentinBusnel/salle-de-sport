@@ -19,7 +19,7 @@ function back(formData: FormData) {
     .regex(/^(\/adherents\/[0-9a-f-]{36}(\?[\w=&%-]*)?|\/crm)$/)
     .safeParse(formData.get("returnTo"));
   if (returnTo.success) return returnTo.data;
-  const query = z.string().max(500).catch("").parse(formData.get("returnQuery"));
+  const query = z.string().max(4000).catch("").parse(formData.get("returnQuery"));
   return `/adherents${query ? `?${query}` : ""}`;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { formatMoney } from "@salle/shared";
-import { disciplineColors } from "@salle/ui";
+import { formatMoney, type Tone } from "@salle/shared";
+import { categoryPalette } from "@salle/ui";
 import { CalendarIcon, CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon } from "lucide-react";
 import {
   type KeyboardEvent,
@@ -35,6 +35,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StatusPill } from "@/components/status-pill";
 import { Switch } from "@/components/ui/switch";
 import { type MessageKey, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,8 @@ export type CellOption = {
   /** Pastille de couleur (discipline) ou avatar à initiales (coach). */
   color?: string | undefined;
   person?: boolean | undefined;
+  /** Ton sémantique (option d'un champ personnalisé) : la valeur s'affiche en pastille. */
+  tone?: Tone | undefined;
 };
 export type CellScope = "one" | "following";
 export type CellSave = (input: {
@@ -91,10 +94,13 @@ type Props = Common &
         maxLength?: number;
         /** Plusieurs lignes : Entrée passe à la ligne, Ctrl ou ⌘ + Entrée enregistre. */
         multiline?: boolean | undefined;
+        /** Un champ vidé enregistre "" (sinon la saisie vide est annulée). */
+        clearable?: boolean | undefined;
       }
     | {
         kind: "number";
-        value: number;
+        /** `null` : pas de valeur (champ personnalisé non renseigné). */
+        value: number | null;
         unit?: string | undefined;
         min: number;
         max: number;
@@ -105,6 +111,8 @@ type Props = Common &
         money?: boolean | undefined;
         /** Libellé de la valeur 0 (« Sans » pour un engagement ou une limite). */
         zeroLabel?: string | undefined;
+        /** Un champ vidé enregistre `null`. */
+        clearable?: boolean | undefined;
       }
     | { kind: "time"; value: string }
     | { kind: "date"; value: string | null; clearable?: boolean | undefined }
@@ -400,20 +408,18 @@ export function EditableCell(props: Props) {
   );
 }
 
-const PALETTE = [
-  ...Object.values(disciplineColors),
-  "#7c3aed",
-  "#db2777",
-  "#0891b2",
-  "#65a30d",
-  "#ea580c",
-  "#475569",
-  "#0d9488",
-  "#9333ea",
-] as const;
+const PALETTE = categoryPalette;
 
-function numberText(money: boolean | undefined, value: CellValue): string {
-  return money ? formatMoney(Math.round(Number(value) * 100)) : String(value);
+/** Nombre affiché : montant formaté, sinon décimales à la française (« 72,5 »), sans séparateur de milliers. */
+function numberText(
+  props: { money?: boolean | undefined; decimals?: number | undefined },
+  value: CellValue,
+): string {
+  if (props.money) return formatMoney(Math.round(Number(value) * 100));
+  return new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: props.decimals ?? 0,
+    useGrouping: false,
+  }).format(Number(value));
 }
 
 /** Valeur lue par les lecteurs d'écran (nom accessible de la cellule). */
@@ -429,8 +435,9 @@ function textValue(props: Props, value: CellValue): string {
     case "date":
       return typeof value === "string" && value ? formatDateKey(value) : "";
     case "number":
+      if (value === null) return "";
       if (props.zeroLabel && Number(value) === 0) return props.zeroLabel;
-      return `${numberText(props.money, value)}${props.unit ? ` ${props.unit}` : ""}`;
+      return `${numberText(props, value)}${props.unit ? ` ${props.unit}` : ""}`;
     default:
       return value === null ? "" : String(value);
   }
@@ -439,11 +446,15 @@ function textValue(props: Props, value: CellValue): string {
 function renderValue(props: Props, value: CellValue): ReactNode {
   switch (props.kind) {
     case "number":
+      if (value === null)
+        return (
+          <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.empty")}</span>
+        );
       if (props.zeroLabel && Number(value) === 0)
         return <span className="text-muted-foreground">{props.zeroLabel}</span>;
       return (
         <span className="tabular-nums">
-          {numberText(props.money, value)}
+          {numberText(props, value)}
           {props.unit ? ` ${props.unit}` : ""}
         </span>
       );
@@ -461,12 +472,16 @@ function renderValue(props: Props, value: CellValue): ReactNode {
     case "select": {
       const option = props.options.find((o) => o.value === value);
       return option ? (
-        <span className="flex min-w-0 items-center gap-2">
-          <OptionVisual option={option} />
-          <span className="truncate">{option.label}</span>
-        </span>
+        option.tone ? (
+          <StatusPill tone={option.tone}>{option.label}</StatusPill>
+        ) : (
+          <span className="flex min-w-0 items-center gap-2">
+            <OptionVisual option={option} />
+            <span className="truncate">{option.label}</span>
+          </span>
+        )
       ) : (
-        <span className="text-muted-foreground">{t("inline.none")}</span>
+        <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.none")}</span>
       );
     }
     case "multi": {
@@ -479,6 +494,12 @@ function renderValue(props: Props, value: CellValue): ReactNode {
         <span className="flex flex-wrap gap-1">
           {values.map((v) => {
             const option = props.options.find((o) => o.value === v);
+            if (option?.tone)
+              return (
+                <StatusPill key={v} tone={option.tone}>
+                  {option.label}
+                </StatusPill>
+              );
             return (
               <span
                 key={v}
@@ -502,7 +523,7 @@ function renderValue(props: Props, value: CellValue): ReactNode {
       return value ? (
         <span className="tabular-nums">{formatDateKey(String(value))}</span>
       ) : (
-        <span className="text-muted-foreground">{t("inline.none")}</span>
+        <span className="text-muted-foreground">{props.emptyLabel ?? t("inline.none")}</span>
       );
     default:
       return value === "" || value === null ? (
@@ -525,14 +546,27 @@ function InlineInput({
   onCancel: (byKeyboard: boolean) => void;
   onCommit: (value: CellValue, byKeyboard: boolean) => void;
 }) {
-  const [text, setText] = useState(initial === null ? "" : String(initial));
+  // Saisie d'un nombre décimal à la française (la virgule est acceptée à la lecture).
+  const [text, setText] = useState(() =>
+    initial === null
+      ? ""
+      : props.kind === "number" && !props.money && typeof initial === "number"
+        ? String(initial).replace(".", ",")
+        : String(initial),
+  );
   const done = useRef(false);
 
   function finish(byKeyboard: boolean) {
     if (done.current) return;
     done.current = true;
     if (props.kind === "number") {
-      const value = Number(text.replace(",", "."));
+      const raw = text.replace(",", ".").trim();
+      if (raw === "" && props.clearable) {
+        // Champ vidé : « aucune valeur » (les autres cellules gardent leur comportement : 0 ou bornes).
+        onCommit(null, byKeyboard);
+        return;
+      }
+      const value = Number(raw);
       if (!Number.isFinite(value) || value < props.min || value > props.max) {
         toast.error(t("inline.outOfRange", { min: props.min, max: props.max }), {
           closeButton: true,
@@ -545,7 +579,8 @@ function InlineInput({
       return;
     }
     if (props.kind === "text" && text.trim() === "") {
-      onCancel(byKeyboard);
+      if (props.clearable) onCommit("", byKeyboard);
+      else onCancel(byKeyboard);
       return;
     }
     onCommit(props.kind === "text" ? text.trim() : text, byKeyboard);

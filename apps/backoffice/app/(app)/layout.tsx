@@ -1,5 +1,5 @@
 import { ShieldOffIcon } from "lucide-react";
-import { navBadgesFor } from "@salle/shared";
+import { BUILTIN_MEMBER_VIEWS, navBadgesFor } from "@salle/shared";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -23,6 +23,7 @@ import { getOwnCoachId } from "@/lib/coaches";
 import type { PaletteEntry } from "@/lib/palette";
 import { buildNavigation, type BadgeKey } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
+import { BUILTIN_VIEW_LABELS } from "@/lib/member-views";
 import { getGymConfig } from "@/lib/settings";
 import { SETTINGS_SECTIONS, settingsHref } from "@/lib/settings-sections";
 import { signOut } from "./actions";
@@ -114,6 +115,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         icon: item.icon,
       })),
     ),
+    // Vues intégrées des adhérents (onglets de statut) : aucune lecture, comme la navigation.
+    ...(frontDesk
+      ? BUILTIN_MEMBER_VIEWS.map((view) => ({
+          group: "goto" as const,
+          href: `/adherents?vue=${view.id}`,
+          label: `${t("nav.members")} · ${t(BUILTIN_VIEW_LABELS[view.id])}`,
+          hint: t("views.paletteHint"),
+          icon: "members" as const,
+        }))
+      : []),
     ...(manager
       ? SETTINGS_SECTIONS.map((section) => ({
           group: "settings" as const,

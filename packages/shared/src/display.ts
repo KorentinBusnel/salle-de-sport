@@ -64,6 +64,18 @@ export const MEMBER_STATUS_TONE: Record<MemberStatus, Tone> = {
   cancelled: "neutral",
 };
 
+/** Étapes du pipeline (kanban « Étapes ») : mêmes tons que les statuts dont elles découlent. */
+export const PIPELINE_STAGE_TONE: Record<
+  "lead" | "trial" | "active" | "suspended" | "cancelled",
+  Tone
+> = {
+  lead: "brand",
+  trial: "warning",
+  active: "success",
+  suspended: "neutral",
+  cancelled: "danger",
+};
+
 /** Classes d'une pastille « soft » (fond teinté, texte de la couleur), contrastes AA testés. */
 export const TONE_CLASSES: Record<Tone, { pill: string; dot: string }> = {
   neutral: { pill: "bg-muted text-muted-foreground", dot: "bg-neutral-400" },

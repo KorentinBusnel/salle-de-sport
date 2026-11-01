@@ -10,6 +10,7 @@ import {
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { CatalogSection } from "@/components/settings/catalog-section";
+import { FieldsSection } from "@/components/settings/fields-section";
 import { OffersSection } from "@/components/settings/offers-section";
 import { ClosuresCard, IdentityCard, OpeningHoursCard } from "@/components/settings/gym-section";
 import { DeskSlotRow, RoleLayoutCard } from "@/components/settings/home-layout";
@@ -34,8 +35,8 @@ export const metadata: Metadata = { title: t("settings.title") };
 /**
  * Paramètres en sections, chaque valeur enregistrée sur place avec « Annuler » : Salle
  * (identité, logo, horaires, fermetures), Réservations, Stratégies, Accueil (permanences,
- * blocs et pastilles par rôle), Suivi (seuils), Catalogue, Offres (et codes promo), Équipe et
- * Intégrations.
+ * blocs et pastilles par rôle), Suivi (seuils), Catalogue, Champs (personnalisés des fiches),
+ * Offres (et codes promo), Équipe et Intégrations.
  */
 const TABS = SETTINGS_SECTIONS;
 type Tab = SettingsSection;
@@ -46,7 +47,8 @@ const LEGACY: Record<string, Tab> = { general: "reservations" };
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ onglet?: string }>;
+  /** `n` : champ tout juste créé, qui prend le focus (FocusRow). */
+  searchParams: Promise<{ onglet?: string; n?: string }>;
 }) {
   const params = await searchParams;
   const context = await requireRole(isManagerRole);
@@ -152,6 +154,9 @@ export default async function SettingsPage({
             />
           ) : null}
           {tab === "catalogue" ? <CatalogSection gymId={context.gym.id} /> : null}
+          {tab === "champs" ? (
+            <FieldsSection gymId={context.gym.id} fresh={params.n ?? null} />
+          ) : null}
           {tab === "offres" ? <OffersSection gymId={context.gym.id} /> : null}
           {tab === "equipe" ? <TeamSection context={context} /> : null}
           {tab === "integrations" ? (

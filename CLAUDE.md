@@ -187,6 +187,32 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`set_demo_request`, statut `onboarded` = accès ouvert, onglet Plateforme › Demandes, l'email en
   titre pour une démo) ; purge à 3 ans (`demo-requests-purge`). Schéma `demoEmailSchema`
   (`packages/shared/src/demo.ts`).
+- **Champs personnalisés** des adhérents : définitions `member_fields` (par salle, équipe en
+  lecture ; `key` slug immuable, `type` texte / nombre / date / oui-non / liste / liste multiple,
+  `options` `[{ value, label, tone }]`, ≤ 30 champs actifs), valeurs `member_field_values` (une
+  ligne par adhérent et champ, lues par l'accueil, le gérant et les coachs de l'adhérent via
+  `private.coaches_member`, **jamais par l'adhérent**). Écriture **uniquement via**
+  `create_member_field`, `update_member_field` (une option retirée efface ses valeurs),
+  `delete_member_field` (gérant, journalisés dans `audit_log`), `reorder_member_fields` (gérant) et
+  `set_member_field(member, clé, valeur jsonb)` (accueil si `staff_can_edit` ; `null` supprime).
+  Filtres : clé `fields` de `segmentFiltersSchema`, évaluée par `private.member_field_match`
+  dans `filter_members` ; `search_members(…, p_filters)` renvoie `fields` (objet clé → valeur,
+  `{}` sans droit). Usage par champ : `member_field_usage`. Miroir TypeScript :
+  `packages/shared/src/fields.ts` (bornes, `fieldValueSchema`, `slugifyFieldKey`,
+  `FIELD_OPS_BY_TYPE`, `fieldToCellKind`).
+- **Vues enregistrées** `saved_views` (objet `members` | `planning`, disposition, `filters`
+  = `segmentFiltersSchema`, `sort`, `columns`, `group_by`, `visibility` `team` | `private`,
+  `created_by`) : CRUD direct sous RLS comme `segments` (vue personnelle : son créateur ; vue
+  d'équipe : lue par l'équipe, écrite par le gérant ; `created_by`, `gym_id` et `object`
+  immuables par les grants ; suppression d'un profil : ses vues personnelles partent, ses vues
+  d'équipe restent sans auteur). Les vues intégrées (onglets de statut) vivent dans
+  `packages/shared/src/views.ts` (`BUILTIN_MEMBER_VIEWS`, `BUILTIN_KANBAN_VIEWS`), jamais en
+  base ; `parseMemberView` lit une vue en ignorant les colonnes d'un champ disparu. Kanban :
+  `group_by` = `stage` ou `f:<clé>` d'un champ liste simple (`kanbanGroupField`), colonnes par
+  `groupKanban` (options dans leur ordre puis « Sans valeur », `KANBAN_NONE`). Planning (objet
+  `planning`, `layout` `week` | `day`) : filtres `planningFiltersSchema` (disciplines, coachs,
+  salles, `mine`), couleur `discipline` | `coach` rangée dans `group_by` ; vues intégrées
+  `semaine` / `jour` (`BUILTIN_PLANNING_VIEWS`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -206,7 +232,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `send_campaign`, `add_team_role` /
   `remove_team_role`, `set_attendance_many` (« Tous présents » : `set_attendance` pour chaque
   confirmé, renvoie les réservations pointées), `add_member_tag` (étiquette en lot). Lectures
-  agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline`, `filter_members` (filtres JSON =
+  agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline(gym, p_filters)` (étape déduite, `tags`,
+  `fields` ; filtres d'une vue), `filter_members` (filtres JSON =
   `segmentFiltersSchema` de `packages/shared`, droits de l'appelant), `session_coach_options`,
   `search_members` (tri `p_sort`, solde `credits` pour le gérant, null sinon),
   `template_change_preview` (séances à venir d'un cours avant de changer son créneau).
@@ -276,10 +303,15 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`NewMenu`). Sections des Paramètres : `SETTINGS_SECTIONS` / `settingsHref`
   (`lib/settings-sections.ts`). `PageHeader`, `metadata` par page. Rôle insuffisant : `requireRole` renvoie à l'accueil avec un message. Prédicats de rôle
   (`isManagerRole`, `isFrontDeskRole`) dans `lib/auth-roles.ts` (testables, sans `server-only`).
-- Paramètres : une page à sections (`/parametres?onglet=salle|reservations|strategies|accueil|suivi|catalogue|equipe|integrations`,
+- Paramètres : une page à sections (`/parametres?onglet=salle|reservations|strategies|accueil|suivi|catalogue|champs|offres|equipe|integrations`,
   navigation verticale `SettingsNav` avec une phrase d'aide) ; une nouvelle section de réglages y
   devient une section, pas une entrée de menu. Configuration lue par `getGymConfig`
   (`lib/settings.ts` : identité, logo, règles, réglages internes, horaires), mémorisée par requête.
+- Champs personnalisés : section Paramètres › Champs (`FieldsSection`, dialogue `NewFieldDialog`,
+  options `FieldOptions`, ordre `FieldOrder`, actions `champs-actions.ts`) ; fiche adhérent, carte
+  « Informations » de l'onglet Profil (`EditableCell` du `kind` donné par `fieldToCellKind`, action
+  `setMemberField`) ; rendu en lecture seule `FieldValue` (`components/members/field-value.tsx`).
+  Options de `Combobox` / `EditableCell` : `tone` (pastille `StatusPill`) plutôt qu'une couleur brute.
 - **Kit de champs** (Watermelon recomposé sur Radix, jamais installé depuis son registre) :
   `components/forms/` — `Combobox` (simple ou multiple, groupes, pastille ou avatar, « Créer »,
   recherche sans accents), `DateField` / `DateRangeField` (raccourcis `dateRangePreset`) /
@@ -334,11 +366,38 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   enveloppe la grille rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant
   `move_session` ; la séance déposée reste à sa place (`held`) tant que le serveur n'a pas répondu.
   Blocs : `data-session-link` (clic = `SessionSheet`, inscrits par `app/api/seances/[id]`) ;
-  colonnes `data-day-column`. Création : `QuickCreateForm` (popover ancré ou `QuickCreateDialog`,
+  colonnes `data-day-column`. **Vues du planning** : `?vue=semaine|jour|<uuid>` (sans `?vue=`,
+  l'affichage suit l'écran : semaine sur grand écran, jour sinon), `ViewBar` (actions
+  `planning/vues-actions.ts`, semaine conservée par `tabQuery`), puces `PlanningFilters`
+  (`?d=` disciplines, `?c=` coachs par `session_coaches`, `?s=` salles, `?mes=1` mes séances si
+  l'utilisateur coache, `?couleur=coach`), légende statique des couleurs. Couleur d'un coach :
+  `coachColors` (`lib/colors.ts`, `categoryPalette` de `packages/ui` dans l'ordre des coachs de la
+  salle). Création : `QuickCreateForm` (popover ancré ou `QuickCreateDialog`,
   `?creer=1`). Permanences : **un seul dialogue** par page (`DeskShiftProvider`, boutons
   `DeskShiftTrigger`).
-- **Tableaux** (`components/data-table/`) : `DataTableFrame` + `ColumnsMenu` (colonnes masquées par
-  `data-col` et densité, mémorisées dans `localStorage` sous `tableau:<nom>`), `SortHead` (lien et
+- **Vues et filtres** (`components/views/`) : `ViewBar` générique (la page lui passe `saveState`,
+  `layout` et ses actions `create` / `update` ; renommer, partager, supprimer sont communs ;
+  `activeTab`, `tabQuery` pour garder des paramètres en changeant de vue) — onglets des vues de la page : intégrées
+  avec compte puis enregistrées ; « Enregistrer » / « Enregistrer comme… » quand l'état de l'URL
+  diffère de la vue, menu Renommer / Dupliquer / Partager / Supprimer ; actions
+  `app/(app)/adherents/vues-actions.ts`) et `FilterBar` (puces + « Ajouter un filtre » : statut,
+  étiquettes, inactivité, discipline, crédits, inscription, anniversaire, consentement et chaque
+  champ personnalisé avec les opérateurs de son type), commune à Adhérents et Segments. **URL
+  d'abord** : un seul paramètre `?vue=` (slug intégré ou UUID), puis les seuls écarts à la vue
+  (`viewStateFromSearch` / `viewStatePairs`, `?f0=1` = aucun filtre, `?cols=` colonnes, `?tri=`),
+  alias `?statut=` / `?tag=` toujours compris ; clés de filtre mono-valeur (`statuses=a,b`).
+  Libellés des vues intégrées : `lib/member-views.ts` ; `lib/segments.ts` n'est que l'adaptateur
+  `URLSearchParams` de `filtersToPairs` / `filtersFromSearch` (shared).
+- **Pipeline** `/crm` (gérant) : kanban des vues `layout = 'kanban'` (`ViewBar layout="kanban"`,
+  vue intégrée « Étapes »), `FilterBar`, « Grouper par » (`GroupBySelect`, `?groupe=`, étapes ou
+  champ liste ; lien vers Paramètres › Champs sans champ liste). `PipelineBoard` générique
+  (`BoardColumn`, `BoardMode`) : par étapes, transitions `pipelineMove` (`moveMemberStage`,
+  résilier confirmé) ; par champ, toute colonne permise (`moveMemberToOption` →
+  `set_member_field`, « Sans valeur » efface), « Annuler » dans le toast ; « Voir les N autres »
+  ouvre `/adherents` filtré (`kanbanColumnFilters`). Au-delà de cinq colonnes, le tableau défile.
+- **Tableaux** (`components/data-table/`) : `DataTableFrame` + `ColumnsMenu` (colonnes affichées
+  portées par l'URL `?cols=` puis par la vue ; densité mémorisée dans `localStorage` sous
+  `tableau:<nom>`), `SortHead` (lien et
   `aria-sort`), `DataTablePagination` (`pageWindow`, `?taille=` 25 / 50 / 100, `lib/pagination.ts`),
   `SelectionProvider` / `RowCheckbox` / `AllCheckbox` (remise à zéro par `resetKey`). Filtres
   portés par l'URL : `useUrlState` ; sous `UrlStateProvider`, les filtres d'une page partagent

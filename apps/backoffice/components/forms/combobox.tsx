@@ -1,5 +1,6 @@
 "use client";
 
+import { TONE_CLASSES, type Tone } from "@salle/shared";
 import { ChevronsUpDownIcon, PlusIcon, XIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +26,8 @@ export type ComboboxOption = {
   description?: string | undefined;
   /** Pastille de couleur (discipline, étape) : couleur CSS. */
   color?: string | undefined;
+  /** Pastille d'un ton sémantique (option d'un champ personnalisé) ; prime sur `color`. */
+  tone?: Tone | undefined;
   /** Avatar à initiales (personne). */
   person?: boolean | undefined;
   /** Mots en plus pour la recherche (email, téléphone…). */
@@ -96,6 +99,14 @@ export function OptionVisual({ option }: { option: ComboboxOption }) {
       <Avatar className="size-6">
         <AvatarFallback className="text-[0.65rem]">{initials(option.label)}</AvatarFallback>
       </Avatar>
+    );
+  }
+  if (option.tone) {
+    return (
+      <span
+        aria-hidden
+        className={cn("size-2.5 shrink-0 rounded-full", TONE_CLASSES[option.tone].dot)}
+      />
     );
   }
   if (option.color) {

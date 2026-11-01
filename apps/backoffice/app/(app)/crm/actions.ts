@@ -1,6 +1,12 @@
 "use server";
 
-import { normalizeTags, PIPELINE_STAGES, pipelineMove, TRIAL_TAG } from "@salle/shared";
+import {
+  FIELD_KEY_PATTERN,
+  normalizeTags,
+  PIPELINE_STAGES,
+  pipelineMove,
+  TRIAL_TAG,
+} from "@salle/shared";
 import { refresh, revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isManagerRole, requireRole } from "@/lib/auth";
@@ -61,6 +67,38 @@ export async function moveMemberStage(
       .eq("id", parsed.data.memberId)
       .eq("gym_id", context.gym.id));
   }
+  revalidatePath("/crm");
+  revalidatePath("/adherents", "layout");
+  refresh();
+  return { error: error ? errorMessageKey(error) : null };
+}
+
+const fieldMoveSchema = z.object({
+  memberId: z.guid(),
+  key: z.string().regex(FIELD_KEY_PATTERN),
+  // Valeur d'option, ou null pour la colonne « Sans valeur ».
+  to: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_]{0,39}$/)
+    .nullable(),
+});
+
+/**
+ * Déplacement d'une carte d'un kanban groupé par un champ liste : la valeur du champ devient
+ * l'option de la colonne d'arrivée (set_member_field valide l'option ; null l'efface).
+ */
+export async function moveMemberToOption(
+  input: z.input<typeof fieldMoveSchema>,
+): Promise<{ error: MessageKey | null }> {
+  await requireRole(isManagerRole);
+  const parsed = fieldMoveSchema.safeParse(input);
+  if (!parsed.success) return { error: "common.unexpectedError" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_member_field", {
+    p_member_id: parsed.data.memberId,
+    p_key: parsed.data.key,
+    p_value: parsed.data.to,
+  });
   revalidatePath("/crm");
   revalidatePath("/adherents", "layout");
   refresh();

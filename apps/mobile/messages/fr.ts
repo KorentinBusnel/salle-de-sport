@@ -260,5 +260,9 @@ export const fr = {
     already_reminded: "Un rappel vous a déjà été envoyé aujourd'hui.",
     too_many_requests: "Trop de demandes en peu de temps. Réessayez dans une heure.",
     demo_request_not_found: "Demande introuvable.",
+    too_many_fields: "Trop de champs personnalisés.",
+    unknown_field: "Champ inconnu.",
+    field_not_found: "Champ introuvable.",
+    invalid_field_value: "Valeur invalide.",
   },
 } as const;

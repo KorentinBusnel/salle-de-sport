@@ -1,11 +1,11 @@
-import { MEMBER_STATUS_TONE, parseSegmentFilters } from "@salle/shared";
+import { MEMBER_STATUS_TONE, parseMemberField, parseSegmentFilters } from "@salle/shared";
 import { MailCheckIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Flash } from "@/components/flash";
 import { EmailingNav } from "@/components/emailing-nav";
 import { PageHeader } from "@/components/page-header";
-import { SegmentFiltersForm } from "@/components/segments/segment-filters";
+import { FilterBar } from "@/components/views/filter-bar";
 import { PendingRegion, UrlStateProvider } from "@/hooks/use-url-state";
 import { StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { isManagerRole, requireRole } from "@/lib/auth";
 import { t } from "@/lib/i18n";
-import { filtersFromSearch, hasFilters } from "@/lib/segments";
+import { filtersFromSearch } from "@/lib/segments";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { deleteSegment, saveSegment } from "./actions";
@@ -34,7 +34,7 @@ export default async function SegmentsPage({
   const supabase = await createClient();
   const segmentId = typeof params.segment === "string" ? params.segment : undefined;
 
-  const [{ data: segments }, { data: disciplines }] = await Promise.all([
+  const [{ data: segments }, { data: disciplines }, { data: fieldRows }] = await Promise.all([
     supabase
       .from("segments")
       .select("id, name, filters")
@@ -46,11 +46,23 @@ export default async function SegmentsPage({
       .eq("gym_id", context.gym.id)
       .order("position")
       .order("name"),
+    supabase
+      .from("member_fields")
+      .select("id, key, label, type, options, position, staff_can_edit, is_active")
+      .eq("gym_id", context.gym.id)
+      .eq("is_active", true)
+      .order("position")
+      .order("label"),
   ]);
   const current = segments?.find((s) => s.id === segmentId);
-  // Un segment ouvert sans filtres dans l'URL : ses filtres enregistrés.
-  const fromUrl = filtersFromSearch(params);
-  const filters = current && !hasFilters(fromUrl) ? parseSegmentFilters(current.filters) : fromUrl;
+  const fields = (fieldRows ?? []).flatMap((row) => {
+    const field = parseMemberField(row);
+    return field ? [field] : [];
+  });
+  // Un segment ouvert sans filtres dans l'URL : ses filtres enregistrés (l'URL fait foi sinon,
+  // y compris le marqueur « aucun filtre »).
+  const saved = current ? parseSegmentFilters(current.filters) : {};
+  const filters = filtersFromSearch(params) ?? saved;
 
   // Un seul comptage : celui de l'aperçu ; les joignables par email se lisent dans la liste.
   const {
@@ -113,11 +125,22 @@ export default async function SegmentsPage({
                 <CardDescription>{t("segments.filtersHint")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <SegmentFiltersForm
-                  filters={filters}
-                  segmentId={current?.id ?? null}
-                  disciplines={disciplines ?? []}
-                />
+                <div className="grid gap-4">
+                  <FilterBar
+                    filters={filters}
+                    baseFilters={saved}
+                    disciplines={disciplines ?? []}
+                    fields={fields}
+                  />
+                  <Button asChild variant="ghost" size="sm" className="w-fit">
+                    <Link
+                      href={current ? `/segments?segment=${current.id}` : "/segments"}
+                      scroll={false}
+                    >
+                      {t("segments.reset")}
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 

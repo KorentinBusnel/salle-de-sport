@@ -1,18 +1,34 @@
 import { DownloadIcon } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { type HoursRow, HoursTable } from "@/components/coaches/hours-table";
 import { MonthNav } from "@/components/forms/month-nav";
 import { PageCrumb } from "@/components/page-crumb";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { isManagerRole, requireTeamContext } from "@/lib/auth";
+import { isManagerRole, requireTeamContext, type TeamContext } from "@/lib/auth";
 import { loadCoachHours, loadMonthSessions } from "@/lib/coach-hours";
-import { currentMonthKey } from "@/lib/coaches";
+import { currentMonthKey, getOwnCoachId } from "@/lib/coaches";
 import { euros, gymFormatters, hoursLabel } from "@/lib/format";
 import { t } from "@/lib/i18n";
 
-export const metadata: Metadata = { title: t("hours.title") };
+/** « Heures des coachs » pour le gérant, « Mes heures » pour un coach (comme le titre de page). */
+export async function generateMetadata(): Promise<Metadata> {
+  const context = await requireTeamContext();
+  return { title: isManagerRole(context.role) ? t("hours.title") : t("nav.myHours") };
+}
+
+/**
+ * Gérant, ou membre de l'équipe qui a une fiche coach (« Mes heures » dans le menu) : les autres
+ * rôles (l'accueil) sont renvoyés à l'accueil avec un message, comme par `requireRole`.
+ */
+async function requireHoursAccess(): Promise<TeamContext> {
+  const context = await requireTeamContext();
+  if (isManagerRole(context.role)) return context;
+  if ((await getOwnCoachId(context.userId, context.gym.id)) === null)
+    redirect("/?erreur=errors.forbiddenRole");
+  return context;
+}
 
 /**
  * Heures réalisées du mois : tous les coachs en lignes dépliables, total collant (gérant), ou
@@ -24,7 +40,7 @@ export default async function CoachHoursPage({
   searchParams: Promise<{ mois?: string; coach?: string }>;
 }) {
   const params = await searchParams;
-  const context = await requireTeamContext();
+  const context = await requireHoursAccess();
   const manager = isManagerRole(context.role);
   const month = params.mois ?? currentMonthKey(context);
   const coachId = manager && params.coach ? params.coach : undefined;

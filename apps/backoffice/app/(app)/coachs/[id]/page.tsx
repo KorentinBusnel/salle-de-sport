@@ -138,22 +138,23 @@ export default async function CoachPage({
                     <li key={s.id}>
                       <Link
                         href={`/planning/${s.id}`}
-                        className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/50"
+                        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 text-sm hover:bg-muted/50"
                       >
-                        <span className="w-32 shrink-0 text-muted-foreground">
+                        <span className="w-16 shrink-0 text-muted-foreground sm:w-32">
                           {format.shortDay(s.starts_at)}
                         </span>
                         <span className="w-24 shrink-0 tabular-nums">
                           {format.time(s.starts_at)} – {format.time(s.ends_at)}
                         </span>
-                        <span className="flex-1">
+                        {/* Au téléphone, discipline et remplissage passent à la ligne plutôt que d'être coupés. */}
+                        <span className="flex min-w-0 grow items-center justify-between gap-3">
                           <DisciplineChip
                             name={s.disciplines?.name ?? ""}
                             color={s.disciplines?.color}
                           />
-                        </span>
-                        <span className="tabular-nums text-muted-foreground">
-                          {s.booked_count}/{s.capacity}
+                          <span className="shrink-0 whitespace-nowrap text-muted-foreground tabular-nums">
+                            {s.booked_count}/{s.capacity}
+                          </span>
                         </span>
                       </Link>
                     </li>

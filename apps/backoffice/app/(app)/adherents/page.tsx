@@ -513,7 +513,11 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                             <TableCell className="pr-4">
                               <div className="flex items-center justify-end gap-1">
                                 {member.status === "prospect" ? (
-                                  <ActivateButton memberId={member.id} name={name} />
+                                  <ActivateButton
+                                    memberId={member.id}
+                                    name={name}
+                                    variant="outline"
+                                  />
                                 ) : null}
                                 {manager ? (
                                   <CreditsDialog

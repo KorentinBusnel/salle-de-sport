@@ -6,7 +6,7 @@ export const fr = {
   meta: {
     title: "{brand} · Logiciel de gestion de salle de sport, IA native",
     description:
-      "Planning, réservations, paiements et suivi des adhérents pour toutes les salles et activités, avec un assistant IA qui prépare le travail. Demandez une démo.",
+      "Planning, réservations, paiements et suivi des adhérents pour toutes les salles, avec un assistant IA qui prépare le travail. Demandez votre accès anticipé.",
     // Données structurées (schema.org) et llms.txt : ce que le produit fait déjà, rien d'autre.
     category: "Logiciel de gestion de salle de sport",
     feature1: "Assistant IA qui répond sur les données de la salle et prépare les relances",
@@ -25,7 +25,7 @@ export const fr = {
     featuresTitle: "Fonctionnalités",
     pagesTitle: "Pages",
     home: "Accueil",
-    homeDescription: "présentation du produit et demande de démo",
+    homeDescription: "présentation du produit et demande d'accès anticipé",
     features: "Fonctionnalités",
     featuresDescription: "assistant IA, planning, adhérents, encaissement et coachs",
     privacy: "Confidentialité",
@@ -34,7 +34,7 @@ export const fr = {
     legalNoticeDescription: "éditeur et hébergeur du site",
     contactTitle: "Contact",
     contact:
-      "Saisir son email dans le champ « Avoir un accès anticipé » de la page d'accueil : l'équipe recontacte pour une démo. Le tarif est donné pendant la démo.",
+      "Saisir son email dans le champ « Avoir un accès anticipé » de la page d'accueil : l'équipe recontacte la salle pour ouvrir son accès. Le tarif est donné lors de cet échange.",
   },
   nav: {
     label: "Navigation principale",
@@ -56,7 +56,7 @@ export const fr = {
       label: "Votre email",
       submit: "Avoir un accès anticipé",
       pending: "Envoi…",
-      sent: "Merci. Nous vous écrivons à {email} pour fixer la démo.",
+      sent: "Merci. Nous vous écrivons à {email} pour ouvrir votre accès anticipé.",
       invalid: "Saisissez un email valide, par exemple nom@salle.fr.",
       tooMany: "Trop de demandes en peu de temps. Réessayez dans une heure.",
       unavailable: "L'envoi n'a pas abouti. Réessayez dans quelques minutes.",
@@ -193,7 +193,7 @@ export const fr = {
         "Le champ « Avoir un accès anticipé » recueille votre adresse email, et rien d'autre. Aucune autre donnée n'est collectée sur ce site.",
       purposeTitle: "Finalité et base légale",
       purpose:
-        "Votre email sert uniquement à vous recontacter pour organiser une démonstration. Le traitement repose sur votre demande, avant tout contrat.",
+        "Votre email sert uniquement à vous recontacter pour ouvrir votre accès anticipé. Le traitement repose sur votre demande, avant tout contrat.",
       recipientsTitle: "Destinataires",
       recipients:
         "Seule l'équipe {brand} y a accès. Elles sont hébergées par nos prestataires techniques, Supabase (base de données) et Vercel (site), et Resend envoie à l'équipe l'alerte de chaque demande ; tous agissent pour notre compte.",

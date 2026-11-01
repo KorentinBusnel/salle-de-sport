@@ -12,8 +12,10 @@ const at = new Date("2026-10-31T14:06:00Z");
 describe("demoNotification", () => {
   it("objet, texte à l'heure de Paris et réponse au demandeur", () => {
     const message = demoNotification("lea@studio-nord.fr", at);
-    expect(message.subject).toBe("Nouvelle demande de démo\u00a0: lea@studio-nord.fr");
-    expect(message.text).toContain("lea@studio-nord.fr a demandé une démo sur le site Chalq");
+    expect(message.subject).toBe("Nouvelle demande d'accès anticipé\u00a0: lea@studio-nord.fr");
+    expect(message.text).toContain(
+      "lea@studio-nord.fr a demandé un accès anticipé sur le site Chalq",
+    );
     expect(message.text).toContain("31 octobre 2026");
     expect(message.text).toContain("15:06");
     expect(message.text).toContain("Répondez à cet email pour lui écrire.");

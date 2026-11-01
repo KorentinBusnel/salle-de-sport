@@ -1,7 +1,7 @@
 import { t } from "@/lib/i18n";
 
 /**
- * Alerte email d'une nouvelle demande de démo, envoyée à l'équipe par Resend après la réponse au
+ * Alerte email d'une nouvelle demande d'accès anticipé, envoyée à l'équipe par Resend après la réponse au
  * visiteur (app/actions.ts). Sans `server-only`, pour être testée ; la clé n'est lue que côté
  * serveur (lib/notify.server.ts).
  */

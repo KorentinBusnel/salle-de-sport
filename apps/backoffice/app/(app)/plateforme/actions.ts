@@ -340,7 +340,7 @@ const demoRequestFields = {
   note: optionalText(1000),
 } as const;
 
-/** Suivi d'une demande de démo du site vitrine (statut ou note), par set_demo_request. */
+/** Suivi d'une demande du site vitrine (statut ou note), par set_demo_request. */
 export async function updateDemoRequest(input: {
   id: string;
   field: string;

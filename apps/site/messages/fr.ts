@@ -158,8 +158,8 @@ export const fr = {
     copyright: "© {year} {brand}",
   },
   notify: {
-    subject: "Nouvelle demande de démo : {email}",
-    body: "{email} a demandé une démo sur le site {brand}, le {date}.\n\nRépondez à cet email pour lui écrire.",
+    subject: "Nouvelle demande d'accès anticipé : {email}",
+    body: "{email} a demandé un accès anticipé sur le site {brand}, le {date}.\n\nRépondez à cet email pour lui écrire.",
   },
   legal: {
     back: "Retour à l'accueil",

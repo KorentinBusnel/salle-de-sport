@@ -52,7 +52,7 @@ function structuredData() {
   };
 }
 
-// Hero (dont « Demander une démo »), fonctionnalités.
+// Hero (dont « Avoir un accès anticipé »), fonctionnalités.
 export default function Home() {
   return (
     <main id="contenu">

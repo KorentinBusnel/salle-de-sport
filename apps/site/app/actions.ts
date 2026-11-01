@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { notifyDemoRequest } from "@/lib/notify.server";
 import { anonClient } from "@/lib/supabase.server";
 
-/** État du champ « Demander une démo » ; l'email saisi revient pour le réafficher. */
+/** État du champ « Avoir un accès anticipé » ; l'email saisi revient pour le réafficher. */
 export type DemoEmailState =
   | { status: "idle" }
   | { status: "invalid"; email: string }
@@ -16,7 +16,7 @@ export type DemoEmailState =
 const MIN_SECONDS = 3;
 
 /**
- * « Demander une démo » du hero : l'email seul, filtre anti robots (champ piège, envoi trop
+ * « Avoir un accès anticipé » du hero : l'email seul, filtre anti robots (champ piège, envoi trop
  * rapide), puis `request_demo` (type `demo`) avec la clé anon. La base valide à nouveau, ignore un
  * doublon du jour et plafonne le nombre de demandes par heure. Une nouvelle demande déclenche
  * l'alerte email de l'équipe, envoyée après la réponse (le merci n'attend pas).

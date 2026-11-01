@@ -34,7 +34,7 @@ export const fr = {
     legalNoticeDescription: "éditeur et hébergeur du site",
     contactTitle: "Contact",
     contact:
-      "Pour une démo, saisir son email dans le champ « Demander une démo » de la page d'accueil. Le tarif est donné pendant la démo.",
+      "Saisir son email dans le champ « Avoir un accès anticipé » de la page d'accueil : l'équipe recontacte pour une démo. Le tarif est donné pendant la démo.",
   },
   nav: {
     label: "Navigation principale",
@@ -43,7 +43,7 @@ export const fr = {
     features: "Fonctionnalités",
     marketplace: "Marketplace",
     soon: "Bientôt",
-    cta: "Demander une démo",
+    cta: "Avoir un accès anticipé",
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",
   },
@@ -54,7 +54,7 @@ export const fr = {
       "{brand} s'adapte à toutes les salles et à toutes les activités : planning, réservations, paiements et relation adhérent dans un seul outil, avec un assistant IA qui prépare le travail et vous laisse valider.",
     demo: {
       label: "Votre email",
-      submit: "Demander une démo",
+      submit: "Avoir un accès anticipé",
       pending: "Envoi…",
       sent: "Merci. Nous vous écrivons à {email} pour fixer la démo.",
       invalid: "Saisissez un email valide, par exemple nom@salle.fr.",
@@ -190,7 +190,7 @@ export const fr = {
       controllerTitle: "Responsable du traitement",
       collectedTitle: "Données collectées",
       collected:
-        "Le champ « Demander une démo » recueille votre adresse email, et rien d'autre. Aucune autre donnée n'est collectée sur ce site.",
+        "Le champ « Avoir un accès anticipé » recueille votre adresse email, et rien d'autre. Aucune autre donnée n'est collectée sur ce site.",
       purposeTitle: "Finalité et base légale",
       purpose:
         "Votre email sert uniquement à vous recontacter pour organiser une démonstration. Le traitement repose sur votre demande, avant tout contrat.",

@@ -69,9 +69,9 @@ export const fr = {
   },
   benefits: {
     eyebrow: "Fonctionnalités",
-    title: "Ce que {brand} change dans votre semaine",
+    title: "Votre salle, augmentée par l'IA",
     subtitle:
-      "Un back office pour l'équipe, une app pour les adhérents, une seule base de données entre les deux.",
+      "{brand} analyse vos réservations, vos finances et la fréquentation de vos adhérents, puis vous dit où agir. Votre équipe pilote depuis le back office, vos adhérents réservent depuis l'app.",
     // Sous l'assistant : étiquette, titre court, une phrase, deux cartes posées sur la capture.
     classes: {
       label: "Planning",

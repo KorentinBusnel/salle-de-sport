@@ -1923,9 +1923,9 @@ export const fr = {
   integrations: {
     status: {
       connected: "Connecté",
-      missing: "Clé manquante",
+      missing: "Non configuré",
       later: "Bientôt",
-      payments: "Phase paiements",
+      payments: "Non configuré",
     },
     model: "Modèle : {model}",
     details: "Détails",
@@ -1934,38 +1934,37 @@ export const fr = {
     account: "Compte",
     lastSync: "Dernière synchronisation",
     never: "Jamais",
-    howTo: "Mise en service",
-    noSecret:
-      "Aucune clé ni aucun secret n'est affiché ici : ils sont gérés dans la configuration de l'hébergement.",
+    howTo: "Ce que cela apporte",
+    noSecret: "Aucune clé ni aucun mot de passe n'est affiché sur cette page.",
     claude: {
       name: "Assistant Claude",
       hint: "Répond à vos questions sur la salle et prépare des actions que vous validez.",
-      next: "Ajoutez ANTHROPIC_API_KEY dans la configuration de l'hébergement (Vercel, Production et Preview).",
+      next: "Le brief du jour sur la page Aujourd'hui, vos questions par ⌘K et le résumé de chaque fiche adhérent.",
     },
     gmail: {
       name: "Gmail",
       hint: "Échanges email avec les adhérents, rattachés à leur fiche.",
-      next: "À brancher : boîte partagée ou individuelle, compte Google Workspace (questions ouvertes du brief).",
+      next: "Chaque email échangé avec un adhérent se retrouve sur sa fiche, sans fouiller la boîte de réception.",
     },
     whatsapp: {
       name: "WhatsApp Business",
       hint: "Messages WhatsApp entrants et sortants dans la timeline.",
-      next: "À brancher : numéro dédié et compte Meta Business vérifié.",
+      next: "Les conversations WhatsApp se lisent sur la fiche de l'adhérent, à côté de ses emails.",
     },
     qonto: {
       name: "Qonto",
       hint: "Opérations bancaires et trésorerie, en lecture seule : prélèvements rejetés, solde prévisionnel.",
-      next: "À brancher : accès API Qonto (lecture seule).",
+      next: "Un prélèvement rejeté se repère sans ouvrir l'application de la banque.",
     },
     pennylane: {
       name: "Pennylane",
       hint: "Factures fournisseurs, échéances et rapprochements, en lecture seule.",
-      next: "À brancher : clé API Pennylane.",
+      next: "Les échéances fournisseurs à venir se suivent depuis le back office.",
     },
     stripe: {
       name: "Stripe",
       hint: "Abonnements, paiements en ligne (carte, prélèvement SEPA) et remboursements.",
-      next: "À brancher : clés Stripe dans les secrets des Edge Functions, puis le webhook.",
+      next: "Les adhérents règlent abonnements et carnets depuis l'app ; un remboursement part de leur fiche.",
     },
   },
   assistant: {

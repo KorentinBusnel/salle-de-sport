@@ -109,6 +109,7 @@ export const fr = {
     trendDown: "En baisse de {value} par rapport à la période précédente",
     trendFlat: "Stable par rapport à la période précédente",
     trendNone: "Pas de comparaison possible",
+    trendFromZero: "0 la période précédente",
     meterTotal: "{value} sur {total}",
   },
   login: {
@@ -1270,6 +1271,7 @@ export const fr = {
     atRisk: "Adhérents à risque",
     atRiskHint: "Fréquence divisée par deux",
     coachHours: "Heures des coachs",
+    coachAmount: "{amount} à facturer",
     byDiscipline: "Remplissage par discipline",
     byDisciplineHint: "Places occupées sur les séances passées de la période.",
     sessionsCount: "{count, plural, one {# séance} other {# séances}}",

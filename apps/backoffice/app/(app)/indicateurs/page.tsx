@@ -113,6 +113,12 @@ export default async function KpisPage({
   const k = parsed.data;
   const checked = k.attended + k.no_show;
   const previousChecked = previous ? previous.attended + previous.no_show : 0;
+  // Les heures du mois (/coachs/heures) ne disent la même chose que pour un mois civil entier :
+  // sur une période glissante, pas de lien (deux totaux qui se contrediraient).
+  const wholeMonth =
+    from.endsWith("-01") &&
+    from.slice(0, 7) === to.slice(0, 7) &&
+    shiftDateKey(to, 1).endsWith("-01");
 
   return (
     <UrlStateProvider>
@@ -164,10 +170,15 @@ export default async function KpisPage({
             <KpiCard
               label={t("kpis.coachHours")}
               value={hoursLabel(k.coach_minutes)}
-              hint={euros(k.coach_amount_cents)}
+              hint={t("kpis.coachAmount", { amount: euros(k.coach_amount_cents) })}
               icon={ClockIcon}
-              trend={{ current: k.coach_minutes, previous: previous?.coach_minutes ?? null }}
-              href={`/coachs/heures?mois=${to.slice(0, 7)}`}
+              // Un coût : ni hausse ni baisse n'est bonne en soi.
+              trend={{
+                current: k.coach_minutes,
+                previous: previous?.coach_minutes ?? null,
+                higherIsBetter: null,
+              }}
+              href={wholeMonth ? `/coachs/heures?mois=${to.slice(0, 7)}` : undefined}
             />
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4">

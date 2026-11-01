@@ -6,7 +6,7 @@ export const fr = {
   meta: {
     title: "{brand} · Logiciel de gestion de salle de sport, IA native",
     description:
-      "Planning, réservations, paiements et suivi des adhérents pour toutes les salles et activités, avec un assistant IA qui prépare le travail. Demandez une démo.",
+      "Planning, réservations, paiements et suivi des adhérents pour toutes les salles, avec un assistant IA qui prépare le travail. Demandez votre accès anticipé.",
     // Données structurées (schema.org) et llms.txt : ce que le produit fait déjà, rien d'autre.
     category: "Logiciel de gestion de salle de sport",
     feature1: "Assistant IA qui répond sur les données de la salle et prépare les relances",
@@ -25,7 +25,7 @@ export const fr = {
     featuresTitle: "Fonctionnalités",
     pagesTitle: "Pages",
     home: "Accueil",
-    homeDescription: "présentation du produit et demande de démo",
+    homeDescription: "présentation du produit et demande d'accès anticipé",
     features: "Fonctionnalités",
     featuresDescription: "assistant IA, planning, adhérents, encaissement et coachs",
     privacy: "Confidentialité",
@@ -34,7 +34,7 @@ export const fr = {
     legalNoticeDescription: "éditeur et hébergeur du site",
     contactTitle: "Contact",
     contact:
-      "Pour une démo, saisir son email dans le champ « Demander une démo » de la page d'accueil. Le tarif est donné pendant la démo.",
+      "Saisir son email dans le champ « Avoir un accès anticipé » de la page d'accueil : l'équipe recontacte la salle pour ouvrir son accès. Le tarif est donné lors de cet échange.",
   },
   nav: {
     label: "Navigation principale",
@@ -43,7 +43,7 @@ export const fr = {
     features: "Fonctionnalités",
     marketplace: "Marketplace",
     soon: "Bientôt",
-    cta: "Demander une démo",
+    cta: "Avoir un accès anticipé",
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",
   },
@@ -54,9 +54,9 @@ export const fr = {
       "{brand} s'adapte à toutes les salles et à toutes les activités : planning, réservations, paiements et relation adhérent dans un seul outil, avec un assistant IA qui prépare le travail et vous laisse valider.",
     demo: {
       label: "Votre email",
-      submit: "Demander une démo",
+      submit: "Avoir un accès anticipé",
       pending: "Envoi…",
-      sent: "Merci. Nous vous écrivons à {email} pour fixer la démo.",
+      sent: "Merci. Nous vous écrivons à {email} pour ouvrir votre accès anticipé.",
       invalid: "Saisissez un email valide, par exemple nom@salle.fr.",
       tooMany: "Trop de demandes en peu de temps. Réessayez dans une heure.",
       unavailable: "L'envoi n'a pas abouti. Réessayez dans quelques minutes.",
@@ -67,16 +67,17 @@ export const fr = {
       "Page Aujourd'hui du back office {brand} : brief de l'assistant, question libre, indicateurs du jour et permanence à l'accueil.",
     appAlt: "Planning de la semaine dans l'app adhérent {brand}, avec les places restantes.",
   },
+  // Phrases à mots clés en pastille : [mot](icône) et **gras** (lib/rich-text.ts, RichText).
   benefits: {
     eyebrow: "Fonctionnalités",
-    title: "Ce que {brand} change dans votre semaine",
+    title: "Votre salle, augmentée par l'IA",
     subtitle:
-      "Un back office pour l'équipe, une app pour les adhérents, une seule base de données entre les deux.",
+      "{brand} analyse vos [réservations](calendar), vos [finances](coins) et la [fréquentation](chart) de vos adhérents, puis vous dit où agir. Votre équipe pilote depuis le back office, vos adhérents réservent depuis l'app.",
     // Sous l'assistant : étiquette, titre court, une phrase, deux cartes posées sur la capture.
     classes: {
       label: "Planning",
       title: "Votre salle, vos règles",
-      body: "WOD, Hyrox, open gym ou run club : vous fixez les créneaux, les capacités, les délais d'annulation et la liste d'attente. L'outil applique vos règles.",
+      body: "WOD, Hyrox, open gym ou run club : vous fixez les [créneaux](slots), les capacités, les délais d'annulation et la [liste d'attente](waitlist). L'outil applique vos règles.",
       card1: "Semaine dupliquée en 1 clic",
       card1Detail: "Copiée sur la semaine suivante",
       card1Status: "Fait",
@@ -88,7 +89,7 @@ export const fr = {
     members: {
       label: "Adhérents",
       title: "Un suivi à votre image",
-      body: "Vous choisissez ce que vous suivez : objectifs, niveaux, blessures, présences. Chaque adhérent a sa fiche, avec les infos qui comptent pour vous.",
+      body: "Vous choisissez ce que vous suivez : [objectifs](target), niveaux, [blessures](injury), [présences](presence). Chaque adhérent a sa fiche, avec les infos qui comptent pour vous.",
       card1: "Objectif : premier Hyrox",
       card1Detail: "Inès André",
       card1Status: "Suivi",
@@ -100,7 +101,7 @@ export const fr = {
     payments: {
       label: "Encaissement",
       title: "Encaissé ici, synchronisé partout",
-      body: "Abonnements, cartes de séances et prélèvements sont encaissés directement, puis synchronisés avec votre comptabilité et vos outils existants.",
+      body: "[Abonnements](card), cartes de séances et [prélèvements](debit) sont encaissés directement, puis synchronisés avec votre [comptabilité](accounting) et vos outils existants.",
       card1: "Abonnement encaissé par CB",
       card1Detail: "Illimité, 59 €",
       card1Status: "Fait",
@@ -112,7 +113,7 @@ export const fr = {
     coaches: {
       label: "Coachs",
       title: "Leur paie, réglée en 1 clic",
-      body: "À la séance, à l'heure ou au forfait : vous définissez les règles par coach. Chaque séance terminée est comptée, et le paiement est prêt en fin de mois.",
+      body: "À la séance, à l'heure ou au forfait : vous définissez les [règles par coach](rules). Chaque séance terminée est comptée, et le [paiement](pay) est prêt en fin de mois.",
       card1: "12 séances × 35 €",
       card1Detail: "Julien M., sur le mois",
       card1Status: "Calculé",
@@ -124,7 +125,7 @@ export const fr = {
     assistant: {
       badge: "Nouveauté",
       title: "L'IA qui connaît votre salle",
-      body: "Demandez « Qui décroche en ce moment ? ». En quelques secondes, l'IA vous montre les adhérents concernés et prépare la relance.",
+      body: "Demandez **« Qui décroche en ce moment ? »**. En quelques secondes, l'IA vous montre les [adhérents concernés](users) et prépare la [relance](mail).",
       point1: "Vous validez, elle envoie. Jamais l'inverse.",
       point2: "Chaque matin, votre journée résumée en un coup d'œil.",
       point3: "Les notes sensibles restent entre vous et vos coachs.",
@@ -157,8 +158,8 @@ export const fr = {
     copyright: "© {year} {brand}",
   },
   notify: {
-    subject: "Nouvelle demande de démo : {email}",
-    body: "{email} a demandé une démo sur le site {brand}, le {date}.\n\nRépondez à cet email pour lui écrire.",
+    subject: "Nouvelle demande d'accès anticipé : {email}",
+    body: "{email} a demandé un accès anticipé sur le site {brand}, le {date}.\n\nRépondez à cet email pour lui écrire.",
   },
   legal: {
     back: "Retour à l'accueil",
@@ -189,10 +190,10 @@ export const fr = {
       controllerTitle: "Responsable du traitement",
       collectedTitle: "Données collectées",
       collected:
-        "Le champ « Demander une démo » recueille votre adresse email, et rien d'autre. Aucune autre donnée n'est collectée sur ce site.",
+        "Le champ « Avoir un accès anticipé » recueille votre adresse email, et rien d'autre. Aucune autre donnée n'est collectée sur ce site.",
       purposeTitle: "Finalité et base légale",
       purpose:
-        "Votre email sert uniquement à vous recontacter pour organiser une démonstration. Le traitement repose sur votre demande, avant tout contrat.",
+        "Votre email sert uniquement à vous recontacter pour ouvrir votre accès anticipé. Le traitement repose sur votre demande, avant tout contrat.",
       recipientsTitle: "Destinataires",
       recipients:
         "Seule l'équipe {brand} y a accès. Elles sont hébergées par nos prestataires techniques, Supabase (base de données) et Vercel (site), et Resend envoie à l'équipe l'alerte de chaque demande ; tous agissent pour notre compte.",

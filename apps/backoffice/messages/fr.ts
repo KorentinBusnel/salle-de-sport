@@ -1510,7 +1510,7 @@ export const fr = {
     },
     demos: {
       title: "Demandes du site",
-      hint: "Gérants venus du site vitrine : démos à fixer (email seul), et les essais et questions de l'ancien formulaire. Une demande sans suite est effacée trois ans après le dernier échange.",
+      hint: "Gérants venus du site vitrine : demandes d'accès anticipé (email seul), et les essais et questions de l'ancien formulaire. Une demande sans suite est effacée trois ans après le dernier échange.",
       empty: "Aucune demande pour l'instant.",
       newCount: "{count, plural, =0 {Aucune nouvelle} one {# nouvelle} other {# nouvelles}}",
       received: "Reçue",
@@ -1537,7 +1537,7 @@ export const fr = {
       kind: {
         trial: "Essai",
         contact: "Question",
-        demo: "Démo",
+        demo: "Accès anticipé",
       },
     },
     campaigns: {
@@ -2075,7 +2075,7 @@ export const fr = {
       "L'abonnement de l'adhérent est en impayé : réservation suspendue jusqu'au règlement.",
     already_reminded: "Cet adhérent a déjà été relancé aujourd'hui.",
     too_many_requests: "Trop de demandes en peu de temps. Réessayez dans une heure.",
-    demo_request_not_found: "Demande de démo introuvable.",
+    demo_request_not_found: "Demande introuvable.",
   },
   roles: {
     member: "Adhérent",

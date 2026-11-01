@@ -56,7 +56,7 @@ export const GYM_COUNT_MIN = 10;
 export const SECTIONS = {
   top: "haut",
   features: "fonctionnalites",
-  /** Champ « Demander une démo » du hero, visé par le bouton de la barre. */
+  /** Champ « Avoir un accès anticipé » du hero, visé par le bouton de la barre. */
   demo: "demo",
 } as const;
 

@@ -394,7 +394,7 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 
 - Landing page qui vend la plateforme aux gérants de **toutes les salles et activités**,
   positionnée **IA native** ; nom **provisoire** dans `BRAND` (`lib/site.ts`, injecté dans `t()`
-  comme `{brand}`). Un seul appel à l'action : le champ email « Demander une démo » du hero
+  comme `{brand}`). Un seul appel à l'action : le champ email « Avoir un accès anticipé » du hero
   (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), sans note dessous
   (Confidentialité reste au pied de page) ; merci sur place. Server Action `requestDemo`
   (`app/actions.ts` : `demoEmailSchema`, champ piège, délai minimal, puis `request_demo` type
@@ -444,6 +444,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   point, titre court, une phrase, et deux cartes (`card1` / `card2`, pastille « Fait », réglage ou
   action) posées sur la capture côté texte dès `lg`, dessous sur mobile, apparues l'une après
   l'autre. Chaque titre de fonctionnalité finit par un point orange (`TitleDot`).
+  Mots clés en pastille dans les phrases de la section : `[mot](icône)` et `**gras**` dans le
+  catalogue, rendus par `RichText` (`components/rich-text.tsx`, icônes `KEYWORD_ICONS`, analyse
+  `parseRichText` de `lib/rich-text.ts`) ; pastille jamais coupée, ponctuation collée, trois au
+  plus par phrase et icônes connues (testé), paragraphe en `leading-9`.
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
   décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés.
@@ -454,7 +458,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   compléter », `false` masque une ligne sans objet (`LegalList`). Le responsable du traitement de
   la page Confidentialité en découle.
 - Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
-  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée et animée.
+  `scripts/site-captures.mjs` sur le seed, en densité ×2, servies en qualité 90 (`ProductFrame`,
+  `images.qualities` de `next.config.ts`) ; l'assistant est une illustration codée et animée.
 
 ## App mobile (Expo)
 

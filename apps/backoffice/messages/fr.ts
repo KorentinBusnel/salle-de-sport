@@ -1043,6 +1043,7 @@ export const fr = {
     },
     bookings: "{count, plural, =0 {Aucune réservation} one {# réservation} other {# réservations}}",
     today: "aujourd'hui",
+    lastActivity: "Dernière activité : {when}",
     startTrial: "Démarrer l'essai",
     trialStarted: "Prospect passé à l'essai.",
     moved: "{name} → {stage}.",

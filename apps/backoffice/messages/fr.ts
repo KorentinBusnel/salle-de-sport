@@ -308,7 +308,7 @@ export const fr = {
     attendees: "Inscrits",
     toCheck: "{count, plural, one {# inscrit à pointer} other {# inscrits à pointer}}",
     markAllAttended: "Tous présents",
-    attendanceFor: "Présence de {name}",
+    attendanceFor: "Présence : {name}",
     waitlist: "Liste d'attente",
     waitlistHint: "Une place libérée revient automatiquement au premier de la liste.",
     noAttendees: "Personne n'est inscrit pour l'instant.",
@@ -2294,7 +2294,7 @@ export const fr = {
     deleted: "Permanence supprimée.",
     deletedNamed: "Permanence de {name} supprimée.",
     row: "Accueil",
-    editShift: "Modifier la permanence de {name}, {start}–{end}",
+    editShift: "Modifier la permanence : {name}, {start}–{end}",
     errors: {
       endBeforeStart: "La fin doit suivre le début.",
       person: "Choisissez la personne de permanence.",

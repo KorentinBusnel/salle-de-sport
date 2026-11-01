@@ -1747,6 +1747,8 @@ export const fr = {
     body: "Message",
     send: "Envoyer la relance",
     reminded: "Relance envoyée.",
+    remindedToday: "Relancé aujourd'hui",
+    remindedTodayOf: "Relance envoyée aujourd'hui à {name}",
     settle: "Encaisser",
     settleOf: "Encaisser l'impayé de {name}",
     settleHint:

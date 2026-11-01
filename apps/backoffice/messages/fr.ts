@@ -1091,6 +1091,9 @@ export const fr = {
     emailConsent: "Consentement email",
     reset: "Réinitialiser",
     count: "{count, plural, =0 {Aucun adhérent} one {# adhérent} other {# adhérents}}",
+    reachable:
+      "{count, plural, =0 {aucun joignable par email} one {# joignable par email} other {# joignables par email}}",
+    previewLabel: "Adhérents du segment",
     consentHint:
       "Aperçu mis à jour à chaque critère. Les campagnes ne touchent que les fiches marquées d'un consentement email.",
     name: "Nom du segment",
@@ -1098,6 +1101,10 @@ export const fr = {
     save: "Enregistrer",
     update: "Mettre à jour",
     delete: "Supprimer le segment",
+    deleteTitle: "Supprimer le segment « {name} » ?",
+    deleteScheduled:
+      "{count, plural, one {# campagne programmée utilise ce segment : elle sera annulée.} other {# campagnes programmées utilisent ce segment : elles seront annulées.}}",
+    deleteBody: "Les fiches des adhérents ne sont pas touchées.",
     empty: "Aucun adhérent ne correspond à ces critères.",
     previewLimit: "Aperçu des {count} premiers.",
     savedOk: "Segment enregistré.",

@@ -18,10 +18,13 @@ create table public.saved_views (
   name text not null check (length(btrim(name)) between 1 and 80),
   layout text not null check (layout in ('table', 'kanban', 'week', 'day')),
   -- Miroir de segmentFiltersSchema (vues d'adhérents).
+  -- 16 Ko : au-dessus du plus gros filtre que le schéma Zod accepte (environ 14 Ko).
   filters jsonb not null default '{}'::jsonb
-    check (jsonb_typeof(filters) = 'object' and pg_column_size(filters) <= 8192),
+    check (jsonb_typeof(filters) = 'object' and pg_column_size(filters) <= 16384),
   sort text check (sort is null or length(sort) <= 40),
-  columns text[] not null default '{}' check (cardinality(columns) <= 40),
+  -- 40 colonnes de 48 caractères au plus (memberColumnSchema).
+  columns text[] not null default '{}'
+    check (cardinality(columns) <= 40 and pg_column_size(columns) <= 2560),
   -- Kanban : « stage » (étapes déduites) ou « f:<clé> » d'un champ liste.
   group_by text check (group_by is null or length(group_by) <= 48),
   visibility text not null default 'private' check (visibility in ('team', 'private')),

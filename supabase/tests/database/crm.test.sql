@@ -1,6 +1,6 @@
 -- CRM : filtres de segments, segments enregistrés (RLS), pipeline, filtre par tag.
 begin;
-select plan(26);
+select plan(30);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'c-un@test.local'),
@@ -93,12 +93,25 @@ insert into public.member_fields (id, gym_id, key, label, type, options) values
   ('88000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-000000000000', 'suivi', 'Suivi', 'select',
    '[{"value": "nouveau", "label": "Nouveau", "tone": "neutral"}, {"value": "contacte", "label": "Contacté", "tone": "brand"}]');
 insert into public.member_field_values (gym_id, member_id, field_id, value) values
-  ('8a000000-0000-0000-0000-000000000000', '81000000-0000-0000-0000-000000000003', '88000000-0000-0000-0000-000000000001', '"contacte"');
+  ('8a000000-0000-0000-0000-000000000000', '81000000-0000-0000-0000-000000000003', '88000000-0000-0000-0000-000000000001', '"contacte"'),
+  ('8a000000-0000-0000-0000-000000000000', '81000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-000000000001', '"nouveau"');
 select pg_temp.login_as('60000000-0000-0000-0000-000000000003');
 select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Prospect'), '{"suivi": "contacte"}'::jsonb,
   'pipeline : valeurs des champs par clé');
 select is((select string_agg(first_name, ',') from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', '{"fields": [{"key": "suivi", "op": "is", "value": "contacte"}]}')),
   'Prospect', 'pipeline : filtre sur un champ');
+-- Droits : une autre salle ne lit rien ; l'adhérent ne lit que sa fiche, sans valeur de champ.
+select pg_temp.login_as('60000000-0000-0000-0000-000000000005');
+select is((select count(*) from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')), 0::bigint,
+  'pipeline : autre salle, aucune fiche');
+select pg_temp.login_as('60000000-0000-0000-0000-000000000001');
+select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')), '{}'::jsonb,
+  'pipeline : l''adhérent ne lit pas ses valeurs de champ');
+select is((select count(*) from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', '{"fields": [{"key": "suivi", "op": "is_not_empty"}]}')),
+  0::bigint, 'pipeline : l''adhérent ne filtre pas sur une valeur invisible');
+select pg_temp.login_as('60000000-0000-0000-0000-000000000003');
+select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Un'), '{"suivi": "nouveau"}'::jsonb,
+  'pipeline : le gérant lit la valeur de cette fiche');
 
 select is((select count(*) from public.search_members('8a000000-0000-0000-0000-000000000000', null, null, 20, 0, 'hyrox')),
   1::bigint, 'recherche : filtre par tag');

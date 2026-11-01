@@ -1,7 +1,7 @@
 -- Vues enregistrées : vues personnelles (créateur seul), vues d'équipe (gérant), colonnes
 -- immuables, contraintes, isolation entre salles, suppression du compte de l'auteur.
 begin;
-select plan(36);
+select plan(38);
 
 insert into auth.users (id, email) values
   ('f0000002-0000-0000-0000-000000000001', 'v-gerant@test.local'),
@@ -130,8 +130,17 @@ select throws_ok($$insert into public.saved_views (gym_id, object, name, layout,
   values ('fb000001-0000-0000-0000-000000000000', 'members', 'Trop', 'table', 'team', (select array_agg('c' || g) from generate_series(1, 41) g))$$,
   '23514', null, '41 colonnes refusées');
 select throws_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility, filters)
-  values ('fb000001-0000-0000-0000-000000000000', 'members', 'Gros', 'table', 'team', jsonb_build_object('x', repeat('a', 9000)))$$,
+  values ('fb000001-0000-0000-0000-000000000000', 'members', 'Gros', 'table', 'team', jsonb_build_object('x', (select string_agg(md5(g::text), '') from generate_series(1, 700) g)))$$,
   '23514', null, 'filtres trop gros refusés');
+select lives_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility, filters)
+  values ('fb000001-0000-0000-0000-000000000000', 'members', 'Dix conditions', 'table', 'team',
+    jsonb_build_object('fields', (select jsonb_agg(jsonb_build_object('key', 'objectif_' || c, 'op', 'has_any',
+      'value', (select jsonb_agg(md5(c::text || o::text) || repeat('x', 8)) from generate_series(1, 30) o))) from generate_series(1, 10) c)))$$,
+  'le plus gros filtre du schéma Zod (10 × 30 options) est accepté');
+select throws_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility, columns)
+  values ('fb000001-0000-0000-0000-000000000000', 'members', 'Colonnes longues', 'table', 'team',
+    (select array_agg((select string_agg(md5(c::text || g::text), '') from generate_series(1, 32) g)) from generate_series(1, 3) c))$$,
+  '23514', null, 'colonnes trop longues refusées (taille totale bornée)');
 select throws_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility) values ('fb000001-0000-0000-0000-000000000000', 'members', 'Semaine', 'week', 'team')$$,
   '23514', null, 'disposition incohérente avec l''objet');
 select throws_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility, created_by) values ('fb000001-0000-0000-0000-000000000000', 'members', 'Orpheline', 'table', 'private', null)$$,

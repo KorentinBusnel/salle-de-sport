@@ -77,6 +77,10 @@ describe("parseMemberView", () => {
       "credits",
     ]);
   });
+  it("ignore les conditions de filtre d'un champ disparu ou désactivé", () => {
+    expect(parseMemberView(row, []).filters).toEqual({ statuses: ["prospect"] });
+    expect(parseMemberView(row, ["objectif"]).filters).toEqual(row.filters);
+  });
   it("le schéma strict refuse une colonne inconnue, accepte f:<clé>", () => {
     expect(memberViewSchema.safeParse({ ...row, columns: ["inconnue"] }).success).toBe(false);
     expect(

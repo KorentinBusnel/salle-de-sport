@@ -153,7 +153,8 @@ export function builtinKanbanView(id: BuiltinKanbanViewId, name: string): Member
 
 /**
  * Lit une ligne de `saved_views` (colonnes Json) en ignorant ce qui n'est plus valide : une
- * colonne ou un groupement d'un champ disparu, un tri inconnu. Une vue ne casse jamais l'écran.
+ * colonne, un groupement ou une condition de filtre d'un champ disparu ou désactivé, un tri
+ * inconnu. Une vue ne casse jamais l'écran et ne filtre jamais sur une donnée invisible.
  */
 export function parseMemberView(
   row: {
@@ -186,7 +187,7 @@ export function parseMemberView(
     name: row.name,
     builtin: false,
     layout: row.layout === "kanban" ? "kanban" : "table",
-    filters: parseSegmentFilters(row.filters),
+    filters: withKnownFields(parseSegmentFilters(row.filters), knownFieldKeys),
     sort: MEMBER_SORTS.find((sort) => sort === row.sort) ?? DEFAULT_MEMBER_SORT,
     columns: row.columns === null ? [...DEFAULT_MEMBER_COLUMNS] : columns,
     group_by: groupBy,
@@ -194,6 +195,17 @@ export function parseMemberView(
     createdBy: row.created_by,
     position: row.position,
   };
+}
+
+/** Filtres sans les conditions sur un champ inconnu (supprimé ou désactivé). */
+export function withKnownFields(
+  filters: SegmentFilters,
+  knownFieldKeys: readonly string[],
+): SegmentFilters {
+  if (!filters.fields) return filters;
+  const fields = filters.fields.filter((condition) => knownFieldKeys.includes(condition.key));
+  const { fields: _dropped, ...rest } = filters;
+  return fields.length ? { ...rest, fields } : rest;
 }
 
 // ---------------------------------------------------------------------------

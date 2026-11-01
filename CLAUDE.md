@@ -208,7 +208,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `packages/shared/src/views.ts` (`BUILTIN_MEMBER_VIEWS`, `BUILTIN_KANBAN_VIEWS`), jamais en
   base ; `parseMemberView` lit une vue en ignorant les colonnes d'un champ disparu. Kanban :
   `group_by` = `stage` ou `f:<clé>` d'un champ liste simple (`kanbanGroupField`), colonnes par
-  `groupKanban` (options dans leur ordre puis « Sans valeur », `KANBAN_NONE`).
+  `groupKanban` (options dans leur ordre puis « Sans valeur », `KANBAN_NONE`). Planning (objet
+  `planning`, `layout` `week` | `day`) : filtres `planningFiltersSchema` (disciplines, coachs,
+  salles, `mine`), couleur `discipline` | `coach` rangée dans `group_by` ; vues intégrées
+  `semaine` / `jour` (`BUILTIN_PLANNING_VIEWS`).
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -362,10 +365,18 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   enveloppe la grille rendue côté serveur ; aperçu (`session_move_preview`) puis confirmation avant
   `move_session` ; la séance déposée reste à sa place (`held`) tant que le serveur n'a pas répondu.
   Blocs : `data-session-link` (clic = `SessionSheet`, inscrits par `app/api/seances/[id]`) ;
-  colonnes `data-day-column`. Création : `QuickCreateForm` (popover ancré ou `QuickCreateDialog`,
+  colonnes `data-day-column`. **Vues du planning** : `?vue=semaine|jour|<uuid>` (sans `?vue=`,
+  l'affichage suit l'écran : semaine sur grand écran, jour sinon), `ViewBar` (actions
+  `planning/vues-actions.ts`, semaine conservée par `tabQuery`), puces `PlanningFilters`
+  (`?d=` disciplines, `?c=` coachs par `session_coaches`, `?s=` salles, `?mes=1` mes séances si
+  l'utilisateur coache, `?couleur=coach`), légende statique des couleurs. Couleur d'un coach :
+  `coachColors` (`lib/colors.ts`, `categoryPalette` de `packages/ui` dans l'ordre des coachs de la
+  salle). Création : `QuickCreateForm` (popover ancré ou `QuickCreateDialog`,
   `?creer=1`). Permanences : **un seul dialogue** par page (`DeskShiftProvider`, boutons
   `DeskShiftTrigger`).
-- **Vues et filtres** (`components/views/`) : `ViewBar` (onglets des vues de la page : intégrées
+- **Vues et filtres** (`components/views/`) : `ViewBar` générique (la page lui passe `saveState`,
+  `layout` et ses actions `create` / `update` ; renommer, partager, supprimer sont communs ;
+  `activeTab`, `tabQuery` pour garder des paramètres en changeant de vue) — onglets des vues de la page : intégrées
   avec compte puis enregistrées ; « Enregistrer » / « Enregistrer comme… » quand l'état de l'URL
   diffère de la vue, menu Renommer / Dupliquer / Partager / Supprimer ; actions
   `app/(app)/adherents/vues-actions.ts`) et `FilterBar` (puces + « Ajouter un filtre » : statut,

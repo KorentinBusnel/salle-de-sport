@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  builtinPlanningView,
+  hasPlanningFilters,
+  isBuiltinPlanningView,
+  isPlanningViewDirty,
+  parsePlanningFilters,
+  parsePlanningView,
+  planningStateFromSearch,
+  planningStatePairs,
   builtinKanbanView,
   builtinMemberView,
   groupKanban,
@@ -270,5 +278,69 @@ describe("kanban", () => {
     expect(kanbanColumnFilters({}, KANBAN_NONE, field)).toEqual({
       fields: [{ key: "suivi", op: "is_empty" }],
     });
+  });
+});
+
+describe("vues du planning", () => {
+  const d1 = "0c2b4c9e-6f1a-4a3b-9e2d-000000000001";
+  const d2 = "0c2b4c9e-6f1a-4a3b-9e2d-000000000002";
+  const c1 = "0c2b4c9e-6f1a-4a3b-9e2d-000000000003";
+
+  it("vues intégrées : les deux affichages d'origine", () => {
+    expect(isBuiltinPlanningView("semaine")).toBe(true);
+    expect(isBuiltinPlanningView("mois")).toBe(false);
+    expect(builtinPlanningView("jour", "Jour").layout).toBe("day");
+    expect(builtinPlanningView("semaine", "Semaine")).toMatchObject({
+      layout: "week",
+      filters: {},
+      color: "discipline",
+    });
+  });
+
+  it("filtres tolérants : identifiants invalides et clés inconnues ignorés", () => {
+    expect(
+      parsePlanningFilters({ disciplines: [d1, "x", d1], rooms: "nope", mine: true, autre: 1 }),
+    ).toEqual({ disciplines: [d1], mine: true });
+    expect(parsePlanningFilters(null)).toEqual({});
+  });
+
+  it("vue enregistrée : couleur rangée dans group_by, affichage jour ou semaine", () => {
+    const view = parsePlanningView({
+      id: c1,
+      name: "Coachs du matin",
+      layout: "day",
+      filters: { coaches: [c1] },
+      group_by: "coach",
+      visibility: "private",
+      created_by: c1,
+      position: 0,
+    });
+    expect(view).toMatchObject({ layout: "day", color: "coach", filters: { coaches: [c1] } });
+    expect(
+      parsePlanningView({ ...view, created_by: null, group_by: "x", layout: "z" }),
+    ).toMatchObject({ layout: "week", color: "discipline" });
+  });
+
+  it("état : ?d= d'avant compris, couleur, écarts réécrits, « aucun filtre »", () => {
+    const view = builtinPlanningView("semaine", "Semaine");
+    expect(planningStateFromSearch({}, view)).toEqual({ filters: {}, color: "discipline" });
+    const state = planningStateFromSearch(
+      { d: `${d1},${d2},pas-un-id`, mes: "1", couleur: "coach" },
+      view,
+    );
+    expect(state).toEqual({ filters: { disciplines: [d1, d2], mine: true }, color: "coach" });
+    expect(isPlanningViewDirty(view, state)).toBe(true);
+    expect(planningStatePairs(view, state)).toEqual([
+      ["d", `${d1},${d2}`],
+      ["mes", "1"],
+      ["couleur", "coach"],
+    ]);
+    const saved = { ...view, id: c1, builtin: false, filters: { rooms: [d1] } };
+    const cleared = planningStateFromSearch({ f0: "1" }, saved);
+    expect(cleared.filters).toEqual({});
+    expect(planningStatePairs(saved, cleared)).toEqual([["f0", "1"]]);
+    expect(isPlanningViewDirty(saved, planningStateFromSearch({}, saved))).toBe(false);
+    expect(hasPlanningFilters({})).toBe(false);
+    expect(hasPlanningFilters({ mine: true })).toBe(true);
   });
 });

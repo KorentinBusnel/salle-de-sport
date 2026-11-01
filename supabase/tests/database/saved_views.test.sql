@@ -1,7 +1,7 @@
 -- Vues enregistrées : vues personnelles (créateur seul), vues d'équipe (gérant), colonnes
 -- immuables, contraintes, isolation entre salles, suppression du compte de l'auteur.
 begin;
-select plan(32);
+select plan(36);
 
 insert into auth.users (id, email) values
   ('f0000002-0000-0000-0000-000000000001', 'v-gerant@test.local'),
@@ -95,6 +95,21 @@ select throws_ok($$update public.saved_views set visibility = 'private' where na
   '42501', null, 'gérant : ne rend pas personnelle une vue d''équipe créée par un autre');
 select lives_ok($$update public.saved_views set visibility = 'team' where name = 'Perso gérant'$$, 'gérant : partage sa vue personnelle');
 select is((select visibility from public.saved_views where name = 'Perso gérant'), 'team', 'vue partagée');
+
+-- ---------------------------------------------------------------------------
+-- Planning : un coach garde ses vues personnelles (couleur rangée dans group_by)
+-- ---------------------------------------------------------------------------
+select pg_temp.login_as('f0000002-0000-0000-0000-000000000004');
+select lives_ok($$insert into public.saved_views (gym_id, object, name, layout, filters, group_by, created_by)
+  values ('fb000001-0000-0000-0000-000000000000', 'planning', 'Mes matins', 'day', '{"mine": true}', 'coach', 'f0000002-0000-0000-0000-000000000004')$$,
+  'coach : crée une vue personnelle du planning');
+select throws_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility, created_by)
+  values ('fb000001-0000-0000-0000-000000000000', 'planning', 'Pour tous', 'week', 'team', 'f0000002-0000-0000-0000-000000000004')$$,
+  '42501', null, 'coach : pas de vue d''équipe du planning');
+select is((select layout || ':' || group_by from public.saved_views where name = 'Mes matins'), 'day:coach', 'coach : voit sa vue du planning');
+select pg_temp.logout();
+select throws_ok($$insert into public.saved_views (gym_id, object, name, layout, visibility) values ('fb000001-0000-0000-0000-000000000000', 'planning', 'Tableau', 'table', 'team')$$,
+  '23514', null, 'planning : disposition semaine ou jour seulement');
 
 -- ---------------------------------------------------------------------------
 -- Autre salle

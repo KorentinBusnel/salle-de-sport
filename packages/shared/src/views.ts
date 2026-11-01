@@ -496,3 +496,186 @@ export function kanbanColumnFilters(
   const conditions = (filters.fields ?? []).filter((existing) => existing.key !== field.key);
   return { ...filters, fields: [...conditions, condition].slice(-MAX_FIELD_CONDITIONS) };
 }
+
+// ---------------------------------------------------------------------------
+// Vues du planning
+// ---------------------------------------------------------------------------
+
+export const PLANNING_LAYOUTS = ["week", "day"] as const;
+export type PlanningLayout = (typeof PLANNING_LAYOUTS)[number];
+/** Couleur des séances : leur discipline, ou leur coach principal. */
+export const PLANNING_COLORS = ["discipline", "coach"] as const;
+export type PlanningColor = (typeof PLANNING_COLORS)[number];
+export const DEFAULT_PLANNING_COLOR: PlanningColor = "discipline";
+
+/** Filtres d'une vue du planning (combinés en ET ; une liste vaut « l'un de »). */
+export const planningFiltersSchema = z
+  .object({
+    disciplines: z.array(z.guid()).max(50),
+    coaches: z.array(z.guid()).max(50),
+    rooms: z.array(z.guid()).max(50),
+    /** Séances où l'utilisateur est coach. */
+    mine: z.literal(true),
+  })
+  .partial()
+  .strict();
+export type PlanningFilters = z.infer<typeof planningFiltersSchema>;
+
+/** Lit des filtres enregistrés : les clés et identifiants invalides sont ignorés. */
+export function parsePlanningFilters(raw: unknown): PlanningFilters {
+  const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const filters: PlanningFilters = {};
+  for (const key of ["disciplines", "coaches", "rooms"] as const) {
+    const list = Array.isArray(source[key])
+      ? [
+          ...new Set(
+            (source[key] as unknown[]).filter((id): id is string => z.guid().safeParse(id).success),
+          ),
+        ].slice(0, 50)
+      : [];
+    if (list.length) filters[key] = list;
+  }
+  if (source.mine === true) filters.mine = true;
+  return filters;
+}
+
+export type PlanningView = {
+  /** Slug d'une vue intégrée (`semaine`, `jour`), UUID d'une vue enregistrée. */
+  id: string;
+  name: string;
+  builtin: boolean;
+  layout: PlanningLayout;
+  filters: PlanningFilters;
+  color: PlanningColor;
+  visibility: ViewVisibility;
+  createdBy: string | null;
+  position: number;
+};
+
+/** Vues intégrées du planning : les deux affichages d'origine (`?vue=semaine|jour`). */
+export const BUILTIN_PLANNING_VIEWS = [
+  { id: "semaine", layout: "week" },
+  { id: "jour", layout: "day" },
+] as const satisfies readonly { id: string; layout: PlanningLayout }[];
+export type BuiltinPlanningViewId = (typeof BUILTIN_PLANNING_VIEWS)[number]["id"];
+
+export function isBuiltinPlanningView(id: string): id is BuiltinPlanningViewId {
+  return BUILTIN_PLANNING_VIEWS.some((view) => view.id === id);
+}
+
+export function builtinPlanningView(id: BuiltinPlanningViewId, name: string): PlanningView {
+  return {
+    id,
+    name,
+    builtin: true,
+    layout: id === "jour" ? "day" : "week",
+    filters: {},
+    color: DEFAULT_PLANNING_COLOR,
+    visibility: "team",
+    createdBy: null,
+    position: -1,
+  };
+}
+
+/** Une ligne de `saved_views` (objet « planning ») : la couleur est rangée dans `group_by`. */
+export function parsePlanningView(row: {
+  id: string;
+  name: string;
+  layout: string;
+  filters: unknown;
+  group_by: string | null;
+  visibility: string;
+  created_by: string | null;
+  position: number;
+}): PlanningView {
+  return {
+    id: row.id,
+    name: row.name,
+    builtin: false,
+    layout: row.layout === "day" ? "day" : "week",
+    filters: parsePlanningFilters(row.filters),
+    color: PLANNING_COLORS.find((color) => color === row.group_by) ?? DEFAULT_PLANNING_COLOR,
+    visibility: row.visibility === "team" ? "team" : "private",
+    createdBy: row.created_by,
+    position: row.position,
+  };
+}
+
+export type PlanningViewState = { filters: PlanningFilters; color: PlanningColor };
+
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Paramètres d'URL des filtres du planning (`d` : disciplines, `c` : coachs, `s` : salles). */
+export const PLANNING_FILTER_PARAMS = ["d", "c", "s", "mes", NO_FILTERS_PARAM] as const;
+
+/** État de la page : la vue, corrigée par les paramètres d'URL présents (`?d=` d'avant compris). */
+export function planningStateFromSearch(
+  params: SearchParams,
+  view: PlanningView,
+): PlanningViewState {
+  const ids = (key: string) => [...new Set(listParam(params, key).filter((id) => GUID.test(id)))];
+  const fromUrl = PLANNING_FILTER_PARAMS.some(
+    (key) => params[key] !== undefined && params[key] !== "",
+  );
+  const colorParam = first(params.couleur);
+  return {
+    filters: fromUrl
+      ? parsePlanningFilters({
+          disciplines: ids("d"),
+          coaches: ids("c"),
+          rooms: ids("s"),
+          mine: first(params.mes) === "1" ? true : undefined,
+        })
+      : { ...view.filters },
+    color: PLANNING_COLORS.find((color) => color === colorParam) ?? view.color,
+  };
+}
+
+function samePlanningFilters(a: PlanningFilters, b: PlanningFilters): boolean {
+  const canonical = (filters: PlanningFilters) =>
+    JSON.stringify({
+      d: [...(filters.disciplines ?? [])].sort(),
+      c: [...(filters.coaches ?? [])].sort(),
+      s: [...(filters.rooms ?? [])].sort(),
+      m: filters.mine === true,
+    });
+  return canonical(a) === canonical(b);
+}
+
+export function hasPlanningFilters(filters: PlanningFilters): boolean {
+  return Boolean(
+    filters.disciplines?.length || filters.coaches?.length || filters.rooms?.length || filters.mine,
+  );
+}
+
+/** L'état diffère-t-il de la vue (filtres, couleur) ? L'affichage appartient à la vue. */
+export function isPlanningViewDirty(view: PlanningView, state: PlanningViewState): boolean {
+  return !samePlanningFilters(view.filters, state.filters) || view.color !== state.color;
+}
+
+/** Paires d'URL des filtres du planning (une valeur par clé). */
+export function planningFilterPairs(filters: PlanningFilters): [string, string][] {
+  const pairs: [string, string][] = [];
+  if (filters.disciplines?.length) pairs.push(["d", filters.disciplines.join(",")]);
+  if (filters.coaches?.length) pairs.push(["c", filters.coaches.join(",")]);
+  if (filters.rooms?.length) pairs.push(["s", filters.rooms.join(",")]);
+  if (filters.mine) pairs.push(["mes", "1"]);
+  return pairs;
+}
+
+/**
+ * Paires d'URL des seuls écarts à la vue : filtres complets s'ils diffèrent (marqueur « aucun
+ * filtre » si la vue en avait), puis la couleur. `vue`, `semaine` et `jour` sont ajoutés par la page.
+ */
+export function planningStatePairs(
+  view: PlanningView,
+  state: PlanningViewState,
+): [string, string][] {
+  const pairs: [string, string][] = [];
+  if (!samePlanningFilters(view.filters, state.filters)) {
+    const filterPairs = planningFilterPairs(state.filters);
+    if (filterPairs.length) pairs.push(...filterPairs);
+    else pairs.push([NO_FILTERS_PARAM, "1"]);
+  }
+  if (state.color !== view.color) pairs.push(["couleur", state.color]);
+  return pairs;
+}

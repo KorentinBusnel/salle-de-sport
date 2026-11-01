@@ -16,6 +16,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { Heatmap } from "@/components/kpis/heatmap";
 import { KpiPeriod } from "@/components/kpis/kpi-period";
 import { PageHeader } from "@/components/page-header";
+import { ShowMore } from "@/components/today/show-more";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PendingRegion, UrlStateProvider } from "@/hooks/use-url-state";
@@ -60,6 +61,8 @@ const kpisSchema = z.object({
       last_at: z.string().nullable(),
     }),
   ),
+  // Vrai nombre (la liste at_risk est plafonnée) ; absent avant la migration 20261104090000.
+  at_risk_count: z.number().optional(),
   coach_minutes: z.number(),
   coach_amount_cents: z.number(),
   revenue_cents: z.number(),
@@ -163,7 +166,7 @@ export default async function KpisPage({
             />
             <KpiCard
               label={t("kpis.atRisk")}
-              value={k.at_risk.length}
+              value={k.at_risk_count ?? k.at_risk.length}
               hint={t("kpis.atRiskHint")}
               icon={UserXIcon}
             />
@@ -259,21 +262,31 @@ export default async function KpisPage({
                 {k.at_risk.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("kpis.noRisk")}</p>
                 ) : (
-                  <ul className="-mx-2">
-                    {k.at_risk.map((m) => (
-                      <li key={m.id}>
-                        <Link
-                          href={`/adherents/${m.id}`}
-                          className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/50"
-                        >
-                          <span className="font-medium">{m.name}</span>
-                          <span className="text-muted-foreground tabular-nums">
-                            {t("kpis.trend", { previous: m.previous, recent: m.recent })}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <ShowMore
+                      label={t("kpis.atRiskTitle")}
+                      initial={10}
+                      className="-mx-2"
+                      items={k.at_risk.map((m) => (
+                        <li key={m.id}>
+                          <Link
+                            href={`/adherents/${m.id}`}
+                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/50"
+                          >
+                            <span className="font-medium">{m.name}</span>
+                            <span className="text-muted-foreground tabular-nums">
+                              {t("kpis.trend", { previous: m.previous, recent: m.recent })}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    />
+                    {(k.at_risk_count ?? 0) > k.at_risk.length ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {t("kpis.atRiskTruncated", { count: k.at_risk.length })}
+                      </p>
+                    ) : null}
+                  </>
                 )}
               </CardContent>
             </Card>

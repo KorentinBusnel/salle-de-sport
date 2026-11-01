@@ -33,6 +33,7 @@ import { MemberOverview } from "@/components/members/member-overview";
 import { SectionError } from "@/components/section-error";
 import { ReceiptLink } from "@/components/payments/receipt-link";
 import { UnpaidActions } from "@/components/billing/unpaid-actions";
+import { remindedToday } from "@/lib/home-actions";
 import { ConsentSwitches } from "@/components/members/profile/consent-switches";
 import { MemberTags } from "@/components/members/profile/member-tags";
 import { StatusButton } from "@/components/members/profile/status-button";
@@ -339,6 +340,13 @@ async function BillingTab({
     .filter((lot) => lot.remaining > 0 && (!lot.expires_at || Date.parse(lot.expires_at) > now));
   const current = (subs ?? []).find((s) => ["active", "trialing", "past_due"].includes(s.status));
   const manual = current && !current.stripe_subscription_id;
+  // Impayé : une relance par jour (send_payment_reminder) ; même règle que l'accueil.
+  const lastReminder =
+    current?.status === "past_due"
+      ? (((await supabase.rpc("unpaid_members", { p_gym_id: context.gym.id })).data ?? []).find(
+          (row) => row.member_id === memberId,
+        )?.last_reminded_at ?? null)
+      : null;
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -437,6 +445,7 @@ async function BillingTab({
                     }
                     subscriptionId={current.id}
                     settleable={Boolean(manual)}
+                    remindedToday={remindedToday(lastReminder, currentTime(), context.gym.timezone)}
                   />
                 ) : null}
                 {manual && current.status !== "past_due" ? (

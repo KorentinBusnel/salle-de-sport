@@ -89,8 +89,10 @@ export function IdentityCard({ identity }: { identity: GymIdentityView }) {
             id="timezone"
             label={t("settings.identity.timezone")}
             hint={t("settings.identity.timezoneHint")}
+            readOnly
           >
-            <Input id="timezone" value={identity.timezone} readOnly className="w-full sm:w-80" />
+            {/* Lecture seule : du texte, pas un champ qui semble modifiable. */}
+            <p className="text-sm font-medium sm:w-80">{identity.timezone}</p>
           </SettingRow>
         </SettingRows>
       </CardContent>
@@ -136,6 +138,8 @@ function LogoRow({ name, logoUrl }: { name: string; logoUrl: string | null }) {
           type="file"
           accept="image/png,image/jpeg,image/webp"
           className="sr-only"
+          // Ouvert par le bouton : pas d'arrêt de tabulation invisible.
+          tabIndex={-1}
           aria-describedby={`${id}-hint`}
           onChange={(event) => {
             const file = event.target.files?.[0];
@@ -191,13 +195,19 @@ export function OpeningHoursCard({ hours }: { hours: OpeningHours }) {
     (next) => saveOpeningHours(next),
     "opening-hours",
   );
+  const unset = Object.values(value).every((slots) => !slots?.length);
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("settings.hours.title")}</CardTitle>
         <CardDescription>{t("settings.hours.hint")}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-4">
+        {unset ? (
+          <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+            {t("settings.hours.unsetNotice")}
+          </p>
+        ) : null}
         <WeeklySlotsEditor
           value={value}
           onCommit={(next) => commit(next, t("settings.hours.saved"))}

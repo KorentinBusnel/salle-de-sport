@@ -755,6 +755,8 @@ export const fr = {
       hint: "Ils fixent la plage du planning et la présence attendue à l'accueil. Sans horaires, l'accueil est attendu autour des séances.",
       open: "Ouvert",
       closed: "Fermé",
+      unsetDay: "Non renseigné",
+      unsetNotice: "Horaires non renseignés : l'accueil et le planning suivent les séances.",
       from: "Ouverture",
       to: "Fermeture",
       addSlot: "Ajouter une plage",

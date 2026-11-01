@@ -199,6 +199,14 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `{}` sans droit). Usage par champ : `member_field_usage`. Miroir TypeScript :
   `packages/shared/src/fields.ts` (bornes, `fieldValueSchema`, `slugifyFieldKey`,
   `FIELD_OPS_BY_TYPE`, `fieldToCellKind`).
+- **Vues enregistrées** `saved_views` (objet `members` | `planning`, disposition, `filters`
+  = `segmentFiltersSchema`, `sort`, `columns`, `group_by`, `visibility` `team` | `private`,
+  `created_by`) : CRUD direct sous RLS comme `segments` (vue personnelle : son créateur ; vue
+  d'équipe : lue par l'équipe, écrite par le gérant ; `created_by`, `gym_id` et `object`
+  immuables par les grants ; suppression d'un profil : ses vues personnelles partent, ses vues
+  d'équipe restent sans auteur). Les vues intégrées (onglets de statut) vivent dans
+  `packages/shared/src/views.ts` (`BUILTIN_MEMBER_VIEWS`), jamais en base ; `parseMemberView`
+  lit une vue en ignorant les colonnes d'un champ disparu.
 - Erreurs métier SQL : `raise exception '<code>'` ; tout code doit figurer dans
   `BOOKING_ERROR_CODES` (`packages/shared`, un test le vérifie) et être traduit dans chaque app.
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
@@ -354,8 +362,20 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   colonnes `data-day-column`. Création : `QuickCreateForm` (popover ancré ou `QuickCreateDialog`,
   `?creer=1`). Permanences : **un seul dialogue** par page (`DeskShiftProvider`, boutons
   `DeskShiftTrigger`).
-- **Tableaux** (`components/data-table/`) : `DataTableFrame` + `ColumnsMenu` (colonnes masquées par
-  `data-col` et densité, mémorisées dans `localStorage` sous `tableau:<nom>`), `SortHead` (lien et
+- **Vues et filtres** (`components/views/`) : `ViewBar` (onglets des vues de la page : intégrées
+  avec compte puis enregistrées ; « Enregistrer » / « Enregistrer comme… » quand l'état de l'URL
+  diffère de la vue, menu Renommer / Dupliquer / Partager / Supprimer ; actions
+  `app/(app)/adherents/vues-actions.ts`) et `FilterBar` (puces + « Ajouter un filtre » : statut,
+  étiquettes, inactivité, discipline, crédits, inscription, anniversaire, consentement et chaque
+  champ personnalisé avec les opérateurs de son type), commune à Adhérents et Segments. **URL
+  d'abord** : un seul paramètre `?vue=` (slug intégré ou UUID), puis les seuls écarts à la vue
+  (`viewStateFromSearch` / `viewStatePairs`, `?f0=1` = aucun filtre, `?cols=` colonnes, `?tri=`),
+  alias `?statut=` / `?tag=` toujours compris ; clés de filtre mono-valeur (`statuses=a,b`).
+  Libellés des vues intégrées : `lib/member-views.ts` ; `lib/segments.ts` n'est que l'adaptateur
+  `URLSearchParams` de `filtersToPairs` / `filtersFromSearch` (shared).
+- **Tableaux** (`components/data-table/`) : `DataTableFrame` + `ColumnsMenu` (colonnes affichées
+  portées par l'URL `?cols=` puis par la vue ; densité mémorisée dans `localStorage` sous
+  `tableau:<nom>`), `SortHead` (lien et
   `aria-sort`), `DataTablePagination` (`pageWindow`, `?taille=` 25 / 50 / 100, `lib/pagination.ts`),
   `SelectionProvider` / `RowCheckbox` / `AllCheckbox` (remise à zéro par `resetKey`). Filtres
   portés par l'URL : `useUrlState` ; sous `UrlStateProvider`, les filtres d'une page partagent

@@ -207,6 +207,9 @@ export const fr = {
     thisWeek: "Cette semaine",
     weekOf: "Semaine du {date}",
     weekNav: "Changer de semaine",
+    previousDay: "Jour précédent",
+    nextDay: "Jour suivant",
+    dayNav: "Changer de jour",
     dayView: "Jour",
     weekView: "Semaine",
     days: "Jours de la semaine",
@@ -2275,6 +2278,7 @@ export const fr = {
   },
   desk: {
     addTitle: "Ajouter une permanence",
+    addOn: "Ajouter une permanence le {day}",
     editTitle: "Modifier la permanence",
     dialogHint: "Qui tient l'accueil, et quand. Toute l'équipe peut être affectée.",
     person: "Personne",

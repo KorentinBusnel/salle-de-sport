@@ -281,10 +281,8 @@ function SessionList({
         <h3 id="seances-du-jour" className="font-semibold">
           {title}
         </h3>
-        <Link
-          href="/planning?vue=semaine"
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
+        {/* Sans vue imposée : la grille sur grand écran, le jour au téléphone. */}
+        <Link href="/planning" className="text-sm text-primary underline-offset-4 hover:underline">
           {t("dashboard.seeWeek")}
         </Link>
       </div>

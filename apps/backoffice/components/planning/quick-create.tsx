@@ -216,8 +216,9 @@ export function QuickCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={change}>
+      {/* Secondaire : « + Nouveau › Séance » de la barre du haut ouvre le même dialogue. */}
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" variant="outline">
           <CalendarPlusIcon data-icon="inline-start" aria-hidden />
           {t("planning.quick.button")}
         </Button>

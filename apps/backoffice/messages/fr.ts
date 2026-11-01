@@ -145,7 +145,12 @@ export const fr = {
     groupClients: "Clients",
     groupMarketplace: "Marketplace",
     skipToContent: "Aller au contenu",
-    badge: "{count} à traiter",
+    badges: {
+      prospects: "{count, plural, one {# prospect à activer} other {# prospects à activer}}",
+      unanswered: "{count, plural, one {# message sans réponse} other {# messages sans réponse}}",
+      trials_to_call: "{count, plural, one {# essai à rappeler} other {# essais à rappeler}}",
+      unpaid: "{count, plural, one {# impayé à traiter} other {# impayés à traiter}}",
+    },
     today: "Aujourd'hui",
     hub: "Assistant",
     planning: "Planning",

@@ -156,6 +156,8 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  // Tiroir mobile sans Dialog.Trigger : Radix rendrait le focus à <body> à la fermeture.
+  const returnFocus = React.useRef<HTMLElement | null>(null);
 
   if (collapsible === "none") {
     return (
@@ -187,6 +189,22 @@ function Sidebar({
             } as React.CSSProperties
           }
           side={side}
+          onOpenAutoFocus={() => {
+            // Appelé avant que le focus n'entre dans le tiroir : l'élément actif l'a ouvert.
+            const active = document.activeElement;
+            returnFocus.current =
+              active instanceof HTMLElement && active !== document.body ? active : null;
+          }}
+          onCloseAutoFocus={(event) => {
+            // Focus rendu à ce qui a ouvert le menu ; à défaut (Safari ne donne pas le focus à
+            // un bouton touché), au bouton du menu de la barre du haut.
+            event.preventDefault();
+            const target = returnFocus.current?.isConnected
+              ? returnFocus.current
+              : document.querySelector<HTMLElement>('[data-sidebar="trigger"]');
+            returnFocus.current = null;
+            target?.focus();
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{t("ui.navigation")}</SheetTitle>
@@ -278,7 +296,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 transition-[translate,left,right,background-color] ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",
@@ -291,9 +309,10 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   );
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+/** Zone principale : un simple `<div>`, le repère `<main>` est posé par la page (#contenu). */
+function SidebarInset({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <main
+    <div
       data-slot="sidebar-inset"
       className={cn(
         "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",

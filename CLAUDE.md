@@ -223,7 +223,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 - **File d'envoi** `outbound_messages` : tout message aux adhérents passe par
   `private.enqueue_message` (clé `dedupe_key` pour l'idempotence), qui l'ajoute aussi aux
   `interactions`. Pas d'envoi réel : un job `pg_cron` passe les messages `queued` → `logged`.
-  Avis aux inscrits d'une séance : `private.notify_session_members`.
+  Avis aux inscrits d'une séance : `private.notify_session_members`. Un envoi automatique
+  (toute origine sauf `direct`) **ne vaut pas réponse** à un adhérent :
+  `private.is_automatic_message(source_ref)`, filtré par `crm_todo`, `nav_counts` et la date
+  d'activité de `crm_pipeline`.
 - **Coachs d'une séance** : `session_coaches` / `template_coaches` font foi (plusieurs coachs,
   `position` 0 = principal). `class_sessions.coach_id` et `class_templates.default_coach_id` ne
   sont qu'un miroir tenu par trigger, pour les apps déjà publiées : ne jamais les écrire ni filtrer
@@ -237,7 +240,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `send_campaign`, `add_team_role` /
   `remove_team_role`, `set_attendance_many` (« Tous présents » : `set_attendance` pour chaque
   confirmé, renvoie les réservations pointées), `add_member_tag` (étiquette en lot). Lectures
-  agrégées : `coach_hours`, `gym_kpis`, `crm_pipeline(gym, p_filters)` (étape déduite, `tags`,
+  agrégées : `coach_hours`, `gym_kpis` (`at_risk` plafonnée à 50 pour l'affichage, vrai nombre
+  `at_risk_count`), `crm_pipeline(gym, p_filters)` (étape déduite, `tags`,
   `fields` ; filtres d'une vue), `filter_members` (filtres JSON =
   `segmentFiltersSchema` de `packages/shared`, droits de l'appelant), `session_coach_options`,
   `search_members` (tri `p_sort`, solde `credits` pour le gérant, null sinon),
@@ -341,6 +345,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   (`router.refresh()` toutes les 60 s onglet visible, et Realtime sur `class_sessions` de la salle).
   Client Supabase du navigateur (`lib/supabase/client.ts`) : **Realtime seulement**, jamais
   d'écriture. Listes longues : `ShowMore` (« Voir les N autres »), pas de zone à défilement.
+  Barres d'onglets qui défilent au téléphone : l'onglet `aria-current` est amené à l'écran
+  (`useActiveTabInView`, `hooks/use-active-tab-in-view.ts` ; `TabScroller` pour une barre rendue
+  côté serveur). Dates avec jour : « 1er » par `formatWithFirst` (`lib/format.ts`).
 - **Assistant Claude** (gérant) : `lib/ai/` — `agent.ts` (boucle d'outils, 8 tours, testée avec un
   faux modèle), `tools.ts` (outils Zod → JSON Schema, client Supabase de l'utilisateur donc RLS, jamais
   de SQL libre), `client.ts` (`server-only`), `run.ts`. Route `app/api/assistant` (flux NDJSON),
@@ -418,7 +425,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   route `app/api/paiements/[id]/recu` (gérant), lien `ReceiptLink`.
 - Marketplace (gérant) : `/marketplace` (catalogue, `?q=`, `?categorie=`), `/marketplace/commandes`,
   `/marketplace/devis` (une entrée chacune du bloc Marketplace, sans onglets), `CartSheet`, `QuoteDialog`, `OrderActions`
-  (`components/marketplace/`). Espace **Plateforme** (`/plateforme?onglet=catalogue|fournisseurs|devis|commandes`,
+  (`components/marketplace/`). Espace **Plateforme** (`/plateforme?onglet=catalogue|fournisseurs|devis|commandes|achats-groupes|demandes`,
+  `demos` gardé comme alias,
   rôle `admin`, dernière entrée du bloc Marketplace) : catalogue en `EditableCell` / `AddRow`,
   `TiersDialog`, `ImageUpload`, `AnswerQuote`, `OrderStatusButtons` (`components/platform/`).
   Paiement : `payOrder` / `commitCampaign` renvoient l'adresse de Stripe Checkout (retour par

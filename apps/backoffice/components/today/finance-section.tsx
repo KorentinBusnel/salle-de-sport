@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/empty";
 import type { TeamContext } from "@/lib/auth";
 import { gymFormatters } from "@/lib/format";
+import { remindedToday } from "@/lib/home-actions";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { getRenewals, getTodayFrame, getUnpaid } from "@/lib/today";
@@ -29,6 +30,12 @@ export async function FinanceSection({ context }: { context: TeamContext }) {
     frame.manager ? getRenewals(context) : Promise.resolve([]),
   ]);
   const format = gymFormatters(frame.tz);
+  // Premier échec : date courte sans heure (« 12 oct. »).
+  const shortDate = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: frame.tz,
+    day: "numeric",
+    month: "short",
+  });
   const today = Date.parse(zonedDateKey(frame.now, frame.tz));
   return (
     <HomeSection id="finance" title={t("today.finance")}>
@@ -61,14 +68,18 @@ export async function FinanceSection({ context }: { context: TeamContext }) {
                     >
                       {row.first_name} {row.last_name}
                     </Link>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {[
-                        row.plan,
-                        t(row.online ? "unpaid.online" : "unpaid.onSite"),
-                        t("today.since", { date: format.dateTime(row.first_failed_at) }),
-                      ]
+                    {/* Passe à la ligne plutôt que de couper : la date du premier échec reste
+                        entière. */}
+                    <span className="text-xs text-muted-foreground">
+                      {[row.plan, t(row.online ? "unpaid.online" : "unpaid.onSite")]
                         .filter(Boolean)
                         .join(" · ")}
+                      {" · "}
+                      <span className="whitespace-nowrap">
+                        {t("today.since", {
+                          date: shortDate.format(new Date(row.first_failed_at)),
+                        })}
+                      </span>
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
                       {row.last_reminded_at
@@ -96,6 +107,7 @@ export async function FinanceSection({ context }: { context: TeamContext }) {
                     amount={formatMoney(row.amount_cents, row.currency)}
                     subscriptionId={row.subscription_id}
                     settleable={row.settleable}
+                    remindedToday={remindedToday(row.last_reminded_at, frame.now, frame.tz)}
                   />
                 </li>
               ))}

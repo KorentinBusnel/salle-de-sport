@@ -3,7 +3,7 @@
 import { BOOKING_STATUS_TONE, type BookingStatus } from "@salle/shared";
 import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SegmentMeter } from "@/components/segment-meter";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,10 @@ export type SessionSummary = {
   id: string;
   discipline: string;
   color: string | undefined;
-  /** « mardi 6 octobre · 12:15 – 13:15 », formaté dans le fuseau de la salle. */
-  when: string;
+  /** « Mardi 6 octobre », formaté dans le fuseau de la salle. */
+  day: string;
+  /** « 12:15 – 13:15 ». */
+  time: string;
   coaches: string;
   room: string | null;
   booked: number;
@@ -38,7 +40,8 @@ type Person = { id: string; name: string; status: BookingStatus };
 
 /**
  * Aperçu d'une séance sans quitter la grille : horaire, coachs, places et inscrits (chargés à
- * l'ouverture). La fiche complète reste à un clic.
+ * l'ouverture). La fiche complète reste à un clic. À la fermeture, le focus revient au bloc de
+ * la séance (`[data-session-link]`) : l'aperçu n'a pas de bouton déclencheur.
  */
 export function SessionSheet({
   session,
@@ -49,9 +52,11 @@ export function SessionSheet({
 }) {
   const [people, setPeople] = useState<{ id: string; list: Person[] | null } | null>(null);
   const id = session?.id ?? null;
+  const lastId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
+    lastId.current = id;
     const controller = new AbortController();
     fetch(`/api/seances/${id}`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : { people: [] }))
@@ -66,7 +71,19 @@ export function SessionSheet({
 
   return (
     <Sheet open={session !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-md">
+      <SheetContent
+        className="w-full sm:max-w-md"
+        onCloseAutoFocus={(event) => {
+          const link = lastId.current
+            ? document.querySelector<HTMLElement>(
+                `[data-session-link="${CSS.escape(lastId.current)}"]`,
+              )
+            : null;
+          if (!link) return;
+          event.preventDefault();
+          link.focus();
+        }}
+      >
         {session ? (
           <>
             <SheetHeader className="gap-2">
@@ -80,7 +97,10 @@ export function SessionSheet({
                   </StatusPill>
                 ) : null}
               </div>
-              <SheetTitle className="text-lg">{session.when}</SheetTitle>
+              <SheetTitle className="grid text-lg">
+                <span>{session.day}</span>
+                <span className="tabular-nums">{session.time}</span>
+              </SheetTitle>
               <SheetDescription>
                 {[session.coaches, session.room].filter(Boolean).join(" · ")}
               </SheetDescription>

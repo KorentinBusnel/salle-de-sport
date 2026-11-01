@@ -2,25 +2,32 @@ import { describe, expect, it } from "vitest";
 import { filterEntries, parseRecents, pushRecent, RECENTS_MAX } from "./palette";
 
 const entries = [
+  { label: "Mon planning", hint: "Mes séances" },
   { label: "Planning", hint: "Semaine" },
   { label: "Paramètres", hint: "Réglages de la salle" },
   { label: "Cours récurrents", hint: "Modèles du planning" },
+  { label: "Catalogue", hint: "Disciplines" },
 ];
 
 describe("filterEntries", () => {
   it("rend tout sans frappe", () => {
-    expect(filterEntries(entries, "  ")).toHaveLength(3);
+    expect(filterEntries(entries, "  ")).toHaveLength(5);
   });
 
-  it("ignore accents et casse, cherche aussi l'aide", () => {
-    expect(filterEntries(entries, "REGLAGES").map((e) => e.label)).toEqual(["Paramètres"]);
+  it("ignore accents et casse", () => {
+    expect(filterEntries(entries, "PARAMETRES").map((e) => e.label)).toEqual(["Paramètres"]);
     expect(filterEntries(entries, "recurrent").map((e) => e.label)).toEqual(["Cours récurrents"]);
+  });
+
+  it("ne cherche pas dans l'aide", () => {
+    expect(filterEntries(entries, "reglages")).toEqual([]);
+    expect(filterEntries(entries, "ines")).toEqual([]);
   });
 
   it("met devant les libellés qui commencent par la frappe", () => {
     expect(filterEntries(entries, "plan").map((e) => e.label)).toEqual([
       "Planning",
-      "Cours récurrents",
+      "Mon planning",
     ]);
   });
 

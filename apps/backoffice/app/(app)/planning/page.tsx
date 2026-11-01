@@ -32,11 +32,14 @@ import { DeskShiftProvider } from "@/components/desk/desk-shift-dialog";
 import { Flash } from "@/components/flash";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { PageHeader } from "@/components/page-header";
+import { DayStrip } from "@/components/planning/day-strip";
 import { PlanningFilters } from "@/components/planning/planning-filters";
+import { PlanningViewBar } from "@/components/planning/planning-view-bar";
 import { type CreateOptions, QuickCreateDialog } from "@/components/planning/quick-create";
 import type { SessionSummary } from "@/components/planning/session-sheet";
 import { DraggableSession, DroppableDay, WeekDnd } from "@/components/planning/week-dnd";
 import { WeekPicker } from "@/components/planning/week-picker";
+import { WeekScroll } from "@/components/planning/week-scroll";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -49,7 +52,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { ViewBar, type ViewTab } from "@/components/views/view-bar";
+import type { ViewTab } from "@/components/views/view-bar";
 import { isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
 import { getOwnCoachId } from "@/lib/coaches";
@@ -256,6 +259,7 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
         start: config.private.desk_default_start,
         end: config.private.desk_default_end,
       },
+      past: dayKey < todayKey,
     };
   };
 
@@ -374,6 +378,21 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
     nowMinute >= firstHour * 60 && nowMinute <= lastHour * 60
       ? (nowMinute - firstHour * 60) * PX_PER_MINUTE
       : null;
+  // Ouverture de la grille (les soirées sont hors du cadre) : la prochaine séance du coach
+  // connecté, sinon l'heure courante cette semaine, sinon la première séance à venir de la semaine.
+  const nextOf = (list: PlanningSession[]) =>
+    list.find((s) => s.status === "scheduled" && s.phase !== "past");
+  const scrollMinute =
+    (canMine
+      ? nextOf(sessions.filter((s) => s.coachList.some((c) => c.profile_id === context.userId)))
+          ?.startMinute
+      : undefined) ??
+    (dayKeys.includes(todayKey) ? nowMinute : nextOf(sessions)?.startMinute) ??
+    null;
+  const scrollTop =
+    scrollMinute === null
+      ? null
+      : Math.max(0, (Math.min(scrollMinute, lastHour * 60) - firstHour * 60 - 30) * PX_PER_MINUTE);
 
   const ariaLabel = (s: PlanningSession) =>
     [
@@ -393,7 +412,8 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
     id: s.id,
     discipline: s.disciplines?.name ?? "",
     color: s.disciplines?.color,
-    when: `${format.longDay(s.starts_at)} · ${clock(s.starts_at)} – ${clock(s.ends_at)}`,
+    day: format.longDay(s.starts_at),
+    time: `${clock(s.starts_at)} – ${clock(s.ends_at)}`,
     coaches: s.coachLabel,
     room: s.rooms?.name ?? null,
     booked: s.booked_count,
@@ -445,11 +465,56 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
       </Empty>
     ) : null;
 
+  // En-tête : la semaine (grille) ou le jour choisi (liste) ; sans vue choisie, l'écran décide.
+  const weekTitle = t("planning.weekOf", { date: format.longDayInline(week.start) });
+  const dayTitle = format.longDay(
+    week.days.find((day) => day.key === selectedKey)?.start ?? week.start,
+  );
+  const dayNav = (className?: string) => (
+    <ButtonGroup aria-label={t("planning.dayNav")} className={className}>
+      <Button asChild variant="outline" size="icon-sm">
+        <Link
+          href={href({ semaine: "", jour: shiftDateKey(selectedKey, -1) })}
+          aria-label={t("planning.previousDay")}
+        >
+          <ChevronLeftIcon aria-hidden />
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="sm">
+        <Link
+          href={href({ semaine: "", jour: "" })}
+          aria-current={selectedKey === todayKey ? "date" : undefined}
+        >
+          {t("planning.today")}
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="icon-sm">
+        <Link
+          href={href({ semaine: "", jour: shiftDateKey(selectedKey, 1) })}
+          aria-label={t("planning.nextDay")}
+        >
+          <ChevronRightIcon aria-hidden />
+        </Link>
+      </Button>
+    </ButtonGroup>
+  );
+
   return (
     <DeskShiftProvider team={team}>
       <div className="grid min-w-0 gap-6">
         <PageHeader
-          title={t("planning.weekOf", { date: format.longDayInline(week.start) })}
+          title={
+            view === "jour" ? (
+              dayTitle
+            ) : view === "semaine" ? (
+              weekTitle
+            ) : (
+              <>
+                <span className="lg:hidden">{dayTitle}</span>
+                <span className="hidden lg:inline">{weekTitle}</span>
+              </>
+            )
+          }
           actions={
             <>
               {manager && createOptions ? (
@@ -460,38 +525,45 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                   defaultOpen={param("creer") === "1"}
                 />
               ) : null}
-              <ButtonGroup aria-label={t("planning.weekNav")}>
-                <Button asChild variant="outline" size="icon-sm">
-                  <Link
-                    href={href({ semaine: shiftDateKey(mondayKey, -7), jour: "" })}
-                    aria-label={t("planning.previousWeek")}
-                  >
-                    <ChevronLeftIcon aria-hidden />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={href({ semaine: "", jour: "" })}
-                    aria-current={dayKeys.includes(todayKey) ? "date" : undefined}
-                  >
-                    {t("planning.thisWeek")}
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="icon-sm">
-                  <Link
-                    href={href({ semaine: shiftDateKey(mondayKey, 7), jour: "" })}
-                    aria-label={t("planning.nextWeek")}
-                  >
-                    <ChevronRightIcon aria-hidden />
-                  </Link>
-                </Button>
-              </ButtonGroup>
+              {view === "semaine" ? null : dayNav(view === "jour" ? undefined : "lg:hidden")}
+              {view === "jour" ? null : (
+                <ButtonGroup
+                  aria-label={t("planning.weekNav")}
+                  className={view === "semaine" ? undefined : "hidden lg:flex"}
+                >
+                  <Button asChild variant="outline" size="icon-sm">
+                    <Link
+                      href={href({ semaine: shiftDateKey(mondayKey, -7), jour: "" })}
+                      aria-label={t("planning.previousWeek")}
+                    >
+                      <ChevronLeftIcon aria-hidden />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link
+                      href={href({ semaine: "", jour: "" })}
+                      aria-current={dayKeys.includes(todayKey) ? "date" : undefined}
+                    >
+                      {t("planning.thisWeek")}
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="icon-sm">
+                    <Link
+                      href={href({ semaine: shiftDateKey(mondayKey, 7), jour: "" })}
+                      aria-label={t("planning.nextWeek")}
+                    >
+                      <ChevronRightIcon aria-hidden />
+                    </Link>
+                  </Button>
+                </ButtonGroup>
+              )}
               <WeekPicker selected={selectedKey} query={query({ semaine: "", jour: "" })} />
             </>
           }
         />
 
-        <ViewBar
+        <PlanningViewBar
+          autoDay={explicit ? null : builtinPlanningView("jour", builtinName("jour"))}
           tabs={tabs}
           current={planningView}
           activeTab={explicit ? planningView.id : null}
@@ -559,7 +631,8 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
               )}
               aria-label={t("planning.dayView")}
             >
-              <nav
+              <DayStrip
+                selectedKey={selectedKey}
                 className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
                 aria-label={t("planning.days")}
               >
@@ -597,7 +670,7 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                     </Link>
                   );
                 })}
-              </nav>
+              </DayStrip>
               {selectedInfo.closed ? (
                 <p className="flex items-center gap-2 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
                   <CalendarXIcon className="size-4 shrink-0" aria-hidden />
@@ -648,6 +721,12 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                             ) : null}
                             <span className="truncate">{s.coachLabel}</span>
                           </span>
+                          {/* Phase, comme à l'accueil et sur la fiche : « En cours », « Terminée ». */}
+                          {s.status === "scheduled" && s.phase !== "upcoming" ? (
+                            <StatusPill tone={s.phase === "live" ? "success" : "neutral"}>
+                              {t(`dashboard.phase.${s.phase}`)}
+                            </StatusPill>
+                          ) : null}
                           {s.lowFill ? (
                             <StatusPill tone="brand" dot={false}>
                               {t("today.lowFill")}
@@ -706,9 +785,12 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                 createOptions={createOptions}
                 sessions={summaries}
               >
-                <div className="max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl bg-card shadow-border">
+                <WeekScroll
+                  scrollKey={mondayKey}
+                  className="max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl bg-card shadow-border"
+                >
                   <div className="grid min-w-[56rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
-                    <div className="sticky top-0 left-0 z-30 border-b bg-card" />
+                    <div data-sticky-header className="sticky top-0 left-0 z-30 border-b bg-card" />
                     {week.days.map((day) => {
                       const isToday = day.key === todayKey;
                       const info = dayInfo(day.key);
@@ -748,6 +830,14 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                     ))}
 
                     <div className="sticky left-0 z-10 bg-card" style={{ height: gridHeight }}>
+                      {scrollTop !== null ? (
+                        <span
+                          data-scroll-target
+                          aria-hidden
+                          className="absolute inset-x-0"
+                          style={{ top: scrollTop }}
+                        />
+                      ) : null}
                       {hours.map((hour) => (
                         <span
                           key={hour}
@@ -890,7 +980,7 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                       );
                     })}
                   </div>
-                </div>
+                </WeekScroll>
               </WeekDnd>
             </section>
           </>

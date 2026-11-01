@@ -13,9 +13,16 @@ export type DeskShiftView = {
 };
 export type DeskGapView = { start: string; end: string };
 
+/** « lundi 2 » pour une date civile « AAAA-MM-JJ » (nom du bouton « + » de la journée). */
+const dayLabel = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+});
+
 /**
  * Permanences d'une journée (planning) : créneaux et trous à couvrir. Le gérant modifie un
- * créneau en le touchant, ajoute avec « + » ; les autres rôles consultent.
+ * créneau en le touchant, ajoute avec « + » (pas sur un jour passé) ; les autres rôles consultent.
  */
 export function DeskDay({
   dayKey,
@@ -23,6 +30,7 @@ export function DeskDay({
   gaps,
   manager,
   defaultSlot,
+  past = false,
   compact = false,
 }: {
   dayKey: string;
@@ -32,6 +40,8 @@ export function DeskDay({
   defaultSlot: { start: string; end: string };
   /** Gérant : chaque créneau ouvre le dialogue de permanence (DeskShiftProvider). */
   manager: boolean;
+  /** Jour passé : plus de permanence à ajouter. */
+  past?: boolean | undefined;
   compact?: boolean | undefined;
 }) {
   const chip = cn(
@@ -103,19 +113,21 @@ export function DeskDay({
           )}
         </li>
       ))}
-      {manager ? (
+      {manager && !past ? (
         <li>
           <DeskShiftTrigger
             native
             draft={{ date: dayKey, ...defaultSlot }}
             className="flex h-7 w-full items-center justify-center rounded-md border border-dashed text-muted-foreground hover:bg-muted hover:text-foreground pointer-coarse:h-10"
-            aria-label={t("desk.addTitle")}
+            aria-label={t("desk.addOn", {
+              day: dayLabel.format(new Date(`${dayKey}T12:00:00Z`)),
+            })}
           >
             <PlusIcon className="size-3.5" aria-hidden />
           </DeskShiftTrigger>
         </li>
       ) : null}
-      {!manager && shifts.length === 0 && gaps.length === 0 ? (
+      {(!manager || past) && shifts.length === 0 && gaps.length === 0 ? (
         <li className="px-2 py-1 text-xs text-muted-foreground">—</li>
       ) : null}
     </ul>

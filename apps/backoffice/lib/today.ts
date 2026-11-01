@@ -16,7 +16,7 @@ import {
 import { cache } from "react";
 import type { TeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
-import { countActions } from "@/lib/home-actions";
+import { countActions, remindedToday } from "@/lib/home-actions";
 import { getCrmTodo } from "@/lib/nav-counts";
 import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
@@ -177,7 +177,10 @@ export async function getActionCount(context: TeamContext): Promise<number> {
     toCheck,
     deskGaps: desk?.gaps.length ?? 0,
     crmTodo: todo.reduce((sum, row) => sum + row.total, 0),
-    unpaid: unpaid?.rows.length ?? 0,
+    // Un impayé relancé aujourd'hui n'attend plus rien de l'équipe avant demain.
+    unpaid:
+      unpaid?.rows.filter((row) => !remindedToday(row.last_reminded_at, frame.now, frame.tz))
+        .length ?? 0,
   });
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@salle/shared";
-import { BanknoteIcon, SendIcon } from "lucide-react";
+import { BanknoteIcon, CheckIcon, SendIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -24,8 +24,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { t } from "@/lib/i18n";
 
 /**
- * Actions sur un impayé (accueil et gérant) : « Relancer » (message préparé en base, modifiable)
- * et, pour un abonnement suivi à la main, « Encaisser » sur place.
+ * Actions sur un impayé (accueil et gérant) : « Relancer » (message préparé en base, modifiable,
+ * une relance par jour) et, pour un abonnement suivi à la main, « Encaisser » sur place.
  */
 export function UnpaidActions({
   memberId,
@@ -33,12 +33,15 @@ export function UnpaidActions({
   amount,
   subscriptionId,
   settleable,
+  remindedToday = false,
 }: {
   memberId: string;
   name: string;
   amount: string;
   subscriptionId: string | null;
   settleable: boolean;
+  /** Déjà relancé aujourd'hui (`remindedToday` de lib/home-actions) : « Relancer » attend demain. */
+  remindedToday?: boolean | undefined;
 }) {
   const router = useRouter();
   const ids = useId();
@@ -93,21 +96,33 @@ export function UnpaidActions({
 
   return (
     <div className="flex shrink-0 gap-1.5">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={openReminder}
-        disabled={loading}
-        aria-busy={loading}
-        aria-label={t("unpaid.remindOf", { name })}
-      >
-        {loading ? (
-          <Spinner data-icon="inline-start" />
-        ) : (
-          <SendIcon data-icon="inline-start" aria-hidden />
-        )}
-        {t("unpaid.remind")}
-      </Button>
+      {remindedToday ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled
+          aria-label={t("unpaid.remindedTodayOf", { name })}
+        >
+          <CheckIcon data-icon="inline-start" aria-hidden />
+          {t("unpaid.remindedToday")}
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={openReminder}
+          disabled={loading}
+          aria-busy={loading}
+          aria-label={t("unpaid.remindOf", { name })}
+        >
+          {loading ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <SendIcon data-icon="inline-start" aria-hidden />
+          )}
+          {t("unpaid.remind")}
+        </Button>
+      )}
       {settleable && subscriptionId ? (
         <Popover open={settleOpen} onOpenChange={setSettleOpen}>
           <PopoverTrigger asChild>
@@ -118,16 +133,18 @@ export function UnpaidActions({
           </PopoverTrigger>
           <PopoverContent align="end" className="grid w-72 gap-3">
             <p className="text-sm">{t("unpaid.settleHint", { name, amount })}</p>
+            {/* Choix empilés : « Carte (terminal) » ne tient pas sur une ligne de trois. */}
             <ToggleGroup
               type="single"
               variant="outline"
+              orientation="vertical"
               value={method}
               onValueChange={(value) => value && setMethod(value as ManualPaymentMethod)}
               aria-label={t("billing.method")}
-              className="w-full"
+              className="w-full flex-col items-stretch"
             >
               {MANUAL_PAYMENT_METHODS.map((m) => (
-                <ToggleGroupItem key={m} value={m} className="flex-1">
+                <ToggleGroupItem key={m} value={m} className="w-full justify-start">
                   {t(`billing.manualMethod.${m}`)}
                 </ToggleGroupItem>
               ))}

@@ -2616,6 +2616,72 @@ export type Database = {
           },
         ];
       };
+      saved_views: {
+        Row: {
+          columns: string[];
+          created_at: string;
+          created_by: string | null;
+          filters: NonNullable<Json>;
+          group_by: string | null;
+          gym_id: string;
+          id: string;
+          layout: string;
+          name: string;
+          object: string;
+          position: number;
+          sort: string | null;
+          updated_at: string;
+          visibility: string;
+        };
+        Insert: {
+          columns?: string[];
+          created_at?: string;
+          created_by?: string | null;
+          filters?: NonNullable<Json>;
+          group_by?: string | null;
+          gym_id: string;
+          id?: string;
+          layout: string;
+          name: string;
+          object: string;
+          position?: number;
+          sort?: string | null;
+          updated_at?: string;
+          visibility?: string;
+        };
+        Update: {
+          columns?: string[];
+          created_at?: string;
+          created_by?: string | null;
+          filters?: NonNullable<Json>;
+          group_by?: string | null;
+          gym_id?: string;
+          id?: string;
+          layout?: string;
+          name?: string;
+          object?: string;
+          position?: number;
+          sort?: string | null;
+          updated_at?: string;
+          visibility?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saved_views_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saved_views_gym_id_fkey";
+            columns: ["gym_id"];
+            isOneToOne: false;
+            referencedRelation: "gyms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       segments: {
         Row: {
           created_at: string;

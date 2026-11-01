@@ -444,6 +444,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   point, titre court, une phrase, et deux cartes (`card1` / `card2`, pastille « Fait », réglage ou
   action) posées sur la capture côté texte dès `lg`, dessous sur mobile, apparues l'une après
   l'autre. Chaque titre de fonctionnalité finit par un point orange (`TitleDot`).
+  Mots clés en pastille dans les phrases de la section : `[mot](icône)` et `**gras**` dans le
+  catalogue, rendus par `RichText` (`components/rich-text.tsx`, icônes `KEYWORD_ICONS`, analyse
+  `parseRichText` de `lib/rich-text.ts`) ; pastille jamais coupée, ponctuation collée, trois au
+  plus par phrase et icônes connues (testé), paragraphe en `leading-9`.
 - **Preuves** : faits vérifiables du produit seulement, jamais de témoignage, logo ou chiffre
   inventé (le compteur de salles est lu en base). Exception décidée par le gérant : logos tiers du
   décor `Orbits` (voir `THIRD_PARTY_NOTICES.md`), sans texte qui les présente comme intégrés.

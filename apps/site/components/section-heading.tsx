@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export function SectionHeading({
@@ -11,7 +12,7 @@ export function SectionHeading({
   id: string;
   eyebrow: string;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   centered?: boolean;
   className?: string;
 }) {
@@ -21,7 +22,7 @@ export function SectionHeading({
       <h2 id={id} className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
         {title}
       </h2>
-      {subtitle && <p className="mt-4 text-lg text-muted-foreground">{subtitle}</p>}
+      {subtitle && <p className="mt-4 text-lg leading-9 text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }

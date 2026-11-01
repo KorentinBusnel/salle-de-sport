@@ -67,16 +67,17 @@ export const fr = {
       "Page Aujourd'hui du back office {brand} : brief de l'assistant, question libre, indicateurs du jour et permanence à l'accueil.",
     appAlt: "Planning de la semaine dans l'app adhérent {brand}, avec les places restantes.",
   },
+  // Phrases à mots clés en pastille : [mot](icône) et **gras** (lib/rich-text.ts, RichText).
   benefits: {
     eyebrow: "Fonctionnalités",
     title: "Votre salle, augmentée par l'IA",
     subtitle:
-      "{brand} analyse vos réservations, vos finances et la fréquentation de vos adhérents, puis vous dit où agir. Votre équipe pilote depuis le back office, vos adhérents réservent depuis l'app.",
+      "{brand} analyse vos [réservations](calendar), vos [finances](coins) et la [fréquentation](chart) de vos adhérents, puis vous dit où agir. Votre équipe pilote depuis le back office, vos adhérents réservent depuis l'app.",
     // Sous l'assistant : étiquette, titre court, une phrase, deux cartes posées sur la capture.
     classes: {
       label: "Planning",
       title: "Votre salle, vos règles",
-      body: "WOD, Hyrox, open gym ou run club : vous fixez les créneaux, les capacités, les délais d'annulation et la liste d'attente. L'outil applique vos règles.",
+      body: "WOD, Hyrox, open gym ou run club : vous fixez les [créneaux](slots), les capacités, les délais d'annulation et la [liste d'attente](waitlist). L'outil applique vos règles.",
       card1: "Semaine dupliquée en 1 clic",
       card1Detail: "Copiée sur la semaine suivante",
       card1Status: "Fait",
@@ -88,7 +89,7 @@ export const fr = {
     members: {
       label: "Adhérents",
       title: "Un suivi à votre image",
-      body: "Vous choisissez ce que vous suivez : objectifs, niveaux, blessures, présences. Chaque adhérent a sa fiche, avec les infos qui comptent pour vous.",
+      body: "Vous choisissez ce que vous suivez : [objectifs](target), niveaux, [blessures](injury), [présences](presence). Chaque adhérent a sa fiche, avec les infos qui comptent pour vous.",
       card1: "Objectif : premier Hyrox",
       card1Detail: "Inès André",
       card1Status: "Suivi",
@@ -100,7 +101,7 @@ export const fr = {
     payments: {
       label: "Encaissement",
       title: "Encaissé ici, synchronisé partout",
-      body: "Abonnements, cartes de séances et prélèvements sont encaissés directement, puis synchronisés avec votre comptabilité et vos outils existants.",
+      body: "[Abonnements](card), cartes de séances et [prélèvements](debit) sont encaissés directement, puis synchronisés avec votre [comptabilité](accounting) et vos outils existants.",
       card1: "Abonnement encaissé par CB",
       card1Detail: "Illimité, 59 €",
       card1Status: "Fait",
@@ -112,7 +113,7 @@ export const fr = {
     coaches: {
       label: "Coachs",
       title: "Leur paie, réglée en 1 clic",
-      body: "À la séance, à l'heure ou au forfait : vous définissez les règles par coach. Chaque séance terminée est comptée, et le paiement est prêt en fin de mois.",
+      body: "À la séance, à l'heure ou au forfait : vous définissez les [règles par coach](rules). Chaque séance terminée est comptée, et le [paiement](pay) est prêt en fin de mois.",
       card1: "12 séances × 35 €",
       card1Detail: "Julien M., sur le mois",
       card1Status: "Calculé",
@@ -124,7 +125,7 @@ export const fr = {
     assistant: {
       badge: "Nouveauté",
       title: "L'IA qui connaît votre salle",
-      body: "Demandez « Qui décroche en ce moment ? ». En quelques secondes, l'IA vous montre les adhérents concernés et prépare la relance.",
+      body: "Demandez **« Qui décroche en ce moment ? »**. En quelques secondes, l'IA vous montre les [adhérents concernés](users) et prépare la [relance](mail).",
       point1: "Vous validez, elle envoie. Jamais l'inverse.",
       point2: "Chaque matin, votre journée résumée en un coup d'œil.",
       point3: "Les notes sensibles restent entre vous et vos coachs.",

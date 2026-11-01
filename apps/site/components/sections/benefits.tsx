@@ -19,6 +19,7 @@ import { ProductFrame } from "@/components/frames";
 import { Orbits } from "@/components/orbits";
 import { IconChip } from "@/components/icon-chip";
 import { Reveal } from "@/components/reveal";
+import { RichText } from "@/components/rich-text";
 import { CONTAINER, SectionHeading } from "@/components/section-heading";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -103,7 +104,7 @@ export function Benefits() {
             centered
             eyebrow={t("benefits.eyebrow")}
             title={t("benefits.title")}
-            subtitle={t("benefits.subtitle")}
+            subtitle={<RichText text={t("benefits.subtitle")} />}
           />
         </Reveal>
         <div className="mt-16 space-y-20 sm:mt-20 sm:space-y-24">
@@ -144,7 +145,9 @@ function AssistantRow() {
           {t("benefits.assistant.title")}
           <TitleDot />
         </h3>
-        <p className="mt-4 text-lg text-muted-foreground">{t("benefits.assistant.body")}</p>
+        <p className="mt-4 text-lg leading-9 text-muted-foreground">
+          <RichText text={t("benefits.assistant.body")} />
+        </p>
         <ul className="mt-6 space-y-3">
           {ASSISTANT_POINTS.map(({ key, icon }) => (
             <li key={key} className="flex items-start gap-3 text-base">
@@ -187,8 +190,8 @@ function FeatureRow({ feature, flipped }: { feature: Feature; flipped: boolean }
           {t(`benefits.${key}.title`)}
           <TitleDot />
         </h3>
-        <p className="mt-4 text-lg text-pretty text-muted-foreground">
-          {t(`benefits.${key}.body`)}
+        <p className="mt-4 text-lg leading-9 text-pretty text-muted-foreground">
+          <RichText text={t(`benefits.${key}.body`)} />
         </p>
       </Reveal>
       <Reveal delay={80} className="relative lg:col-span-3">

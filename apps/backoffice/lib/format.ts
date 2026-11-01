@@ -1,4 +1,16 @@
 import { formatMoney } from "@salle/shared";
+
+/**
+ * Date mise en forme avec le premier du mois en ordinal, comme en français : « dimanche
+ * 1er novembre », « 1er nov. 2026 » (Intl écrit « 1 »). Les autres jours ne changent pas.
+ */
+export function formatWithFirst(format: Intl.DateTimeFormat, date: Date): string {
+  return format
+    .formatToParts(date)
+    .map((part) => (part.type === "day" && part.value === "1" ? "1er" : part.value))
+    .join("");
+}
+
 /** Formats de date et d'heure dans le fuseau de la salle. */
 export function gymFormatters(timeZone: string) {
   const make = (options: Intl.DateTimeFormatOptions) =>
@@ -22,21 +34,24 @@ export function gymFormatters(timeZone: string) {
     day: "numeric",
     month: "long",
   });
+  const day = (format: Intl.DateTimeFormat, date: Date | string) =>
+    formatWithFirst(format, new Date(date));
+  const civilNoon = (key: string) => new Date(`${key}T12:00:00Z`);
   return {
     time: (date: Date | string) => time.format(new Date(date)),
-    longDay: (date: Date | string) => capitalize(longDay.format(new Date(date))),
+    longDay: (date: Date | string) => capitalize(day(longDay, date)),
     /** « lundi 5 octobre », pour une date en milieu de phrase. */
-    longDayInline: (date: Date | string) => longDay.format(new Date(date)),
-    shortDay: (date: Date | string) => capitalize(shortDay.format(new Date(date))),
-    dateTime: (date: Date | string) => dateTime.format(new Date(date)),
+    longDayInline: (date: Date | string) => day(longDay, date),
+    shortDay: (date: Date | string) => capitalize(day(shortDay, date)),
+    dateTime: (date: Date | string) => day(dateTime, date),
     /** « 29 janvier 2025 », quand l'année compte (ancienneté). */
-    fullDate: (date: Date | string) => fullDate.format(new Date(date)),
+    fullDate: (date: Date | string) => day(fullDate, date),
     /** « janv. 2025 ». */
     monthYear: (date: Date | string) => monthYear.format(new Date(date)),
     /** Date civile « AAAA-MM-JJ » (sans heure) : « 5 oct. 2026 ». */
-    dateKey: (key: string) => civil.format(new Date(`${key}T12:00:00Z`)),
+    dateKey: (key: string) => formatWithFirst(civil, civilNoon(key)),
     /** Date civile « AAAA-MM-JJ » en toutes lettres : « lundi 12 octobre ». */
-    dayKey: (key: string) => civilDay.format(new Date(`${key}T12:00:00Z`)),
+    dayKey: (key: string) => formatWithFirst(civilDay, civilNoon(key)),
   };
 }
 

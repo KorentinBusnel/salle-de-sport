@@ -48,7 +48,10 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
                 <TableHead className="w-20">
                   <span className="sr-only">{t("catalog.order")}</span>
                 </TableHead>
-                <TableHead className="w-48">{t("catalog.name")}</TableHead>
+                {/* Nom collant au défilement horizontal : le repère de la ligne reste visible. */}
+                <TableHead sticky className="w-48">
+                  {t("catalog.name")}
+                </TableHead>
                 <TableHead className="w-36">{t("catalog.color")}</TableHead>
                 <TableHead>{t("catalog.description")}</TableHead>
                 <TableHead className="w-32">{t("catalog.defaultDuration")}</TableHead>
@@ -62,7 +65,7 @@ export async function CatalogSection({ gymId }: { gymId: string }) {
                   <TableCell className="p-1">
                     <DisciplineOrder ids={all.map((x) => x.id)} index={index} name={d.name} />
                   </TableCell>
-                  <TableCell className="p-1">
+                  <TableCell sticky className="p-1 group-hover/row:bg-card">
                     <EditableCell
                       kind="text"
                       id={d.id}

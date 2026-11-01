@@ -6,6 +6,7 @@ import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cancelCampaign, closeCampaign, createCampaign } from "@/app/(app)/plateforme/actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DateField } from "@/components/forms/date-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,12 +77,12 @@ export function NewCampaign({
       </div>
       <div className="grid gap-1">
         <Label htmlFor={`${ids}-ends`}>{t("platform.campaigns.endsOn")}</Label>
-        <Input
+        {/* Date civile de la salle, au format du back office (pas celui du navigateur). */}
+        <DateField
           id={`${ids}-ends`}
-          type="date"
-          value={endsOn}
-          onChange={(event) => setEndsOn(event.target.value)}
-          className="w-40"
+          value={endsOn || null}
+          onChange={(value) => setEndsOn(value ?? "")}
+          className="w-48"
         />
       </div>
       <div className="grid gap-1">

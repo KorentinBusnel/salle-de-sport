@@ -1,10 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { useRef } from "react";
 import { LinkPending } from "@/components/link-pending";
+import { useActiveTabInView } from "@/hooks/use-active-tab-in-view";
 import { cn } from "@/lib/utils";
 
 /**
  * Navigation verticale des Paramètres : une section par ligne, avec une phrase d'aide. Sur
- * mobile, elle défile à l'horizontale au-dessus du contenu.
+ * mobile, elle défile à l'horizontale au-dessus du contenu, la section courante à l'écran.
  */
 export function SettingsNav({
   label,
@@ -13,8 +17,11 @@ export function SettingsNav({
   label: string;
   sections: { href: string; label: string; hint: string; current: boolean }[];
 }) {
+  const nav = useRef<HTMLElement>(null);
+  useActiveTabInView(nav, sections.find((section) => section.current)?.href);
   return (
     <nav
+      ref={nav}
       aria-label={label}
       className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:sticky lg:top-20 lg:mx-0 lg:grid lg:overflow-visible lg:px-0"
     >
@@ -34,7 +41,7 @@ export function SettingsNav({
           <span
             className={cn(
               "hidden text-xs lg:block",
-              section.current ? "text-accent-foreground/80" : "text-muted-foreground",
+              section.current ? "text-accent-foreground" : "text-muted-foreground",
             )}
           >
             {section.hint}

@@ -29,6 +29,7 @@ import { SETTINGS_SECTIONS, type SettingsSection, settingsHref } from "@/lib/set
 import { t } from "@/lib/i18n";
 import { type GymConfig, getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: t("settings.title") };
 
@@ -43,6 +44,9 @@ type Tab = SettingsSection;
 
 /** Anciens liens (« ?onglet=general ») : vers la section qui les a remplacés. */
 const LEGACY: Record<string, Tab> = { general: "reservations" };
+
+/** Sections à tableau : toute la largeur disponible (les autres restent en colonne de lecture). */
+const WIDE_TABS: readonly Tab[] = ["catalogue", "champs", "offres"];
 
 export default async function SettingsPage({
   searchParams,
@@ -72,7 +76,7 @@ export default async function SettingsPage({
             current: x === tab,
           }))}
         />
-        <div className="grid max-w-3xl min-w-0 gap-6">
+        <div className={cn("grid min-w-0 gap-6", !WIDE_TABS.includes(tab) && "max-w-3xl")}>
           {tab === "salle" ? <GymTab config={config} gymId={context.gym.id} /> : null}
           {tab === "reservations" ? (
             <NumbersCard

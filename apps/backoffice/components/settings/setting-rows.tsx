@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { saveSetting } from "@/app/(app)/parametres/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Switch } from "@/components/ui/switch";
 import type { ActionResult } from "@/lib/action-result";
 import { type MessageKey, t } from "@/lib/i18n";
@@ -63,26 +64,37 @@ export function useAutosave<T>(
   return { value, commit, pending };
 }
 
-/** Ligne de réglage : libellé et aide à gauche, commande à droite (en dessous au téléphone). */
+/**
+ * Ligne de réglage : libellé et aide à gauche, commande à droite (en dessous au téléphone).
+ * `readOnly` : valeur affichée en texte ; le libellé n'est alors pas un `<label>` de champ.
+ */
 export function SettingRow({
   id,
   label,
   hint,
   error,
+  readOnly = false,
   children,
 }: {
   id: string;
   label: ReactNode;
   hint?: ReactNode;
   error?: string | null | undefined;
+  readOnly?: boolean | undefined;
   children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="grid min-w-0 gap-1">
-        <label htmlFor={id} className="text-sm font-medium">
-          {label}
-        </label>
+        {readOnly ? (
+          <p id={`${id}-label`} className="text-sm font-medium">
+            {label}
+          </p>
+        ) : (
+          <label htmlFor={id} className="text-sm font-medium">
+            {label}
+          </label>
+        )}
         {hint ? (
           <p id={`${id}-hint`} className="text-sm text-muted-foreground">
             {hint}
@@ -169,7 +181,12 @@ export function SettingNumberRow({
     else run();
   }
 
+  // Champ vide (« Sans limite ») : « − » ne choisit pas la valeur la plus restrictive à la place
+  // du gérant ; « + » part de la valeur par défaut.
+  const empty = meta.nullable && text.trim() === "";
+
   function step(direction: 1 | -1) {
+    if (direction === -1 && empty) return;
     const base = parse(text) ?? value ?? meta.defaultValue ?? meta.min;
     const next = Math.min(meta.max, Math.max(meta.min, base + direction * meta.step));
     setText(String(next));
@@ -200,13 +217,14 @@ export function SettingNumberRow({
           variant="outline"
           size="icon-sm"
           aria-label={t("settings.less", { label })}
-          disabled={value !== null && value <= meta.min}
+          disabled={empty || (value !== null && value <= meta.min)}
           onClick={() => step(-1)}
         >
           <MinusIcon aria-hidden />
         </Button>
-        <div className="relative">
-          <Input
+        {/* L'unité suit la valeur dans le même cadre, sans la recouvrir ; masquée à vide. */}
+        <InputGroup className={cn("w-32 pointer-coarse:h-10", meta.nullable && "w-36")}>
+          <InputGroupInput
             id={id}
             inputMode={meta.integer ? "numeric" : "decimal"}
             value={text}
@@ -228,15 +246,14 @@ export function SettingNumberRow({
                 step(-1);
               }
             }}
-            className={cn("w-28 pr-12 text-right tabular-nums", meta.nullable && "w-32")}
+            className="text-right tabular-nums"
           />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs text-muted-foreground"
-          >
-            {unit}
-          </span>
-        </div>
+          {empty ? null : (
+            <InputGroupAddon align="inline-end" aria-hidden className="text-xs font-normal">
+              {unit}
+            </InputGroupAddon>
+          )}
+        </InputGroup>
         <Button
           type="button"
           variant="outline"

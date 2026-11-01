@@ -293,7 +293,7 @@ export const fr = {
     },
   },
   session: {
-    heading: "{discipline} · {start}",
+    heading: "{discipline} · {day}, {start}",
     time: "{start} – {end}",
     timeLabel: "Horaire",
     coachLabel: "Coachs",

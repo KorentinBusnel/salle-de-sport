@@ -204,6 +204,7 @@ export default async function SessionPage({
       <PageHeader
         title={t("session.heading", {
           discipline: session.disciplines?.name ?? "",
+          day: format.longDayInline(session.starts_at),
           start: format.time(session.starts_at),
         })}
         description={
@@ -276,14 +277,14 @@ export default async function SessionPage({
                           return (
                             <li
                               key={booking.id}
-                              className="flex flex-wrap items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50"
+                              className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50"
                             >
-                              <Avatar className="size-9">
+                              <Avatar className="size-9 shrink-0">
                                 <AvatarFallback className="text-xs">
                                   {initials(name)}
                                 </AvatarFallback>
                               </Avatar>
-                              <span className="grid min-w-36 flex-1">
+                              <span className="grid min-w-0 flex-1">
                                 <span className="truncate font-medium">{name}</span>
                                 <span className="truncate text-xs text-muted-foreground">
                                   {booking.members?.phone ?? booking.members?.email ?? ""}
@@ -434,8 +435,10 @@ export default async function SessionPage({
             )}
           </div>
 
-          <aside className="grid gap-6 xl:sticky xl:top-20">
-            <Card>
+          {/* Sous xl, la carte d'infos (horaire, coachs, salle, places) passe avant les inscrits ;
+              les autres cartes restent après. */}
+          <aside className="contents xl:sticky xl:top-20 xl:grid xl:gap-6">
+            <Card className="order-first xl:order-none">
               <CardContent className="grid gap-4">
                 <div className="grid gap-2">
                   <div className="flex items-baseline justify-between">

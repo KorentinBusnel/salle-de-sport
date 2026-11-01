@@ -569,7 +569,7 @@ export const fr = {
     },
     page: "Page {page} sur {pages}",
     taggedWith: "Tag :",
-    clearTag: "Retirer le filtre",
+    todoBack: "Revenir à tous les adhérents",
   },
   memberStatus: {
     prospect: "Prospect",

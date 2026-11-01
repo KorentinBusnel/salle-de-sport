@@ -1345,6 +1345,8 @@ export const fr = {
     noOptions: "Aucune option",
     staffCanEdit: "Modifiable par l'accueil",
     active: "Actif",
+    columnsHint:
+      "Actif : un champ inactif est masqué des fiches mais garde ses valeurs ; {max} champs actifs au plus. Modifiable par l'accueil : l'accueil ne modifie que les champs cochés.",
     usage: "{count, plural, =0 {Aucune fiche} one {# fiche} other {# fiches}}",
     order: "Ordre",
     moveUp: "Monter : {name}",

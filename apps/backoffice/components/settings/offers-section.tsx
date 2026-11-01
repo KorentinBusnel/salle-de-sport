@@ -23,6 +23,12 @@ import {
 const PLAN_TYPES = ["recurring", "pack", "single"] as const;
 
 /**
+ * Colonne du nom, collante au défilement horizontal : le repère de la ligne reste visible.
+ * Les lignes ne changent pas de fond au survol, la cellule non plus.
+ */
+const STICKY_CELL = "p-1 group-hover/row:bg-card";
+
+/**
  * Offres et codes promo « à la Notion » : chaque valeur se modifie sur place. Une offre se
  * désactive (elle reste dans l'historique des paiements) ; aucune discipline cochée : toutes.
  */
@@ -87,7 +93,9 @@ export async function OffersSection({ gymId }: { gymId: string }) {
           <Table className="min-w-[83rem]">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-52">{t("offers.name")}</TableHead>
+                <TableHead sticky className="w-52">
+                  {t("offers.name")}
+                </TableHead>
                 <TableHead className="w-36">{t("offers.typeLabel")}</TableHead>
                 <TableHead className="w-28">{t("offers.price")}</TableHead>
                 <TableHead className="w-32">{t("offers.intervalLabel")}</TableHead>
@@ -106,7 +114,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
                 const recurring = p.type === "recurring";
                 return (
                   <TableRow key={p.id} data-row-id={p.id} className="hover:bg-transparent">
-                    <TableCell className="p-1">
+                    <TableCell sticky className={STICKY_CELL}>
                       <EditableCell
                         kind="text"
                         id={p.id}
@@ -284,7 +292,9 @@ export async function OffersSection({ gymId }: { gymId: string }) {
           <Table className="min-w-[66rem]">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-40">{t("offers.code")}</TableHead>
+                <TableHead sticky className="w-40">
+                  {t("offers.code")}
+                </TableHead>
                 <TableHead className="w-36">{t("offers.discountKind")}</TableHead>
                 <TableHead className="w-28">{t("offers.discount")}</TableHead>
                 <TableHead className="w-56">{t("offers.forPlans")}</TableHead>
@@ -297,7 +307,7 @@ export async function OffersSection({ gymId }: { gymId: string }) {
             <TableBody>
               {(promos ?? []).map((p) => (
                 <TableRow key={p.id} data-row-id={p.id} className="hover:bg-transparent">
-                  <TableCell className="p-1">
+                  <TableCell sticky className={STICKY_CELL}>
                     <EditableCell
                       kind="text"
                       id={p.id}

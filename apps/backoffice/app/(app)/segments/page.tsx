@@ -2,6 +2,7 @@ import { MEMBER_STATUS_TONE, parseMemberField, parseSegmentFilters } from "@sall
 import { MailCheckIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Flash } from "@/components/flash";
 import { EmailingNav } from "@/components/emailing-nav";
 import { PageHeader } from "@/components/page-header";
@@ -9,6 +10,7 @@ import { FilterBar } from "@/components/views/filter-bar";
 import { PendingRegion, UrlStateProvider } from "@/hooks/use-url-state";
 import { StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
+import { ShowMore } from "@/components/today/show-more";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +24,8 @@ import { deleteSegment, saveSegment } from "./actions";
 export const metadata: Metadata = { title: t("segments.title") };
 
 const PREVIEW = 50;
+/** Fiches de l'aperçu affichées avant « Voir les N autres ». */
+const PREVIEW_SHOWN = 10;
 
 /** Segments dynamiques : filtres combinés, aperçu immédiat, enregistrement nommé. */
 export default async function SegmentsPage({
@@ -64,17 +68,36 @@ export default async function SegmentsPage({
   const saved = current ? parseSegmentFilters(current.filters) : {};
   const filters = filtersFromSearch(params) ?? saved;
 
-  // Un seul comptage : celui de l'aperçu ; les joignables par email se lisent dans la liste.
-  const {
-    data: preview,
-    count,
-    error,
-  } = await supabase
-    .rpc("filter_members", { p_gym_id: context.gym.id, p_filters: filters }, { count: "exact" })
-    .select("id, first_name, last_name, email, status, marketing_email_consent_at")
-    .range(0, PREVIEW - 1);
+  // Audience comptée comme à l'envoi d'une campagne (segment_audience) : ciblés, et joignables
+  // par email (consentement et adresse). Segment ouvert : ses campagnes programmées, annoncées
+  // avant la suppression (elles seront annulées faute de segment).
+  const args = { p_gym_id: context.gym.id, p_filters: filters };
+  const [previewRes, reachableRes, scheduledRes] = await Promise.all([
+    supabase
+      .rpc("filter_members", args, { count: "exact" })
+      .select("id, first_name, last_name, email, status, marketing_email_consent_at")
+      .range(0, PREVIEW - 1),
+    supabase
+      .rpc("filter_members", args, { count: "exact" })
+      .select("id")
+      .not("marketing_email_consent_at", "is", null)
+      .not("email", "is", null)
+      .range(0, 0),
+    current
+      ? supabase
+          .from("campaigns")
+          .select("id", { count: "exact", head: true })
+          .eq("gym_id", context.gym.id)
+          .eq("status", "scheduled")
+          .eq("segment->>segment_id", current.id)
+      : Promise.resolve({ count: 0, error: null }),
+  ]);
+  const error = previewRes.error ?? reachableRes.error ?? scheduledRes.error;
   if (error) throw new Error(error.message);
-  const total = count ?? preview.length;
+  const preview = previewRes.data ?? [];
+  const total = previewRes.count ?? preview.length;
+  const reachable = reachableRes.count ?? 0;
+  const scheduled = scheduledRes.count ?? 0;
 
   return (
     <UrlStateProvider>
@@ -150,6 +173,12 @@ export default async function SegmentsPage({
                   <div className="grid gap-1">
                     <CardTitle className="tabular-nums" aria-live="polite">
                       {t("segments.count", { count: total })}
+                      {total > 0 ? (
+                        <span className="font-normal text-muted-foreground">
+                          {" · "}
+                          {t("segments.reachable", { count: reachable })}
+                        </span>
+                      ) : null}
                     </CardTitle>
                     <CardDescription>{t("segments.consentHint")}</CardDescription>
                   </div>
@@ -171,18 +200,27 @@ export default async function SegmentsPage({
                       </SubmitButton>
                     </form>
                     {current ? (
-                      <form action={deleteSegment}>
-                        <input type="hidden" name="segmentId" value={current.id} />
-                        <Button
-                          type="submit"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t("segments.delete")}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      </form>
+                      <ConfirmDialog
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t("segments.delete")}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2Icon aria-hidden />
+                          </Button>
+                        }
+                        title={t("segments.deleteTitle", { name: current.name })}
+                        description={
+                          scheduled > 0
+                            ? `${t("segments.deleteScheduled", { count: scheduled })} ${t("segments.deleteBody")}`
+                            : t("segments.deleteBody")
+                        }
+                        confirmLabel={t("common.delete")}
+                        action={deleteSegment}
+                        fields={{ segmentId: current.id }}
+                      />
                     ) : null}
                   </div>
                 </CardHeader>
@@ -193,8 +231,13 @@ export default async function SegmentsPage({
                       {t("segments.empty")}
                     </p>
                   ) : (
-                    <ul className="-mx-2 grid sm:grid-cols-2">
-                      {preview.map((m) => (
+                    <ShowMore
+                      // Repli remis à zéro quand les critères changent.
+                      key={JSON.stringify(filters)}
+                      label={t("segments.previewLabel")}
+                      initial={PREVIEW_SHOWN}
+                      className="-mx-2 grid sm:grid-cols-2"
+                      items={preview.map((m) => (
                         <li key={m.id}>
                           <Link
                             href={`/adherents/${m.id}`}
@@ -220,7 +263,7 @@ export default async function SegmentsPage({
                           </Link>
                         </li>
                       ))}
-                    </ul>
+                    />
                   )}
                   {total > PREVIEW ? (
                     <p className="mt-3 text-xs text-muted-foreground">

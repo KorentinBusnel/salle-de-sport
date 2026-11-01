@@ -569,7 +569,7 @@ export const fr = {
     },
     page: "Page {page} sur {pages}",
     taggedWith: "Étiquette :",
-    clearTag: "Retirer le filtre",
+    todoBack: "Revenir à tous les adhérents",
   },
   memberStatus: {
     prospect: "Prospect",
@@ -962,7 +962,9 @@ export const fr = {
     noteAdded: "Note ajoutée.",
     upcoming: "À venir",
     past: "Passées",
+    cancelled: "Annulées",
     noBookings: "Aucune réservation.",
+    bookingsLimit: "Seules les {count} premières sont listées.",
     book: "Inscrire à une séance",
     bookHint: "Séances des 8 prochains jours ; mêmes règles que dans l'app.",
     bookSubmit: "Inscrire",
@@ -1040,6 +1042,7 @@ export const fr = {
     },
     bookings: "{count, plural, =0 {Aucune réservation} one {# réservation} other {# réservations}}",
     today: "aujourd'hui",
+    lastActivity: "Dernière activité : {when}",
     startTrial: "Démarrer l'essai",
     trialStarted: "Prospect passé à l'essai.",
     moved: "{name} → {stage}.",
@@ -1088,6 +1091,9 @@ export const fr = {
     emailConsent: "Consentement email",
     reset: "Réinitialiser",
     count: "{count, plural, =0 {Aucun adhérent} one {# adhérent} other {# adhérents}}",
+    reachable:
+      "{count, plural, =0 {aucun joignable par email} one {# joignable par email} other {# joignables par email}}",
+    previewLabel: "Adhérents du segment",
     consentHint:
       "Aperçu mis à jour à chaque critère. Les campagnes ne touchent que les fiches marquées d'un consentement email.",
     name: "Nom du segment",
@@ -1095,6 +1101,10 @@ export const fr = {
     save: "Enregistrer",
     update: "Mettre à jour",
     delete: "Supprimer le segment",
+    deleteTitle: "Supprimer le segment « {name} » ?",
+    deleteScheduled:
+      "{count, plural, one {# campagne programmée utilise ce segment : elle sera annulée.} other {# campagnes programmées utilisent ce segment : elles seront annulées.}}",
+    deleteBody: "Les fiches des adhérents ne sont pas touchées.",
     empty: "Aucun adhérent ne correspond à ces critères.",
     previewLimit: "Aperçu des {count} premiers.",
     savedOk: "Segment enregistré.",

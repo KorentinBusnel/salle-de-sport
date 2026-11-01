@@ -42,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
+import { ShowMore } from "@/components/today/show-more";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { PageCrumb } from "@/components/page-crumb";
@@ -350,24 +351,31 @@ async function BillingTab({
           {payments?.length ? (
             <ul className="divide-y">
               {payments.map((p) => (
+                // Sous `sm` : date et montant sur une ligne, offre et statut sur la suivante
+                // (ordre CSS) ; une seule ligne au-delà, dans l'ordre du DOM.
                 <li
                   key={p.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-2 text-sm"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-0.5 px-2 py-2 text-sm sm:gap-y-1"
                 >
-                  <span className="w-28 text-muted-foreground tabular-nums">
+                  <span className="order-1 flex-1 text-muted-foreground tabular-nums sm:order-none sm:w-28 sm:flex-none">
                     {format.dateTime(p.paid_at ?? p.created_at)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{p.description ?? "—"}</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="order-5 min-w-0 flex-1 truncate sm:order-none">
+                    {p.description ?? "—"}
+                  </span>
+                  <span className="order-6 text-xs text-muted-foreground sm:order-none">
                     {t(`billing.methodLabel.${p.method}`)}
                   </span>
-                  <StatusPill tone={PAYMENT_STATUS_TONE[p.status]}>
+                  <StatusPill
+                    tone={PAYMENT_STATUS_TONE[p.status]}
+                    className="order-7 sm:order-none"
+                  >
                     {t(`billing.paymentStatus.${p.status}`)}
                   </StatusPill>
-                  <span className="w-24 text-right font-medium tabular-nums">
+                  <span className="order-2 text-right font-medium tabular-nums sm:order-none sm:w-24">
                     {formatMoney(p.amount_cents, p.currency)}
                   </span>
-                  <span className="w-8">
+                  <span className="order-3 w-8 sm:order-none">
                     {p.status === "succeeded" || p.status === "refunded" ? (
                       <ReceiptLink
                         paymentId={p.id}
@@ -375,6 +383,7 @@ async function BillingTab({
                       />
                     ) : null}
                   </span>
+                  <span aria-hidden className="order-4 basis-full sm:hidden" />
                 </li>
               ))}
             </ul>
@@ -495,6 +504,14 @@ function Hidden({ memberId, tab, path }: { memberId: string; tab: Tab; path: str
   ));
 }
 
+/** Entrées de l'historique chargées (par source), puis gardées après la fusion. */
+const TIMELINE_LIMIT = 50;
+/** Entrées affichées avant « Voir les N autres ». */
+const TIMELINE_SHOWN = 15;
+/** Réservations rendues par groupe (repliées après `BOOKINGS_SHOWN`). */
+const BOOKINGS_LIMIT = 50;
+const BOOKINGS_SHOWN = 10;
+
 /** Historique (gérant) : échanges, notes et séances suivies, par date ; ajout d'une note. */
 async function HistoryTab({
   context,
@@ -515,16 +532,19 @@ async function HistoryTab({
       .select("id, channel, direction, subject, summary, occurred_at")
       .eq("member_id", memberId)
       .order("occurred_at", { ascending: false })
-      .limit(50),
+      .limit(TIMELINE_LIMIT),
     supabase
       .from("bookings")
       .select("id, status, booked_at, class_sessions(starts_at, disciplines(name))")
       .eq("member_id", memberId)
       .in("status", ["attended", "no_show"])
-      .order("booked_at", { ascending: false })
-      .limit(50),
+      // Même clé que la fusion ci-dessous : l'heure de la séance.
+      .order("class_sessions(starts_at)", { ascending: false })
+      .limit(TIMELINE_LIMIT),
   ]);
   type Entry = { key: string; at: string; icon: typeof MailIcon; title: string; body?: string };
+  // Deux listes bornées puis fusionnées : seules les `TIMELINE_LIMIT` entrées les plus récentes
+  // de la fusion sont sûres d'être complètes (pas de trou dans la chronologie au-delà).
   const timeline: Entry[] = [
     ...(interactionsRes.data ?? []).map((i) => ({
       key: `i-${i.id}`,
@@ -541,7 +561,9 @@ async function HistoryTab({
       icon: CalendarCheckIcon,
       title: `${b.class_sessions?.disciplines?.name ?? ""} · ${t(`bookingStatus.${b.status}`)}`,
     })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
+  ]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, TIMELINE_LIMIT);
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -553,8 +575,11 @@ async function HistoryTab({
           {timeline.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("memberProfile.timelineEmpty")}</p>
           ) : (
-            <ol className="relative grid gap-5 border-l pl-6">
-              {timeline.map((entry) => {
+            <ShowMore
+              label={t("memberProfile.timeline")}
+              initial={TIMELINE_SHOWN}
+              className="relative grid gap-5 border-l pl-6"
+              items={timeline.map((entry) => {
                 const Icon = entry.icon;
                 return (
                   <li key={entry.key} className="relative">
@@ -575,11 +600,12 @@ async function HistoryTab({
                   </li>
                 );
               })}
-            </ol>
+            />
           )}
         </CardContent>
       </Card>
-      <Card>
+      {/* Sous `lg`, la note passe avant l'historique (ordre CSS) ; colonne latérale au-delà. */}
+      <Card className="order-first lg:order-none">
         <CardHeader>
           <CardTitle>{t("memberProfile.addNote")}</CardTitle>
           <CardDescription>{t("memberProfile.addNoteHint")}</CardDescription>
@@ -602,7 +628,7 @@ async function HistoryTab({
   );
 }
 
-/** Réservations : à venir, passées (bilan de présence), inscription à une séance. */
+/** Réservations : à venir, passées (bilan de présence), annulées, inscription à une séance. */
 async function BookingsTab({
   context,
   memberId,
@@ -627,7 +653,9 @@ async function BookingsTab({
       )
       .eq("member_id", memberId)
       .order("booked_at", { ascending: false })
-      .limit(100),
+      // Toutes les réservations (plafond de l'API) : comptes et bilan exacts ; seules les
+      // `BOOKINGS_LIMIT` premières de chaque groupe sont rendues.
+      .limit(1000),
     active
       ? supabase
           .from("class_sessions")
@@ -644,35 +672,41 @@ async function BookingsTab({
     .sort((a, b) =>
       (b.class_sessions?.starts_at ?? "").localeCompare(a.class_sessions?.starts_at ?? ""),
     );
-  const upcoming = bookings.filter(
-    (b) =>
-      (b.status === "confirmed" || b.status === "waitlisted") &&
-      Date.parse(b.class_sessions?.starts_at ?? "") > now.getTime(),
-  );
-  const past = bookings.filter((b) => !upcoming.includes(b));
+  const isUpcoming = (b: (typeof bookings)[number]) =>
+    (b.status === "confirmed" || b.status === "waitlisted") &&
+    Date.parse(b.class_sessions?.starts_at ?? "") > now.getTime();
+  // À venir : la plus proche d'abord ; annulées (passées ou futures) à part ; le reste, passé,
+  // de la plus récente à la plus ancienne.
+  const upcoming = bookings.filter(isUpcoming).reverse();
+  const cancelled = bookings.filter((b) => b.status === "cancelled");
+  const past = bookings.filter((b) => b.status !== "cancelled" && !isUpcoming(b));
   const bookedIds = new Set(
     bookings.filter((b) => b.status !== "cancelled").map((b) => b.class_sessions?.id),
   );
   const countOf = (status: string) => past.filter((b) => b.status === status).length;
+  const groups = [
+    { key: "upcoming", title: t("memberProfile.upcoming"), rows: upcoming },
+    { key: "past", title: t("memberProfile.past"), rows: past },
+    ...(cancelled.length
+      ? [{ key: "cancelled", title: t("memberProfile.cancelled"), rows: cancelled }]
+      : []),
+  ];
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="grid gap-6">
-        {past.length ? (
+        {past.length + cancelled.length ? (
           <SegmentMeter
             label={t("memberProfile.bookingsMeter")}
             segments={[
               { label: t("bookingStatus.attended"), value: countOf("attended"), tone: "success" },
               { label: t("bookingStatus.no_show"), value: countOf("no_show"), tone: "danger" },
-              { label: t("bookingStatus.cancelled"), value: countOf("cancelled"), tone: "neutral" },
+              { label: t("bookingStatus.cancelled"), value: cancelled.length, tone: "neutral" },
             ]}
           />
         ) : null}
-        {[
-          { title: t("memberProfile.upcoming"), rows: upcoming },
-          { title: t("memberProfile.past"), rows: past.slice(0, 30) },
-        ].map((group) => (
-          <Card key={group.title}>
+        {groups.map((group) => (
+          <Card key={group.key}>
             <CardHeader>
               <CardTitle>
                 {group.title}{" "}
@@ -685,37 +719,48 @@ async function BookingsTab({
               {group.rows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("memberProfile.noBookings")}</p>
               ) : (
-                <ul className="-mx-2">
-                  {group.rows.map((b) => (
-                    <li key={b.id}>
-                      <Link
-                        href={`/planning/${b.class_sessions?.id}`}
-                        className="flex flex-wrap items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/50"
-                      >
-                        <span className="w-32 text-muted-foreground tabular-nums">
-                          {format.shortDay(b.class_sessions?.starts_at ?? b.booked_at)}{" "}
-                          {format.time(b.class_sessions?.starts_at ?? b.booked_at)}
-                        </span>
-                        <span className="flex-1">
-                          <DisciplineChip
-                            name={b.class_sessions?.disciplines?.name ?? ""}
-                            color={b.class_sessions?.disciplines?.color}
-                          />
-                        </span>
-                        <StatusPill tone={BOOKING_STATUS_TONE[b.status]}>
-                          {t(`bookingStatus.${b.status}`)}
-                        </StatusPill>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ShowMore
+                    label={group.title}
+                    initial={BOOKINGS_SHOWN}
+                    className="-mx-2"
+                    items={group.rows.slice(0, BOOKINGS_LIMIT).map((b) => (
+                      <li key={b.id}>
+                        <Link
+                          href={`/planning/${b.class_sessions?.id}`}
+                          className="flex flex-wrap items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/50"
+                        >
+                          <span className="w-32 text-muted-foreground tabular-nums">
+                            {format.shortDay(b.class_sessions?.starts_at ?? b.booked_at)}{" "}
+                            {format.time(b.class_sessions?.starts_at ?? b.booked_at)}
+                          </span>
+                          <span className="flex-1">
+                            <DisciplineChip
+                              name={b.class_sessions?.disciplines?.name ?? ""}
+                              color={b.class_sessions?.disciplines?.color}
+                            />
+                          </span>
+                          <StatusPill tone={BOOKING_STATUS_TONE[b.status]}>
+                            {t(`bookingStatus.${b.status}`)}
+                          </StatusPill>
+                        </Link>
+                      </li>
+                    ))}
+                  />
+                  {group.rows.length > BOOKINGS_LIMIT ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {t("memberProfile.bookingsLimit", { count: BOOKINGS_LIMIT })}
+                    </p>
+                  ) : null}
+                </>
               )}
             </CardContent>
           </Card>
         ))}
       </div>
       {active ? (
-        <Card>
+        // Action principale de l'accueil : avant les listes sous `lg` (ordre CSS), à droite au-delà.
+        <Card className="order-first lg:order-none">
           <CardHeader>
             <CardTitle>{t("memberProfile.book")}</CardTitle>
             <CardDescription>{t("memberProfile.bookHint")}</CardDescription>

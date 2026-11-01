@@ -83,6 +83,11 @@ En session cloud, démarrer Supabase sans les services inutiles :
 - Tons des statuts (`BOOKING_STATUS_TONE`, `MEMBER_STATUS_TONE`, `TONE_CLASSES`) et phase d'une
   séance : `packages/shared/src/display.ts`, utilisés par les deux apps (Tailwind scanne ce dossier).
 - Pluriels : `{count, plural, =0 {…} one {# …} other {# …}}` dans les catalogues.
+- **Nom du produit** : `BRAND_NAME` (`packages/shared/src/brand.ts`, « Chalq »), seul endroit à changer :
+  site (`BRAND`), titre des onglets du back office (`%s · Chalq`), écran de connexion (`BrandMark`,
+  icônes `app/icon.svg`, `favicon.ico`, `apple-icon.png` communes avec le site), consigne de
+  l'assistant, écran de connexion de l'app. `app.json` (`name`) le répète en dur. Identifiants
+  techniques inchangés : slug et scheme Expo, bundle id, projet EAS, packages `@salle/*`.
 
 ## Base de données (Supabase)
 
@@ -452,8 +457,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
 ## Site vitrine (apps/site)
 
 - Landing page qui vend la plateforme aux gérants de **toutes les salles et activités**,
-  positionnée **IA native** ; nom **provisoire** dans `BRAND` (`lib/site.ts`, injecté dans `t()`
-  comme `{brand}`). Un seul appel à l'action : le champ email « Avoir un accès anticipé » du hero
+  positionnée **IA native** ; nom du produit `BRAND_NAME` (`packages/shared/src/brand.ts`), repris
+  par `BRAND` (`lib/site.ts`, injecté dans `t()` comme `{brand}`). Un seul appel à l'action : le champ email « Avoir un accès anticipé » du hero
   (`DemoEmailForm`, ancre `#demo`, focus donné par le bouton de la barre), sans note dessous
   (Confidentialité reste au pied de page) ; merci sur place. Server Action `requestDemo`
   (`app/actions.ts` : `demoEmailSchema`, champ piège, délai minimal, puis `request_demo` type

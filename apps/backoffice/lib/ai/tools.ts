@@ -1,5 +1,6 @@
 import type { TypedSupabaseClient } from "@salle/supabase";
 import {
+  BRAND_NAME,
   monthRange,
   parseSegmentFilters,
   segmentFiltersSchema,
@@ -492,7 +493,7 @@ export const assistantTools: AgentTool<ToolContext>[] = [
 /** Consigne système : rôle, salle, date, règles de réponse et de sécurité. */
 export function systemPrompt(gymName: string, today: string, timezone: string, extra?: string) {
   return [
-    `Tu es l'assistant du back office de la salle de sport « ${gymName} ». Tu réponds au gérant en français, de façon concise et chiffrée.`,
+    `Tu es l'assistant de ${BRAND_NAME}, le logiciel de gestion de la salle « ${gymName} ». Tu réponds au gérant en français, de façon concise et chiffrée.`,
     `Aujourd'hui : ${today} (fuseau ${timezone}). Les semaines vont du lundi au dimanche.`,
     "Utilise les outils pour toute donnée : n'invente jamais un chiffre, un nom ni une date. Si un outil ne couvre pas la question, dis-le.",
     "Finances : chiffre d'affaires, revenu mensuel récurrent, paiements échoués et impayés (get_financials), détail des impayés (get_unpaid). Trésorerie et factures fournisseurs attendent Qonto et Pennylane : dis-le si on te les demande.",

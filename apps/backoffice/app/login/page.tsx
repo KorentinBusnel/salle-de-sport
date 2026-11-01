@@ -1,5 +1,7 @@
 import { CalendarCheckIcon, ClipboardCheckIcon, UsersIcon } from "lucide-react";
+import { BRAND_NAME } from "@salle/shared";
 import type { Metadata } from "next";
+import { BrandMark } from "@/components/brand-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/format";
 import { type MessageKey, t } from "@/lib/i18n";
@@ -55,7 +57,7 @@ function GymMark({
             inverted ? "text-sm text-primary-foreground/80" : "text-sm text-muted-foreground"
           }
         >
-          {t("app.title")}
+          {t("app.teamSpace")}
         </span>
       </span>
     </span>
@@ -80,7 +82,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         {gym ? (
           <GymMark gym={gym} inverted />
         ) : (
-          <p className="text-lg font-semibold">{t("app.title")}</p>
+          <p className="flex items-center gap-3 text-lg font-semibold">
+            <BrandMark inverted className="size-10" />
+            {BRAND_NAME}
+          </p>
         )}
         <div className="relative grid gap-6">
           <h2 className="max-w-md text-3xl leading-tight font-semibold">{t("login.tagline")}</h2>
@@ -95,7 +100,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             ))}
           </ul>
         </div>
-        <p className="text-sm text-primary-foreground/80">{t("login.footer")}</p>
+        <div className="relative flex items-center justify-between gap-4 text-sm text-primary-foreground/80">
+          <p>{t("login.footer")}</p>
+          {gym ? (
+            <p className="flex items-center gap-2 font-medium text-primary-foreground">
+              <BrandMark inverted className="size-5" />
+              {BRAND_NAME}
+            </p>
+          ) : null}
+        </div>
       </section>
       <section className="flex items-center justify-center px-4 py-12">
         <div className="grid w-full max-w-sm gap-8">

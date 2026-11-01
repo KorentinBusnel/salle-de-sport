@@ -13,3 +13,4 @@ export * from "./marketplace.ts";
 export * from "./demo.ts";
 export * from "./fields.ts";
 export * from "./views.ts";
+export * from "./brand.ts";

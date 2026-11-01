@@ -1,7 +1,7 @@
 // Textes de l'interface. Toute chaîne affichée passe par une clé (i18n prévue, BRIEF §10.8).
 export const fr = {
   app: {
-    title: "Espace équipe",
+    teamSpace: "Espace équipe",
   },
   errors: {
     forbiddenRole: "Cette page est réservée à un autre rôle de l'équipe.",

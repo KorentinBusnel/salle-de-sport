@@ -454,7 +454,8 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   compléter », `false` masque une ligne sans objet (`LegalList`). Le responsable du traitement de
   la page Confidentialité en découle.
 - Visuels : vraies captures (`public/captures`, `app/opengraph-image.png`) produites par
-  `scripts/site-captures.mjs` sur le seed ; l'assistant est une illustration codée et animée.
+  `scripts/site-captures.mjs` sur le seed, en densité ×2, servies en qualité 90 (`ProductFrame`,
+  `images.qualities` de `next.config.ts`) ; l'assistant est une illustration codée et animée.
 
 ## App mobile (Expo)
 

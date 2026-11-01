@@ -16,6 +16,7 @@ import {
   type MemberSort,
   type MemberStatus,
   type MemberView,
+  type SegmentFilters,
 } from "@salle/shared";
 import type { Json } from "@salle/supabase";
 import { UsersIcon } from "lucide-react";
@@ -136,13 +137,11 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   // Vue ouverte : slug d'une vue intégrée ou identifiant d'une vue enregistrée.
   const requested = typeof params.vue === "string" ? params.vue : DEFAULT_MEMBER_VIEW;
   const builtin = (id: BuiltinMemberViewId) => builtinMemberView(id, t(BUILTIN_VIEW_LABELS[id]));
-  const view: MemberView = isBuiltinMemberView(requested)
+  const openedView: MemberView = isBuiltinMemberView(requested)
     ? builtin(requested)
     : (savedViews.find((saved) => saved.id === requested) ?? builtin(DEFAULT_MEMBER_VIEW));
-  const rawState = viewStateFromSearch(params, view);
-  const dirty = isViewDirty(view, rawState);
 
-  // Colonnes disponibles ; crédits : finances du gérant uniquement.
+  // Colonnes disponibles ; crédits (colonne, tri, filtre) : finances du gérant uniquement.
   const availableColumns = [
     { key: "contact", label: t("members.contact") },
     { key: "status", label: t("members.status") },
@@ -150,11 +149,25 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
     ...fields.map((field) => ({ key: fieldColumn(field.key), label: field.label })),
   ];
   const availableKeys = availableColumns.map((column) => column.key);
-  const state = {
-    ...rawState,
-    sort: !manager && rawState.sort.startsWith("credits") ? ("name" as const) : rawState.sort,
-    columns: rawState.columns.filter((column) => availableKeys.includes(column)),
+  // La vue telle que ce rôle peut la voir : c'est elle que l'URL et « Modifiée » comparent, sinon
+  // l'accueil verrait une vue intégrée « Modifiée » dès un tri ou une page (colonne crédits).
+  const forRole = <T extends { columns: string[]; sort: MemberSort; filters: SegmentFilters }>(
+    value: T,
+  ): T => {
+    if (manager)
+      return { ...value, columns: value.columns.filter((k) => availableKeys.includes(k)) };
+    const filters = { ...value.filters };
+    delete filters.max_credits;
+    return {
+      ...value,
+      columns: value.columns.filter((k) => availableKeys.includes(k)),
+      sort: value.sort.startsWith("credits") ? "name" : value.sort,
+      filters,
+    };
   };
+  const view = forRole(openedView);
+  const state = forRole(viewStateFromSearch(params, view));
+  const dirty = isViewDirty(view, state);
   const visible = availableKeys.filter((key) => state.columns.includes(key));
   const sort: MemberSort = state.sort;
 
@@ -273,6 +286,13 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
             userId={context.userId}
             manager={manager}
             basePath="/adherents"
+            // Recherche et taille de page gardées en changeant de vue.
+            tabQuery={
+              new URLSearchParams([
+                ...(state.query ? [["q", state.query]] : []),
+                ...(size !== 25 ? [["taille", String(size)]] : []),
+              ]).toString() || undefined
+            }
             layout="table"
             create={createMemberView}
             update={updateMemberView}
@@ -281,6 +301,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <FilterBar
+              canFilterCredits={manager}
               filters={state.filters}
               baseFilters={view.filters}
               disciplines={disciplines}

@@ -9,7 +9,7 @@ import {
   type PlanningFilters,
 } from "@salle/shared";
 import { PlusIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Combobox } from "@/components/forms/combobox";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +59,15 @@ export function PlanningFilters({
   const { set } = useUrlState();
   const [editing, setEditing] = useState<ListKey | null>(null);
   const colorId = useId();
+  // « Ajouter un filtre » qui ouvre un éditeur : le focus va à l'éditeur, pas au bouton du menu.
+  const opening = useRef(false);
+  // Couleur choisie affichée aussitôt ; celle du serveur reprend la main quand elle change.
+  const [shownColor, setShownColor] = useState(color);
+  const [colorSource, setColorSource] = useState(color);
+  if (colorSource !== color) {
+    setColorSource(color);
+    setShownColor(color);
+  }
 
   function apply(next: PlanningFilters) {
     const changes: Record<string, string | null> = { d: null, c: null, s: null, mes: null };
@@ -147,14 +156,29 @@ export function PlanningFilters({
                 {t("filters.add")}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-48">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-48"
+              onCloseAutoFocus={(event) => {
+                if (opening.current) {
+                  event.preventDefault();
+                  opening.current = false;
+                }
+              }}
+            >
               {canMine && !filters.mine ? (
                 <DropdownMenuItem onSelect={() => apply({ ...filters, mine: true })}>
                   {t(LABEL.mine)}
                 </DropdownMenuItem>
               ) : null}
               {available.map((key) => (
-                <DropdownMenuItem key={key} onSelect={() => setEditing(key)}>
+                <DropdownMenuItem
+                  key={key}
+                  onSelect={() => {
+                    opening.current = true;
+                    setEditing(key);
+                  }}
+                >
                   {t(LABEL[key])}
                 </DropdownMenuItem>
               ))}
@@ -180,10 +204,12 @@ export function PlanningFilters({
         <NativeSelect
           id={colorId}
           size="sm"
-          value={color}
+          value={shownColor}
           onChange={(event) => {
             const next = PLANNING_COLORS.find((candidate) => candidate === event.target.value);
-            if (next) set({ couleur: next === baseColor ? null : next }, { keepPage: true });
+            if (!next) return;
+            setShownColor(next);
+            set({ couleur: next === baseColor ? null : next }, { keepPage: true });
           }}
         >
           <NativeSelectOption value="discipline">

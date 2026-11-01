@@ -1049,7 +1049,14 @@ export const fr = {
     moveTo: "Déplacer {name} vers une autre colonne",
     moveToLabel: "Déplacer vers…",
     dragInstructions:
-      "Pour déplacer une carte : Espace pour la saisir, flèches pour changer de colonne, Espace pour la déposer, Échap pour annuler.",
+      "Pour déplacer une carte : Espace pour la saisir, flèches gauche et droite pour changer de colonne, Espace pour la déposer, Échap pour annuler.",
+    dnd: {
+      start: "{name} saisie.",
+      over: "{name} au-dessus de la colonne {column}.",
+      outside: "{name} hors des colonnes.",
+      end: "{name} déposée dans la colonne {column}.",
+      cancel: "Déplacement de {name} annulé.",
+    },
     cancelTitle: "Passer {name} en « Résilié » ?",
     cancelMemberBody: "L'adhésion est arrêtée : l'adhérent ne pourra plus réserver.",
     cancelLeadBody: "Le prospect est marqué comme perdu.",

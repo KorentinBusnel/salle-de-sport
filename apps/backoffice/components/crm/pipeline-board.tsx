@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  type Announcements,
   DndContext,
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  type KeyboardCoordinateGetter,
   KeyboardSensor,
   PointerSensor,
   useDraggable,
@@ -22,7 +24,14 @@ import {
 } from "@salle/shared";
 import { GripVerticalIcon, MoveRightIcon } from "lucide-react";
 import Link from "next/link";
-import { type CSSProperties, useOptimistic, useState, useTransition } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -110,11 +119,58 @@ export function PipelineBoard({
   const [, startTransition] = useTransition();
   const [dragging, setDragging] = useState<PipelineCard | null>(null);
   const [confirm, setConfirm] = useState<Move | null>(null);
+  // Carte déplacée par « Déplacer vers… » : son menu reprend le focus dans sa nouvelle colonne.
+  const focusCard = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusCard.current) return;
+    const trigger = document.querySelector<HTMLElement>(
+      `[data-card-id="${CSS.escape(focusCard.current)}"] [data-move-trigger]`,
+    );
+    if (trigger) {
+      trigger.focus();
+      focusCard.current = null;
+    }
+  }, [board]);
+
+  // Clavier : flèches gauche et droite sautent d'une colonne à la voisine.
+  const coordinateGetter: KeyboardCoordinateGetter = (event, { currentCoordinates, context }) => {
+    const lefts = [...context.droppableRects.values()]
+      .map((rect) => rect.left)
+      .sort((a, b) => a - b);
+    const step = lefts.length > 1 ? (lefts[1] ?? 0) - (lefts[0] ?? 0) : 300;
+    if (event.code === "ArrowRight")
+      return { ...currentCoordinates, x: currentCoordinates.x + step };
+    if (event.code === "ArrowLeft")
+      return { ...currentCoordinates, x: currentCoordinates.x - step };
+    return undefined;
+  };
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter,
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+    }),
   );
   const labelOf = (key: string) => columns.find((column) => column.key === key)?.label ?? key;
+  const cardName = (data: unknown) =>
+    (data as { card?: PipelineCard } | undefined)?.card?.name ?? "";
+  const columnOf = (data: unknown) => (data as { column?: string } | undefined)?.column;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => t("crm.dnd.start", { name: cardName(active.data.current) }),
+    onDragOver: ({ active, over }) => {
+      const column = columnOf(over?.data.current);
+      return column
+        ? t("crm.dnd.over", { name: cardName(active.data.current), column: labelOf(column) })
+        : t("crm.dnd.outside", { name: cardName(active.data.current) });
+    },
+    onDragEnd: ({ active, over }) => {
+      const column = columnOf(over?.data.current);
+      return column
+        ? t("crm.dnd.end", { name: cardName(active.data.current), column: labelOf(column) })
+        : t("crm.dnd.cancel", { name: cardName(active.data.current) });
+    },
+    onDragCancel: ({ active }) => t("crm.dnd.cancel", { name: cardName(active.data.current) }),
+  };
 
   /** Déplacement permis d'une colonne à l'autre (et s'il demande confirmation). */
   function rule(from: string, to: string): { confirm: boolean } | null {
@@ -206,6 +262,7 @@ export function PipelineBoard({
         onDragCancel={() => setDragging(null)}
         onDragEnd={onDragEnd}
         accessibility={{
+          announcements,
           screenReaderInstructions: { draggable: t("crm.dragInstructions") },
         }}
       >
@@ -227,7 +284,10 @@ export function PipelineBoard({
                 key={column.key}
                 column={column}
                 targets={board.filter((other) => rule(column.key, other.key) !== null)}
-                onMove={(card, to) => request({ card, from: column.key, to })}
+                onMove={(card, to) => {
+                  focusCard.current = card.id;
+                  request({ card, from: column.key, to });
+                }}
               />
             ))}
           </div>
@@ -341,7 +401,11 @@ function DraggableCard({
     data: { card, column },
   });
   return (
-    <div ref={setNodeRef} className={cn("relative", isDragging && "opacity-40")}>
+    <div
+      ref={setNodeRef}
+      data-card-id={card.id}
+      className={cn("relative", isDragging && "opacity-40")}
+    >
       <CardBody
         card={card}
         handle={
@@ -361,13 +425,18 @@ function DraggableCard({
                   <Button
                     variant="ghost"
                     size="icon-sm"
+                    data-move-trigger
                     aria-label={t("crm.moveTo", { name: card.name })}
                     className="relative z-10 text-muted-foreground"
                   >
                     <MoveRightIcon aria-hidden />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent
+                  align="end"
+                  // Le focus suit la carte dans sa nouvelle colonne (voir focusCard).
+                  onCloseAutoFocus={(event) => event.preventDefault()}
+                >
                   <DropdownMenuLabel>{t("crm.moveToLabel")}</DropdownMenuLabel>
                   {targets.map((target) => (
                     <DropdownMenuItem key={target.key} onSelect={() => onMove(card, target.key)}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { STAGE_GROUP } from "@salle/shared";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { useUrlState } from "@/hooks/use-url-state";
 import { t } from "@/lib/i18n";
@@ -22,6 +22,13 @@ export function GroupBySelect({
 }) {
   const id = useId();
   const { set } = useUrlState();
+  // Valeur choisie affichée aussitôt ; celle du serveur reprend la main quand elle change.
+  const [shown, setShown] = useState(value);
+  const [source, setSource] = useState(value);
+  if (source !== value) {
+    setSource(value);
+    setShown(value);
+  }
   return (
     <div className="flex items-center gap-2">
       <label htmlFor={id} className="text-sm whitespace-nowrap text-muted-foreground">
@@ -30,9 +37,10 @@ export function GroupBySelect({
       <NativeSelect
         id={id}
         size="sm"
-        value={value}
+        value={shown}
         onChange={(event) => {
           const next = event.target.value;
+          setShown(next);
           set({ groupe: next === viewDefault ? null : next }, { keepPage: true });
         }}
       >

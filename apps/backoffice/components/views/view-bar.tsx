@@ -152,7 +152,7 @@ export function ViewBar<L extends string, S>({
     ...(!current.builtin && current.visibility === "private" && owner && manager
       ? [{ label: t("views.share"), icon: Users2Icon, onSelect: () => setVisibility("team") }]
       : []),
-    ...(!current.builtin && current.visibility === "team" && owner
+    ...(!current.builtin && current.visibility === "team" && owner && manager
       ? [{ label: t("views.unshare"), icon: LockIcon, onSelect: () => setVisibility("private") }]
       : []),
     ...(segmentHref

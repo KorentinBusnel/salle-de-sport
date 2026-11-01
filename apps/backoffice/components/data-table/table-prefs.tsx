@@ -2,7 +2,7 @@
 
 import { NO_COLUMNS_PARAM } from "@salle/shared";
 import { Columns3Icon } from "lucide-react";
-import { type ReactNode, useSyncExternalStore } from "react";
+import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -98,10 +98,18 @@ export function ColumnsMenu({
 }) {
   const { density, setDensity } = useTableDensity(table);
   const { set } = useUrlState();
+  // Cases cochées tenues localement : plusieurs clics de suite avant la réponse du serveur.
+  const [shown, setShown] = useState(visible);
+  const [source, setSource] = useState(visible.join(","));
+  if (source !== visible.join(",")) {
+    setSource(visible.join(","));
+    setShown(visible);
+  }
   function toggle(key: string) {
-    const next = visible.includes(key)
-      ? visible.filter((column) => column !== key)
-      : columns.map((column) => column.key).filter((k) => k === key || visible.includes(k));
+    const next = shown.includes(key)
+      ? shown.filter((column) => column !== key)
+      : columns.map((column) => column.key).filter((k) => k === key || shown.includes(k));
+    setShown(next);
     set({ [param]: next.length ? next.join(",") : NO_COLUMNS_PARAM }, { keepPage: true });
   }
   return (
@@ -117,7 +125,7 @@ export function ColumnsMenu({
         {columns.map((column) => (
           <DropdownMenuCheckboxItem
             key={column.key}
-            checked={visible.includes(column.key)}
+            checked={shown.includes(column.key)}
             onCheckedChange={() => toggle(column.key)}
             onSelect={(event) => event.preventDefault()}
           >

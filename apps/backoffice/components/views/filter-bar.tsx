@@ -14,7 +14,7 @@ import {
   type SegmentFilters,
 } from "@salle/shared";
 import { PlusIcon, XIcon } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId, useRef, useState } from "react";
 import { Combobox } from "@/components/forms/combobox";
 import { DateField } from "@/components/forms/date-fields";
 import { TagInput } from "@/components/forms/tag-input";
@@ -39,6 +39,7 @@ import { type MessageKey, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const STATUSES = ["prospect", "active", "suspended", "cancelled"] as const;
+type Status = (typeof STATUSES)[number];
 
 /** Filtres « simples » (une clé de segmentFiltersSchema chacun). */
 const SIMPLE_KINDS = [
@@ -89,6 +90,7 @@ export function FilterBar({
   baseFilters,
   disciplines,
   fields,
+  canFilterCredits = true,
   className,
 }: {
   filters: SegmentFilters;
@@ -96,10 +98,14 @@ export function FilterBar({
   baseFilters: SegmentFilters;
   disciplines: { id: string; name: string }[];
   fields: MemberField[];
+  /** Solde de crédits lisible (gérant) : sinon « Crédits restants » ne filtrerait rien (RLS). */
+  canFilterCredits?: boolean | undefined;
   className?: string | undefined;
 }) {
   const { set } = useUrlState();
   const [editing, setEditing] = useState<Editing | null>(null);
+  // « Ajouter un filtre » qui ouvre un éditeur : le focus va à l'éditeur, pas au bouton du menu.
+  const opening = useRef(false);
 
   function apply(next: SegmentFilters) {
     const clean = parseSegmentFilters(next);
@@ -227,7 +233,9 @@ export function FilterBar({
     });
   });
 
-  const available = SIMPLE_KINDS.filter((kind) => filters[kind] === undefined);
+  const available = SIMPLE_KINDS.filter(
+    (kind) => filters[kind] === undefined && (canFilterCredits || kind !== "max_credits"),
+  );
   const draftChip =
     editing && !chips.some((chip) => sameEditing(chip.editing, editing)) ? editing : null;
 
@@ -285,13 +293,25 @@ export function FilterBar({
             {t("filters.add")}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-56">
+        <DropdownMenuContent
+          align="start"
+          className="min-w-56"
+          onCloseAutoFocus={(event) => {
+            if (opening.current) {
+              event.preventDefault();
+              opening.current = false;
+            }
+          }}
+        >
           {available.map((kind) => (
             <DropdownMenuItem
               key={kind}
               onSelect={() => {
                 if (kind === "birthday_month" || kind === "email_consent") patch(kind, true);
-                else setEditing({ kind });
+                else {
+                  opening.current = true;
+                  setEditing({ kind });
+                }
               }}
             >
               {t(KIND_LABEL[kind])}
@@ -305,7 +325,10 @@ export function FilterBar({
                 {fields.map((field) => (
                   <DropdownMenuItem
                     key={field.id}
-                    onSelect={() => setEditing({ kind: "field", key: field.key })}
+                    onSelect={() => {
+                      opening.current = true;
+                      setEditing({ kind: "field", key: field.key });
+                    }}
                   >
                     {field.label}
                   </DropdownMenuItem>
@@ -418,7 +441,7 @@ export function FilterChip({
           type="button"
           aria-label={t("filters.remove", { name: text })}
           onClick={onRemove}
-          className="flex h-full items-center rounded-r-full px-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="flex h-full items-center rounded-r-full px-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:min-w-10 pointer-coarse:justify-center"
         >
           <XIcon aria-hidden className="size-3.5" />
         </button>
@@ -449,33 +472,20 @@ function Editor({
 }) {
   const id = useId();
   if (editing.kind === "statuses") {
-    const current = filters.statuses ?? [];
     return (
-      <div className="grid gap-2">
-        {STATUSES.map((status) => (
-          <label key={status} className="flex items-center gap-2 text-sm pointer-coarse:min-h-10">
-            <Checkbox
-              checked={current.includes(status)}
-              onCheckedChange={(checked) =>
-                onApply(
-                  "statuses",
-                  checked ? [...current, status] : current.filter((s) => s !== status),
-                )
-              }
-            />
-            {t(`memberStatus.${status}`)}
-          </label>
-        ))}
-      </div>
+      <StatusesEditor
+        initial={filters.statuses ?? []}
+        onApply={(statuses) => onApply("statuses", statuses)}
+        onCancel={onCancel}
+      />
     );
   }
   if (editing.kind === "tags") {
     return (
-      <TagInput
-        aria-label={t("filters.tags")}
-        value={filters.tags ?? []}
-        onChange={(tags) => onApply("tags", tags)}
-        placeholder={t("segments.tagsPlaceholder")}
+      <TagsEditor
+        initial={filters.tags ?? []}
+        onApply={(tags) => onApply("tags", tags)}
+        onCancel={onCancel}
       />
     );
   }
@@ -529,6 +539,76 @@ function Editor({
     );
   }
   return null;
+}
+
+/** Plusieurs statuts cochés d'un coup, appliqués ensemble. */
+function StatusesEditor({
+  initial,
+  onApply,
+  onCancel,
+}: {
+  initial: Status[];
+  onApply: (statuses: Status[]) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState<Status[]>(initial);
+  return (
+    <form
+      className="grid gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onApply(draft);
+      }}
+    >
+      <div className="grid gap-2">
+        {STATUSES.map((status, index) => (
+          <label key={status} className="flex items-center gap-2 text-sm pointer-coarse:min-h-10">
+            <Checkbox
+              autoFocus={index === 0}
+              checked={draft.includes(status)}
+              onCheckedChange={(checked) =>
+                setDraft((current) =>
+                  checked ? [...current, status] : current.filter((s) => s !== status),
+                )
+              }
+            />
+            {t(`memberStatus.${status}`)}
+          </label>
+        ))}
+      </div>
+      <EditorButtons disabled={false} onCancel={onCancel} />
+    </form>
+  );
+}
+
+/** Plusieurs étiquettes saisies d'un coup, appliquées ensemble. */
+function TagsEditor({
+  initial,
+  onApply,
+  onCancel,
+}: {
+  initial: string[];
+  onApply: (tags: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState<string[]>(initial);
+  return (
+    <form
+      className="grid gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onApply(draft);
+      }}
+    >
+      <TagInput
+        aria-label={t("filters.tags")}
+        value={draft}
+        onChange={setDraft}
+        placeholder={t("segments.tagsPlaceholder")}
+      />
+      <EditorButtons disabled={false} onCancel={onCancel} />
+    </form>
+  );
 }
 
 function NumberEditor({

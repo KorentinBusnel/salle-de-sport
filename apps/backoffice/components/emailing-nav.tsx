@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useRef } from "react";
+import { useActiveTabInView } from "@/hooks/use-active-tab-in-view";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -12,11 +16,15 @@ const TABS = [
 
 /**
  * Onglets de l'entrée « Emailing » : campagnes, modèles, automatisations, segments (audiences)
- * et messages envoyés. Chaque onglet garde son adresse.
+ * et messages envoyés. Chaque onglet garde son adresse ; au téléphone, l'onglet courant est
+ * amené à l'écran.
  */
 export function EmailingNav({ current }: { current: (typeof TABS)[number]["href"] }) {
+  const nav = useRef<HTMLElement>(null);
+  useActiveTabInView(nav, current);
   return (
     <nav
+      ref={nav}
       aria-label={t("emailing.title")}
       className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1"
     >

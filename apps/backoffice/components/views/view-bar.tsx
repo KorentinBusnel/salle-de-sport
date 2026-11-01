@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   deleteMemberView,
@@ -34,6 +34,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
+import { useActiveTabInView } from "@/hooks/use-active-tab-in-view";
 import type { ActionResult } from "@/lib/action-result";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,8 @@ export function ViewBar<L extends string, S>({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [saveAs, setSaveAs] = useState<{ name: string } | null>(null);
+  const tabsScroller = useRef<HTMLDivElement>(null);
+  useActiveTabInView(tabsScroller, activeTab);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -181,7 +184,7 @@ export function ViewBar<L extends string, S>({
   return (
     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
       {/* Défilement des onglets au téléphone sans élargir la colonne. */}
-      <div className="w-full min-w-0 overflow-x-auto xl:w-auto">
+      <div ref={tabsScroller} className="w-full min-w-0 overflow-x-auto xl:w-auto">
         <nav aria-label={t("views.tabs")} className="flex w-fit gap-1 rounded-xl bg-muted p-1">
           {tabs.map((tab) => {
             const active = tab.id === activeTab;

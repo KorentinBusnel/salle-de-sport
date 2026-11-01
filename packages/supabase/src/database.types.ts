@@ -3093,10 +3093,11 @@ export type Database = {
         };
       };
       crm_pipeline: {
-        Args: { p_gym_id: string };
+        Args: { p_filters?: Json; p_gym_id: string };
         Returns: {
           bookings: number;
           email: string;
+          fields: Json;
           first_name: string;
           last_activity_at: string;
           last_name: string;
@@ -3104,6 +3105,7 @@ export type Database = {
           phone: string;
           stage: string;
           status: Database["public"]["Enums"]["member_status"];
+          tags: string[];
         }[];
       };
       crm_todo: {

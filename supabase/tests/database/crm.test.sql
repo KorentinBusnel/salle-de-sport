@@ -1,6 +1,6 @@
 -- CRM : filtres de segments, segments enregistrés (RLS), pipeline, filtre par tag.
 begin;
-select plan(18);
+select plan(26);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'c-un@test.local'),
@@ -72,6 +72,33 @@ select is((select string_agg(first_name, ',') from public.segment_members('87000
 select is((select stage from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Prospect'), 'lead', 'pipeline : prospect');
 select is((select stage from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Essai'), 'trial', 'pipeline : essai (tag)');
 select is((select stage from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Un'), 'active', 'pipeline : actif');
+
+-- Pipeline filtré (vues kanban) : étiquettes et valeurs des champs renvoyées.
+select is((select string_agg(first_name, ',' order by first_name) from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', '{"statuses": ["prospect"]}')),
+  'Essai,Prospect', 'pipeline : filtres d''une vue');
+select is((select string_agg(first_name, ',' order by first_name) from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', p_filters => '{}')),
+  'Deux,Essai,Prospect,Un', 'pipeline : filtres vides');
+select is((select tags from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Essai'), '{essai}'::text[],
+  'pipeline : étiquettes renvoyées');
+select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Un'), '{}'::jsonb,
+  'pipeline : {} sans valeur de champ');
+select is((select count(*) from pg_proc where proname = 'crm_pipeline' and pronamespace = 'public'::regnamespace), 1::bigint,
+  'pipeline : une seule signature');
+select is((select pg_get_function_identity_arguments(oid) from pg_proc where proname = 'crm_pipeline' and pronamespace = 'public'::regnamespace),
+  'p_gym_id uuid, p_filters jsonb', 'pipeline : p_filters après la salle');
+
+-- Groupement par un champ liste : valeurs par clé, filtre sur le champ.
+select pg_temp.logout();
+insert into public.member_fields (id, gym_id, key, label, type, options) values
+  ('88000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-000000000000', 'suivi', 'Suivi', 'select',
+   '[{"value": "nouveau", "label": "Nouveau", "tone": "neutral"}, {"value": "contacte", "label": "Contacté", "tone": "brand"}]');
+insert into public.member_field_values (gym_id, member_id, field_id, value) values
+  ('8a000000-0000-0000-0000-000000000000', '81000000-0000-0000-0000-000000000003', '88000000-0000-0000-0000-000000000001', '"contacte"');
+select pg_temp.login_as('60000000-0000-0000-0000-000000000003');
+select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Prospect'), '{"suivi": "contacte"}'::jsonb,
+  'pipeline : valeurs des champs par clé');
+select is((select string_agg(first_name, ',') from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', '{"fields": [{"key": "suivi", "op": "is", "value": "contacte"}]}')),
+  'Prospect', 'pipeline : filtre sur un champ');
 
 select is((select count(*) from public.search_members('8a000000-0000-0000-0000-000000000000', null, null, 20, 0, 'hyrox')),
   1::bigint, 'recherche : filtre par tag');

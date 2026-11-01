@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  builtinKanbanView,
   builtinMemberView,
+  groupKanban,
+  isBuiltinKanbanView,
+  KANBAN_NONE,
+  kanbanColumnFilters,
+  kanbanGroupField,
+  viewGroupBy,
   BUILTIN_MEMBER_VIEWS,
   fieldColumn,
   fieldKeyOfColumn,
@@ -129,6 +136,7 @@ describe("état d'une vue", () => {
       sort: "name",
       columns: ["contact", "status", "credits"],
       query: "",
+      groupBy: null,
     });
     const state = viewStateFromSearch(
       { f0: "1", tri: "recent", cols: "status,f:objectif,bidon", q: " Camille " },
@@ -139,6 +147,7 @@ describe("état d'une vue", () => {
       sort: "recent",
       columns: ["status", "f:objectif"],
       query: "Camille",
+      groupBy: null,
     });
     expect(viewStateFromSearch({ cols: "none" }, view).columns).toEqual([]);
     expect(isViewDirty(view, state)).toBe(true);
@@ -146,7 +155,9 @@ describe("état d'une vue", () => {
   });
   it("l'URL ne porte que les écarts, dont « aucun filtre »", () => {
     expect(viewStatePairs(view, viewStateFromSearch({}, view))).toEqual([["vue", "actifs"]]);
-    expect(viewStatePairs(view, { filters: {}, sort: "name", columns: [], query: "a" })).toEqual([
+    expect(
+      viewStatePairs(view, { filters: {}, sort: "name", columns: [], query: "a", groupBy: null }),
+    ).toEqual([
       ["vue", "actifs"],
       ["f0", "1"],
       ["cols", "none"],
@@ -158,6 +169,7 @@ describe("état d'une vue", () => {
         sort: "recent",
         columns: ["contact", "status", "credits"],
         query: "",
+        groupBy: null,
       }),
     ).toEqual([
       ["vue", "actifs"],
@@ -165,5 +177,98 @@ describe("état d'une vue", () => {
       ["tags", "hyrox"],
       ["tri", "recent"],
     ]);
+  });
+});
+
+describe("kanban", () => {
+  const field = {
+    key: "suivi",
+    type: "select" as const,
+    options: [
+      { value: "nouveau", label: "Nouveau", tone: "neutral" as const },
+      { value: "contacte", label: "Contacté", tone: "brand" as const },
+    ],
+  };
+  const rows = [
+    { id: "a", stage: "lead", fields: { suivi: "contacte" } },
+    { id: "b", stage: "trial", fields: {} },
+    { id: "c", stage: "active", fields: { suivi: "ancienne_option" } },
+    { id: "d", stage: "lead", fields: { suivi: "nouveau" } },
+    { id: "e", stage: "lead", fields: null },
+  ];
+
+  it("vue intégrée « etapes » : kanban groupé par étape", () => {
+    const view = builtinKanbanView("etapes", "Étapes");
+    expect(isBuiltinKanbanView("etapes")).toBe(true);
+    expect(view.layout).toBe("kanban");
+    expect(viewGroupBy(view)).toBe("stage");
+    expect(viewGroupBy(builtinMemberView("tous", "Tous"))).toBeNull();
+  });
+
+  it("groupement porté par ?groupe=, écart signalé et réécrit dans l'URL", () => {
+    const view = builtinKanbanView("etapes", "Étapes");
+    expect(viewStateFromSearch({}, view).groupBy).toBe("stage");
+    const state = viewStateFromSearch({ groupe: "f:suivi" }, view);
+    expect(state.groupBy).toBe("f:suivi");
+    expect(isViewDirty(view, state)).toBe(true);
+    expect(viewStatePairs(view, state)).toEqual([
+      ["vue", "etapes"],
+      ["groupe", "f:suivi"],
+    ]);
+    expect(viewStateFromSearch({ groupe: "n'importe quoi" }, view).groupBy).toBe("stage");
+    // Un tableau ignore le groupement.
+    expect(
+      viewStateFromSearch({ groupe: "f:suivi" }, builtinMemberView("tous", "Tous")).groupBy,
+    ).toBeNull();
+  });
+
+  it("champ de groupement : liste simple seulement", () => {
+    const fields = [
+      { key: "suivi", type: "select" as const },
+      { key: "niveaux", type: "multi_select" as const },
+    ];
+    expect(kanbanGroupField("f:suivi", fields)?.key).toBe("suivi");
+    expect(kanbanGroupField("f:niveaux", fields)).toBeNull();
+    expect(kanbanGroupField("stage", fields)).toBeNull();
+    expect(kanbanGroupField(null, fields)).toBeNull();
+  });
+
+  it("colonnes par étape", () => {
+    const groups = groupKanban(rows, null);
+    expect(groups.map((g) => [g.key, g.rows.map((r) => r.id).join("")])).toEqual([
+      ["lead", "ade"],
+      ["trial", "b"],
+      ["active", "c"],
+      ["suspended", ""],
+      ["cancelled", ""],
+    ]);
+    expect(groups[0]?.tone).toBe("brand");
+  });
+
+  it("colonnes par option, puis « Sans valeur » (absente ou option disparue)", () => {
+    const groups = groupKanban(rows, field);
+    expect(groups.map((g) => [g.key, g.label, g.rows.map((r) => r.id).join("")])).toEqual([
+      ["nouveau", "Nouveau", "d"],
+      ["contacte", "Contacté", "a"],
+      [KANBAN_NONE, null, "bce"],
+    ]);
+  });
+
+  it("filtres de la liste complète d'une colonne", () => {
+    expect(kanbanColumnFilters({ tags: ["x"] }, "trial", null)).toEqual({
+      tags: ["essai"],
+      statuses: ["prospect"],
+    });
+    expect(kanbanColumnFilters({}, "active", null)).toEqual({ statuses: ["active"] });
+    expect(
+      kanbanColumnFilters(
+        { fields: [{ key: "suivi", op: "is", value: "nouveau" }] },
+        "contacte",
+        field,
+      ),
+    ).toEqual({ fields: [{ key: "suivi", op: "is", value: "contacte" }] });
+    expect(kanbanColumnFilters({}, KANBAN_NONE, field)).toEqual({
+      fields: [{ key: "suivi", op: "is_empty" }],
+    });
   });
 });

@@ -230,7 +230,13 @@ insert into public.member_fields (id, gym_id, key, label, type, options, positio
      {"value": "forme", "label": "Forme et santé", "tone": "neutral"},
      {"value": "performance", "label": "Performance", "tone": "warning"}]', 0),
   (pg_temp.sid('field:certificat'), pg_temp.sid('gym'), 'certificat_medical', 'Certificat médical', 'date', '[]', 1),
-  (pg_temp.sid('field:parrain'), pg_temp.sid('gym'), 'parraine_par', 'Parrainé par', 'text', '[]', 2);
+  (pg_temp.sid('field:parrain'), pg_temp.sid('gym'), 'parraine_par', 'Parrainé par', 'text', '[]', 2),
+  -- Étapes libres du suivi d'un prospect : groupent la vue kanban « Suivi des prospects ».
+  (pg_temp.sid('field:suivi'), pg_temp.sid('gym'), 'suivi_prospect', 'Suivi prospect', 'select',
+   '[{"value": "nouveau", "label": "Nouveau", "tone": "neutral"},
+     {"value": "contacte", "label": "Contacté", "tone": "brand"},
+     {"value": "essai_planifie", "label": "Essai planifié", "tone": "warning"},
+     {"value": "a_relancer", "label": "À relancer", "tone": "danger"}]', 3);
 
 -- Objectif pour 7 adhérents sur 10 (« Compétition » pour ceux qui portent l'étiquette).
 insert into public.member_field_values (gym_id, member_id, field_id, value, updated_at, updated_by)
@@ -252,6 +258,15 @@ select
   m.created_at, pg_temp.sid('u:staff:gerant')
 from seed_members m
 where m.status <> 'prospect' and pg_temp.rnd('has-certificat', m.n::text) < 0.55;
+
+-- Suivi des prospects : 4 prospects sur 5 ont une étape, les autres restent « Sans valeur ».
+insert into public.member_field_values (gym_id, member_id, field_id, value, updated_at, updated_by)
+select
+  pg_temp.sid('gym'), m.id, pg_temp.sid('field:suivi'),
+  to_jsonb(pg_temp.pick(array['nouveau', 'contacte', 'essai_planifie', 'a_relancer'], 'suivi', m.n::text)),
+  m.created_at, pg_temp.sid('u:staff:gerant')
+from seed_members m
+where m.status = 'prospect' and pg_temp.rnd('has-suivi', m.n::text) < 0.8;
 
 -- Un adhérent sur 10 a été parrainé par un adhérent actif.
 insert into public.member_field_values (gym_id, member_id, field_id, value, updated_at, updated_by)
@@ -643,6 +658,11 @@ insert into public.email_templates (id, gym_id, name, subject, body) values
 insert into public.segments (id, gym_id, name, filters) values
   (pg_temp.sid('seg:inactive'), pg_temp.sid('gym'), 'Actifs inactifs depuis 14 jours',
    '{"statuses": ["active"], "inactive_days": 14}');
+
+-- Vue d'équipe du kanban : les prospects, groupés par leur étape de suivi.
+insert into public.saved_views (id, gym_id, object, name, layout, filters, group_by, visibility, created_by, position) values
+  (pg_temp.sid('view:suivi'), pg_temp.sid('gym'), 'members', 'Suivi des prospects', 'kanban',
+   '{"statuses": ["prospect"]}', 'f:suivi_prospect', 'team', pg_temp.sid('u:staff:gerant'), 0);
 
 insert into public.automations (gym_id, kind, enabled, template_id, params) values
   (pg_temp.sid('gym'), 'welcome', false, pg_temp.sid('tpl:welcome'), '{}'),

@@ -1,6 +1,18 @@
 import { z } from "zod";
-import { parseSegmentFilters, segmentFiltersSchema, type SegmentFilters } from "./crm.ts";
-import { FIELD_KEY_PATTERN } from "./fields.ts";
+import {
+  parseSegmentFilters,
+  PIPELINE_STAGES,
+  segmentFiltersSchema,
+  type PipelineStage,
+  type SegmentFilters,
+} from "./crm.ts";
+import { PIPELINE_STAGE_TONE, type Tone } from "./display.ts";
+import {
+  FIELD_KEY_PATTERN,
+  MAX_FIELD_CONDITIONS,
+  type FieldCondition,
+  type MemberField,
+} from "./fields.ts";
 
 /**
  * Vues enregistrées (`saved_views`) : un tableau ou un kanban d'adhérents (ou une vue du
@@ -112,6 +124,30 @@ export function builtinMemberView(id: BuiltinMemberViewId, name: string): Member
     visibility: "team",
     createdBy: null,
     position: -1,
+  };
+}
+
+/** Vues intégrées du kanban (`/crm`) : les étapes déduites du statut. */
+export const BUILTIN_KANBAN_VIEWS = [{ id: "etapes", filters: {} }] as const satisfies readonly {
+  id: string;
+  filters: SegmentFilters;
+}[];
+export type BuiltinKanbanViewId = (typeof BUILTIN_KANBAN_VIEWS)[number]["id"];
+export const DEFAULT_KANBAN_VIEW: BuiltinKanbanViewId = "etapes";
+/** Groupement par défaut d'un kanban : les étapes déduites. */
+export const STAGE_GROUP = "stage";
+
+export function isBuiltinKanbanView(id: string): id is BuiltinKanbanViewId {
+  return BUILTIN_KANBAN_VIEWS.some((view) => view.id === id);
+}
+
+export function builtinKanbanView(id: BuiltinKanbanViewId, name: string): MemberView {
+  return {
+    ...builtinMemberView("tous", name),
+    id,
+    layout: "kanban",
+    filters: {},
+    group_by: STAGE_GROUP,
   };
 }
 
@@ -290,7 +326,15 @@ export type MemberViewState = {
   sort: MemberSort;
   columns: string[];
   query: string;
+  /** Kanban : groupement (`stage` ou `f:<clé>`, `?groupe=`) ; `null` pour un tableau. */
+  groupBy: string | null;
 };
+
+/** Groupement d'une vue kanban (les étapes si la vue n'en a pas de valide). */
+export function viewGroupBy(view: MemberView): string | null {
+  if (view.layout !== "kanban") return null;
+  return view.group_by !== null && isMemberGroupBy(view.group_by) ? view.group_by : STAGE_GROUP;
+}
 
 /** État de la page : la vue, corrigée par les paramètres d'URL présents. */
 export function viewStateFromSearch(params: SearchParams, view: MemberView): MemberViewState {
@@ -303,20 +347,32 @@ export function viewStateFromSearch(params: SearchParams, view: MemberView): Mem
       : colsParam === NO_COLUMNS_PARAM
         ? []
         : [...new Set(colsParam.split(",").filter(isMemberColumn))];
+  const groupParam = first(params.groupe);
+  const groupBy =
+    view.layout !== "kanban"
+      ? null
+      : groupParam && isMemberGroupBy(groupParam)
+        ? groupParam
+        : viewGroupBy(view);
   return {
     filters: fromUrl ?? { ...view.filters },
     sort: MEMBER_SORTS.find((sort) => sort === sortParam) ?? view.sort,
     columns,
     query: (first(params.q) ?? "").trim().slice(0, 80),
+    groupBy,
   };
 }
 
-/** L'état diffère-t-il de la vue (filtres, tri, colonnes ; la recherche n'en fait pas partie) ? */
+/**
+ * L'état diffère-t-il de la vue (filtres, tri, colonnes, groupement d'un kanban ; la recherche
+ * n'en fait pas partie) ?
+ */
 export function isViewDirty(view: MemberView, state: MemberViewState): boolean {
   return (
     !sameFilters(view.filters, state.filters) ||
     view.sort !== state.sort ||
-    view.columns.join(",") !== state.columns.join(",")
+    view.columns.join(",") !== state.columns.join(",") ||
+    viewGroupBy(view) !== state.groupBy
   );
 }
 
@@ -334,6 +390,109 @@ export function viewStatePairs(view: MemberView, state: MemberViewState): [strin
   if (state.sort !== view.sort) pairs.push(["tri", state.sort]);
   if (state.columns.join(",") !== view.columns.join(","))
     pairs.push(["cols", state.columns.length ? state.columns.join(",") : NO_COLUMNS_PARAM]);
+  if (state.groupBy !== null && state.groupBy !== viewGroupBy(view))
+    pairs.push(["groupe", state.groupBy]);
   if (state.query) pairs.push(["q", state.query]);
   return pairs;
+}
+
+// ---------------------------------------------------------------------------
+// Kanban : colonnes d'un groupement
+// ---------------------------------------------------------------------------
+
+/** Colonne « Sans valeur » d'un kanban groupé par un champ liste. */
+export const KANBAN_NONE = "__none";
+
+/** Seul un champ liste simple groupe un kanban (une carte, une colonne). */
+export function isKanbanGroupField(field: Pick<MemberField, "type">): boolean {
+  return field.type === "select";
+}
+
+/** Champ liste désigné par un groupement `f:<clé>` (null pour les étapes ou un champ inconnu). */
+export function kanbanGroupField<F extends Pick<MemberField, "key" | "type">>(
+  groupBy: string | null,
+  fields: readonly F[],
+): F | null {
+  const key = groupBy === null ? null : fieldKeyOfColumn(groupBy);
+  return fields.find((field) => field.key === key && isKanbanGroupField(field)) ?? null;
+}
+
+export type KanbanGroup<R> = {
+  /** Étape, valeur d'option, ou `KANBAN_NONE`. */
+  key: string;
+  /** Libellé d'une option ; `null` : à traduire par l'app (étape, « Sans valeur »). */
+  label: string | null;
+  tone: Tone;
+  rows: R[];
+};
+
+/**
+ * Répartit les lignes de `crm_pipeline` en colonnes : par étape déduite, ou par option d'un
+ * champ liste (dans l'ordre des options) suivie de « Sans valeur » (valeur absente ou option
+ * disparue). L'ordre des lignes est conservé.
+ */
+export function groupKanban<R extends { stage: string; fields: unknown }>(
+  rows: readonly R[],
+  field: Pick<MemberField, "key" | "type" | "options"> | null,
+): KanbanGroup<R>[] {
+  if (!field || !isKanbanGroupField(field)) {
+    return PIPELINE_STAGES.map((stage) => ({
+      key: stage,
+      label: null,
+      tone: PIPELINE_STAGE_TONE[stage],
+      rows: rows.filter((row) => row.stage === stage),
+    }));
+  }
+  const valueOf = (row: R): string | null => {
+    const values = row.fields && typeof row.fields === "object" ? row.fields : {};
+    const value = (values as Record<string, unknown>)[field.key];
+    return typeof value === "string" ? value : null;
+  };
+  const known = new Set(field.options.map((option) => option.value));
+  return [
+    ...field.options.map((option) => ({
+      key: option.value,
+      label: option.label,
+      tone: option.tone,
+      rows: rows.filter((row) => valueOf(row) === option.value),
+    })),
+    {
+      key: KANBAN_NONE,
+      label: null,
+      tone: "neutral" as const,
+      rows: rows.filter((row) => {
+        const value = valueOf(row);
+        return value === null || !known.has(value);
+      }),
+    },
+  ];
+}
+
+/**
+ * Filtres de la liste complète d'une colonne (« Voir les N autres ») : ceux de la vue, plus la
+ * condition de la colonne. Les étapes « Prospects » et « Essai » sont approchées par le statut
+ * (et l'étiquette « essai »), comme avant.
+ */
+export function kanbanColumnFilters(
+  filters: SegmentFilters,
+  groupKey: string,
+  field: Pick<MemberField, "key"> | null,
+): SegmentFilters {
+  if (!field) {
+    const stage = PIPELINE_STAGES.find((candidate) => candidate === groupKey) as
+      PipelineStage | undefined;
+    if (!stage) return filters;
+    const status = stage === "lead" || stage === "trial" ? "prospect" : stage;
+    return {
+      ...filters,
+      statuses: [status],
+      ...(stage === "trial" ? { tags: ["essai"] } : {}),
+    };
+  }
+  const condition: FieldCondition =
+    groupKey === KANBAN_NONE
+      ? { key: field.key, op: "is_empty" }
+      : { key: field.key, op: "is", value: groupKey };
+  const conditions = (filters.fields ?? []).filter((existing) => existing.key !== field.key);
+  return { ...filters, fields: [...conditions, condition].slice(-MAX_FIELD_CONDITIONS) };
 }

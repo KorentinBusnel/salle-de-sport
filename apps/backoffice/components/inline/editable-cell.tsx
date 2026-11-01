@@ -1,7 +1,7 @@
 "use client";
 
 import { formatMoney, type Tone } from "@salle/shared";
-import { disciplineColors } from "@salle/ui";
+import { categoryPalette } from "@salle/ui";
 import { CalendarIcon, CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon } from "lucide-react";
 import {
   type KeyboardEvent,
@@ -408,17 +408,7 @@ export function EditableCell(props: Props) {
   );
 }
 
-const PALETTE = [
-  ...Object.values(disciplineColors),
-  "#7c3aed",
-  "#db2777",
-  "#0891b2",
-  "#65a30d",
-  "#ea580c",
-  "#475569",
-  "#0d9488",
-  "#9333ea",
-] as const;
+const PALETTE = categoryPalette;
 
 /** Nombre affiché : montant formaté, sinon décimales à la française (« 72,5 »), sans séparateur de milliers. */
 function numberText(

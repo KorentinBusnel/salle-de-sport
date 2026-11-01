@@ -354,7 +354,7 @@ function conditionText(condition: FieldCondition, field: MemberField | undefined
 }
 
 /** Puce d'un filtre : son texte ouvre l'éditeur, la croix le retire. */
-function FilterChip({
+export function FilterChip({
   label,
   value,
   open,

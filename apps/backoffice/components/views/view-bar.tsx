@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  VIEW_NAME_MAX,
-  type MemberLayout,
-  type MemberView,
-  type MemberViewState,
-  type ViewVisibility,
-} from "@salle/shared";
+import { VIEW_NAME_MAX, type ViewVisibility } from "@salle/shared";
 import {
   CopyIcon,
   ListFilterIcon,
@@ -21,11 +15,9 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  createMemberView,
   deleteMemberView,
   renameMemberView,
   setMemberViewVisibility,
-  updateMemberView,
 } from "@/app/(app)/adherents/vues-actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RowActionsMenu, type RowAction } from "@/components/data-table/row-actions-menu";
@@ -42,6 +34,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
+import type { ActionResult } from "@/lib/action-result";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -56,11 +49,13 @@ export type ViewTab = {
   highlight?: boolean | undefined;
 };
 
-type SaveState = {
-  filters: MemberViewState["filters"];
-  sort: MemberViewState["sort"];
-  columns: string[];
-  group_by: string | null;
+/** Ce que la barre sait de la vue ouverte (le reste appartient à la page). */
+export type ViewMeta = {
+  id: string;
+  name: string;
+  builtin: boolean;
+  visibility: ViewVisibility;
+  createdBy: string | null;
 };
 
 /**
@@ -69,27 +64,43 @@ type SaveState = {
  * la vue ouverte, et menu de la vue (renommer, dupliquer, partager, supprimer). Une vue
  * personnelle n'appartient qu'à son créateur ; une vue d'équipe, au gérant.
  */
-export function ViewBar({
+export function ViewBar<L extends string, S>({
   tabs,
   current,
-  state,
+  activeTab = current.id,
+  saveState,
   dirty,
   userId,
   manager,
   basePath,
-  layout = "table",
+  tabQuery,
+  layout,
+  create,
+  update,
   segmentHref,
 }: {
   tabs: ViewTab[];
-  current: MemberView;
-  state: MemberViewState;
+  current: ViewMeta;
+  /** Onglet mis en avant (`null` : aucun, par exemple un affichage automatique). */
+  activeTab?: string | null | undefined;
+  /** État courant de la page, enregistré tel quel par « Enregistrer » / « Enregistrer comme… ». */
+  saveState: S;
   dirty: boolean;
   userId: string;
   manager: boolean;
-  /** Page qui porte la barre (`/adherents`, `/crm`) : un onglet ouvre `?vue=`. */
+  /** Page qui porte la barre (`/adherents`, `/crm`, `/planning`) : un onglet ouvre `?vue=`. */
   basePath: string;
+  /** Paramètres gardés en changeant de vue (semaine affichée du planning). */
+  tabQuery?: string | undefined;
   /** Disposition des vues créées depuis cette page. */
-  layout?: MemberLayout | undefined;
+  layout: L;
+  create: (input: {
+    name: string;
+    visibility: ViewVisibility;
+    layout: L;
+    state: S;
+  }) => Promise<ActionResult<{ id: string }>>;
+  update: (input: { id: string; state: S }) => Promise<ActionResult>;
   /** Gérant : « Créer un segment avec ces filtres » (null sinon). */
   segmentHref?: string | null | undefined;
 }) {
@@ -98,19 +109,13 @@ export function ViewBar({
   const [saveAs, setSaveAs] = useState<{ name: string } | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const saveState: SaveState = {
-    filters: state.filters,
-    sort: state.sort,
-    columns: state.columns,
-    group_by: state.groupBy,
-  };
 
   const owner = current.createdBy === userId;
   const canEdit = !current.builtin && (current.visibility === "private" ? owner : manager);
 
   function save() {
     startTransition(async () => {
-      const result = await updateMemberView({ id: current.id, state: saveState });
+      const result = await update({ id: current.id, state: saveState });
       if (!result.ok) toast.error(t(result.error), { closeButton: true });
       else toast.success(t("views.saved"));
     });
@@ -179,11 +184,11 @@ export function ViewBar({
       <div className="w-full min-w-0 overflow-x-auto xl:w-auto">
         <nav aria-label={t("views.tabs")} className="flex w-fit gap-1 rounded-xl bg-muted p-1">
           {tabs.map((tab) => {
-            const active = tab.id === current.id;
+            const active = tab.id === activeTab;
             return (
               <Link
                 key={tab.id}
-                href={`${basePath}?vue=${tab.id}`}
+                href={`${basePath}?vue=${tab.id}${tabQuery ? `&${tabQuery}` : ""}`}
                 scroll={false}
                 aria-current={active ? "page" : undefined}
                 className={cn(
@@ -256,7 +261,7 @@ export function ViewBar({
           onClose={() => setSaveAs(null)}
           onSubmit={(name, visibility) =>
             startTransition(async () => {
-              const result = await createMemberView({
+              const result = await create({
                 name,
                 visibility,
                 layout,

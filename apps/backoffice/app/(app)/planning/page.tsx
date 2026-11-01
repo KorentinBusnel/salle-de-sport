@@ -1,11 +1,18 @@
 import {
+  BUILTIN_PLANNING_VIEWS,
+  builtinPlanningView,
   clockToMinutes,
   coachesLabel,
   deskWindows,
   hasOpeningHours,
+  isBuiltinPlanningView,
   isLowFill,
+  isPlanningViewDirty,
   openingIntervals,
   openingSpan,
+  parsePlanningView,
+  planningStateFromSearch,
+  planningStatePairs,
   sessionPhase,
   shiftDateKey,
   uncoveredIntervals,
@@ -14,14 +21,10 @@ import {
   zonedMinutesOfDay,
   zonedStartOfDateKey,
   zonedWeek,
+  type BuiltinPlanningViewId,
+  type PlanningView,
 } from "@salle/shared";
-import {
-  CalendarPlusIcon,
-  CalendarXIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XIcon,
-} from "lucide-react";
+import { CalendarPlusIcon, CalendarXIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DeskDay } from "@/components/desk/desk-day";
@@ -29,6 +32,7 @@ import { DeskShiftProvider } from "@/components/desk/desk-shift-dialog";
 import { Flash } from "@/components/flash";
 import { OccupancyMeter } from "@/components/occupancy-meter";
 import { PageHeader } from "@/components/page-header";
+import { PlanningFilters } from "@/components/planning/planning-filters";
 import { type CreateOptions, QuickCreateDialog } from "@/components/planning/quick-create";
 import type { SessionSummary } from "@/components/planning/session-sheet";
 import { DraggableSession, DroppableDay, WeekDnd } from "@/components/planning/week-dnd";
@@ -45,8 +49,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { ViewBar, type ViewTab } from "@/components/views/view-bar";
 import { isManagerRole, requireTeamContext } from "@/lib/auth";
 import { currentTime } from "@/lib/clock";
+import { getOwnCoachId } from "@/lib/coaches";
+import { coachColors } from "@/lib/colors";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { getGymConfig } from "@/lib/settings";
@@ -54,39 +61,88 @@ import { createClient } from "@/lib/supabase/server";
 import { getTeamOptions } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import { DND_INSTRUCTIONS_ID, layoutDay } from "@/lib/week-layout";
+import { createPlanningView, updatePlanningView } from "./vues-actions";
 
 export const metadata: Metadata = { title: t("planning.title") };
 
 const PX_PER_MINUTE = 1.1;
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NEUTRAL = "var(--color-neutral-500)";
 
-type Search = { semaine?: string; jour?: string; vue?: string; mes?: string; d?: string };
+type Search = Record<string, string | string[] | undefined>;
 
-export default async function PlanningPage({
-  searchParams,
-}: {
-  searchParams: Promise<Search & { ok?: string; erreur?: string; creer?: string }>;
-}) {
+/**
+ * Planning : une vue (intégrée « Semaine » / « Jour », ou enregistrée) donne l'affichage, les
+ * filtres (disciplines, coachs, salles, mes séances) et la couleur des séances (discipline ou
+ * coach) ; l'URL porte les écarts (`d`, `c`, `s`, `mes`, `couleur`) et la semaine affichée.
+ * Sans `?vue=`, l'affichage suit l'écran (semaine sur grand écran, jour sinon).
+ */
+export default async function PlanningPage({ searchParams }: { searchParams: Promise<Search> }) {
   const params = await searchParams;
+  const param = (key: string) => {
+    const value = params[key];
+    return typeof value === "string" ? value : undefined;
+  };
   const context = await requireTeamContext();
   const tz = context.gym.timezone;
   const format = gymFormatters(tz);
   const now = currentTime();
   const todayKey = zonedDateKey(now, tz);
-  const isCoach = context.role === "coach";
   const manager = isManagerRole(context.role);
-  const onlyMine = isCoach && params.mes === "1";
-  // Légende cliquable : disciplines affichées (toutes si aucune n'est choisie).
-  const shown = (params.d ?? "").split(",").filter((id) => GUID.test(id));
-  // Sans choix explicite : semaine sur grand écran, jour sur tablette et mobile.
-  const view = params.vue === "jour" || params.vue === "semaine" ? params.vue : null;
 
+  const supabase = await createClient();
+  const [viewsRes, ownCoachId, disciplinesRes, coachesRes, roomsRes] = await Promise.all([
+    supabase
+      .from("saved_views")
+      .select("id, name, layout, filters, group_by, visibility, created_by, position")
+      .eq("gym_id", context.gym.id)
+      .eq("object", "planning")
+      .order("position")
+      .order("name"),
+    getOwnCoachId(context.userId, context.gym.id),
+    supabase
+      .from("disciplines")
+      .select("id, name, color")
+      .eq("gym_id", context.gym.id)
+      .order("position")
+      .order("name"),
+    // Tous les coachs, triés : la couleur d'un coach ne change pas d'une semaine à l'autre.
+    supabase
+      .from("coaches")
+      .select("id, display_name, is_active")
+      .eq("gym_id", context.gym.id)
+      .order("display_name")
+      .order("id"),
+    supabase.from("rooms").select("id, name").eq("gym_id", context.gym.id).order("name"),
+  ]);
+  const builtinName = (id: BuiltinPlanningViewId) =>
+    t(id === "jour" ? "planning.dayView" : "planning.weekView");
+  const savedViews = (viewsRes.data ?? []).map(parsePlanningView);
+  const requested = param("vue");
+  const savedView = savedViews.find((saved) => saved.id === requested);
+  const planningView: PlanningView =
+    requested && isBuiltinPlanningView(requested)
+      ? builtinPlanningView(requested, builtinName(requested))
+      : (savedView ?? builtinPlanningView("semaine", builtinName("semaine")));
+  const explicit =
+    savedView !== undefined || (requested !== undefined && isBuiltinPlanningView(requested));
+  const state = planningStateFromSearch(params, planningView);
+  const dirty = isPlanningViewDirty(planningView, state);
+  const canMine = ownCoachId !== null;
+  const onlyMine = canMine && state.filters.mine === true;
+  const shown = state.filters.disciplines ?? [];
+  const coachFilter = state.filters.coaches ?? [];
+  const roomFilter = state.filters.rooms ?? [];
+  // Sans choix explicite : semaine sur grand écran, jour sur tablette et mobile.
+  const view = explicit ? (planningView.layout === "day" ? "jour" : "semaine") : null;
+
+  const jourParam = param("jour");
+  const semaineParam = param("semaine");
   const anchorKey =
-    params.jour && DATE_KEY.test(params.jour)
-      ? params.jour
-      : params.semaine && DATE_KEY.test(params.semaine)
-        ? params.semaine
+    jourParam && DATE_KEY.test(jourParam)
+      ? jourParam
+      : semaineParam && DATE_KEY.test(semaineParam)
+        ? semaineParam
         : todayKey;
   const week = zonedWeek(
     new Date(zonedStartOfDateKey(anchorKey, tz).getTime() + 12 * 3_600_000),
@@ -96,33 +152,32 @@ export default async function PlanningPage({
   const sundayKey = week.days.at(-1)?.key ?? mondayKey;
   const dayKeys = week.days.map((d) => d.key);
   const selectedKey =
-    params.jour && dayKeys.includes(params.jour)
-      ? params.jour
+    jourParam && dayKeys.includes(jourParam)
+      ? jourParam
       : dayKeys.includes(todayKey)
         ? todayKey
         : mondayKey;
 
-  const query = (overrides: Partial<Search>) => {
+  // Adresses : semaine (et jour), vue choisie, puis les écarts à la vue (filtres, couleur).
+  type Nav = { semaine?: string; jour?: string };
+  const query = (overrides: Nav) => {
     const search = new URLSearchParams();
-    const merged: Search = {
+    const merged: Record<string, string | undefined> = {
       semaine: mondayKey,
-      ...(params.vue ? { vue: params.vue } : {}),
-      ...(params.mes ? { mes: params.mes } : {}),
-      ...(shown.length ? { d: shown.join(",") } : {}),
+      ...(explicit ? { vue: planningView.id } : {}),
       ...overrides,
     };
     for (const [key, value] of Object.entries(merged)) if (value) search.set(key, value);
+    for (const [key, value] of planningStatePairs(planningView, state)) search.set(key, value);
     return search.toString();
   };
-  const href = (overrides: Partial<Search>) => `/planning?${query(overrides)}`;
-
-  const supabase = await createClient();
+  const href = (overrides: Nav) => `/planning?${query(overrides)}`;
   const [sessionsResult, shiftsResult, team, config, closuresResult, createOptions] =
     await Promise.all([
       supabase
         .from("class_sessions")
         .select(
-          "id, template_id, discipline_id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), rooms(name), session_coaches(position, coaches(display_name, profile_id))",
+          "id, template_id, discipline_id, room_id, starts_at, ends_at, capacity, status, booked_count, waitlist_count, disciplines(name, color), rooms(name), session_coaches(position, coach_id, coaches(display_name, profile_id))",
         )
         .eq("gym_id", context.gym.id)
         .gte("starts_at", week.start.toISOString())
@@ -205,9 +260,8 @@ export default async function PlanningPage({
   };
 
   const all = data.map((session) => {
-    const coaches = [...session.session_coaches]
-      .sort((a, b) => a.position - b.position)
-      .flatMap((sc) => (sc.coaches ? [sc.coaches] : []));
+    const ordered = [...session.session_coaches].sort((a, b) => a.position - b.position);
+    const coaches = ordered.flatMap((sc) => (sc.coaches ? [sc.coaches] : []));
     const startMinute = zonedMinutesOfDay(new Date(session.starts_at), tz);
     const duration = Math.round(
       (Date.parse(session.ends_at) - Date.parse(session.starts_at)) / 60_000,
@@ -216,6 +270,8 @@ export default async function PlanningPage({
     return {
       ...session,
       coachList: coaches,
+      /** Coachs de la séance, le principal d'abord (`session_coaches`, jamais `coach_id`). */
+      coachIds: ordered.map((sc) => sc.coach_id),
       coachLabel: coachesLabel(coaches.map((c) => c.display_name)),
       startMinute,
       endMinute: startMinute + duration,
@@ -244,7 +300,62 @@ export default async function PlanningPage({
   ].sort((a, b) => a[1].name.localeCompare(b[1].name, "fr"));
   const sessions = all
     .filter((s) => !onlyMine || s.coachList.some((c) => c.profile_id === context.userId))
-    .filter((s) => shown.length === 0 || shown.includes(s.discipline_id));
+    .filter((s) => shown.length === 0 || shown.includes(s.discipline_id))
+    .filter((s) => coachFilter.length === 0 || s.coachIds.some((id) => coachFilter.includes(id)))
+    .filter(
+      (s) => roomFilter.length === 0 || (s.room_id !== null && roomFilter.includes(s.room_id)),
+    );
+
+  // Couleur d'une séance : sa discipline, ou son coach principal (palette de catégorie).
+  const coachColor = coachColors((coachesRes.data ?? []).map((coach) => coach.id));
+  const colorOf = (s: PlanningSession) => {
+    if (state.color !== "coach") return s.disciplines?.color ?? NEUTRAL;
+    const principal = s.coachIds[0];
+    return principal ? (coachColor.get(principal) ?? NEUTRAL) : NEUTRAL;
+  };
+  // Légende : les couleurs des séances affichées, sans action (les filtres sont des puces).
+  const legend =
+    state.color === "coach"
+      ? [
+          ...new Map(
+            sessions.flatMap((s) =>
+              s.coachIds[0]
+                ? [
+                    [
+                      s.coachIds[0],
+                      { name: s.coachList[0]?.display_name ?? "", color: colorOf(s) },
+                    ] as const,
+                  ]
+                : [],
+            ),
+          ),
+        ].sort((a, b) => a[1].name.localeCompare(b[1].name, "fr"))
+      : disciplines.filter(([id]) => sessions.some((s) => s.discipline_id === id));
+  const tabs: ViewTab[] = [
+    ...BUILTIN_PLANNING_VIEWS.map((entry) => ({
+      id: entry.id,
+      name: builtinName(entry.id),
+      builtin: true,
+      visibility: "team" as const,
+    })),
+    ...savedViews.map((saved) => ({
+      id: saved.id,
+      name: saved.name,
+      builtin: false,
+      visibility: saved.visibility,
+    })),
+  ];
+  const filterOptions = {
+    disciplines: (disciplinesRes.data ?? []).map((d) => ({
+      id: d.id,
+      name: d.name,
+      color: d.color,
+    })),
+    coaches: (coachesRes.data ?? [])
+      .filter((coach) => coach.is_active || coachFilter.includes(coach.id))
+      .map((coach) => ({ id: coach.id, name: coach.display_name })),
+    rooms: (roomsRes.data ?? []).map((room) => ({ id: room.id, name: room.name })),
+  };
 
   // Grille : horaires d'ouverture de la semaine (7 h – 21 h sans horaires), étendue aux séances.
   const span = openingSpan(config.openingHours);
@@ -346,33 +457,9 @@ export default async function PlanningPage({
                   options={createOptions}
                   dayKey={selectedKey < todayKey ? todayKey : selectedKey}
                   minutes={createMinutes}
-                  defaultOpen={params.creer === "1"}
+                  defaultOpen={param("creer") === "1"}
                 />
               ) : null}
-              {isCoach ? (
-                <ButtonGroup aria-label={t("planning.filterLabel")}>
-                  <Button asChild variant={onlyMine ? "outline" : "secondary"} size="sm">
-                    <Link href={href({ mes: "" })} aria-current={!onlyMine ? "true" : undefined}>
-                      {t("planning.allClasses")}
-                    </Link>
-                  </Button>
-                  <Button asChild variant={onlyMine ? "secondary" : "outline"} size="sm">
-                    <Link href={href({ mes: "1" })} aria-current={onlyMine ? "true" : undefined}>
-                      {t("planning.myClasses")}
-                    </Link>
-                  </Button>
-                </ButtonGroup>
-              ) : null}
-              <ButtonGroup aria-label={t("planning.viewLabel")}>
-                <Button asChild variant={view === "jour" ? "secondary" : "outline"} size="sm">
-                  <Link href={href({ vue: "jour", jour: selectedKey })}>
-                    {t("planning.dayView")}
-                  </Link>
-                </Button>
-                <Button asChild variant={view === "semaine" ? "secondary" : "outline"} size="sm">
-                  <Link href={href({ vue: "semaine" })}>{t("planning.weekView")}</Link>
-                </Button>
-              </ButtonGroup>
               <ButtonGroup aria-label={t("planning.weekNav")}>
                 <Button asChild variant="outline" size="icon-sm">
                   <Link
@@ -404,7 +491,30 @@ export default async function PlanningPage({
           }
         />
 
-        <Flash ok={params.ok} error={params.erreur} />
+        <ViewBar
+          tabs={tabs}
+          current={planningView}
+          activeTab={explicit ? planningView.id : null}
+          saveState={state}
+          dirty={dirty}
+          userId={context.userId}
+          manager={manager}
+          basePath="/planning"
+          tabQuery={new URLSearchParams({ semaine: mondayKey, jour: selectedKey }).toString()}
+          layout={planningView.layout}
+          create={createPlanningView}
+          update={updatePlanningView}
+        />
+        <PlanningFilters
+          filters={state.filters}
+          baseFilters={planningView.filters}
+          color={state.color}
+          baseColor={planningView.color}
+          options={filterOptions}
+          canMine={canMine}
+        />
+
+        <Flash ok={param("ok")} error={param("erreur")} />
 
         {closedConflicts.length ? (
           <Alert variant="soft-warning" role="status">
@@ -429,42 +539,14 @@ export default async function PlanningPage({
           </Alert>
         ) : null}
 
-        {disciplines.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <ul className="flex flex-wrap gap-2" aria-label={t("planning.legendFilter")}>
-              {disciplines.map(([id, discipline]) => {
-                const active = shown.includes(id);
-                const next = active ? shown.filter((d) => d !== id) : [...shown, id];
-                return (
-                  <li key={id}>
-                    <Link
-                      href={href({ d: next.join(",") })}
-                      scroll={false}
-                      aria-current={active ? "true" : undefined}
-                      className={cn(
-                        "block rounded-full transition-[opacity,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:py-2",
-                        active && "ring-2 ring-foreground/25",
-                        shown.length > 0 && !active && "opacity-50 hover:opacity-80",
-                      )}
-                    >
-                      <DisciplineChip name={discipline.name} color={discipline.color} />
-                      <span className="sr-only">
-                        {active ? t("planning.legendShown") : t("planning.legendShowOnly")}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-            {shown.length ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link href={href({ d: "" })} scroll={false}>
-                  <XIcon data-icon="inline-start" aria-hidden />
-                  {t("planning.legendAll")}
-                </Link>
-              </Button>
-            ) : null}
-          </div>
+        {legend.length > 0 ? (
+          <ul className="flex flex-wrap gap-2" aria-label={t("planning.filters.legend")}>
+            {legend.map(([id, item]) => (
+              <li key={id}>
+                <DisciplineChip name={item.name} color={item.color} />
+              </li>
+            ))}
+          </ul>
         ) : null}
 
         {empty ?? (
@@ -556,8 +638,15 @@ export default async function PlanningPage({
                             name={s.disciplines?.name ?? ""}
                             color={s.disciplines?.color}
                           />
-                          <span className="truncate text-sm text-muted-foreground">
-                            {s.coachLabel}
+                          <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                            {state.color === "coach" ? (
+                              <span
+                                aria-hidden
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: colorOf(s) }}
+                              />
+                            ) : null}
+                            <span className="truncate">{s.coachLabel}</span>
                           </span>
                           {s.lowFill ? (
                             <StatusPill tone="brand" dot={false}>
@@ -719,7 +808,7 @@ export default async function PlanningPage({
                           ) : null}
                           {placed.map((session) => {
                             const cancelled = session.status === "cancelled";
-                            const color = session.disciplines?.color ?? "var(--color-neutral-500)";
+                            const color = colorOf(session);
                             const movable = manager && !cancelled && session.phase === "upcoming";
                             return (
                               <DraggableSession

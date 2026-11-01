@@ -64,6 +64,7 @@ import { filtersToSearch } from "@/lib/segments";
 import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import { adjustCredits, createMember } from "./actions";
+import { createMemberView, updateMemberView } from "./vues-actions";
 
 export const metadata: Metadata = { title: t("members.title") };
 
@@ -262,11 +263,19 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           <ViewBar
             tabs={tabs}
             current={view}
-            state={state}
+            saveState={{
+              filters: state.filters,
+              sort: state.sort,
+              columns: state.columns,
+              group_by: null,
+            }}
             dirty={dirty}
             userId={context.userId}
             manager={manager}
             basePath="/adherents"
+            layout="table"
+            create={createMemberView}
+            update={updateMemberView}
             segmentHref={segmentHref}
           />
 

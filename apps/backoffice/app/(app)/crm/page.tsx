@@ -35,6 +35,7 @@ import { settingsHref } from "@/lib/settings-sections";
 import { createClient } from "@/lib/supabase/server";
 import { filtersToSearch } from "@/lib/segments";
 import { moveMemberStage, moveMemberToOption } from "./actions";
+import { createMemberView, updateMemberView } from "../adherents/vues-actions";
 
 export const metadata: Metadata = { title: t("crm.title") };
 
@@ -168,12 +169,19 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         <ViewBar
           tabs={tabs}
           current={view}
-          state={{ ...state, groupBy }}
+          saveState={{
+            filters: state.filters,
+            sort: state.sort,
+            columns: state.columns,
+            group_by: groupBy,
+          }}
           dirty={dirty}
           userId={context.userId}
           manager
           basePath="/crm"
           layout="kanban"
+          create={createMemberView}
+          update={updateMemberView}
           segmentHref={segmentHref}
         />
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

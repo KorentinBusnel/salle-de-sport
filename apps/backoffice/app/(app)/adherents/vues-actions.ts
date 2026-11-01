@@ -35,6 +35,7 @@ type ViewState = z.infer<typeof stateSchema>;
 function done<T>(result: T): T {
   revalidatePath("/adherents");
   revalidatePath("/crm");
+  revalidatePath("/planning");
   refresh();
   return result;
 }

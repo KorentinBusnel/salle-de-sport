@@ -39,6 +39,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
 } from "@/components/ui/command";
 import {
   Dialog,
@@ -126,7 +127,7 @@ function writeRecents(key: string, recents: RecentEntry[]) {
  * - Récents (pages et fiches ouvertes depuis la palette, mémorisés dans ce navigateur) ;
  * - Adhérents au fil de la frappe (accueil et gérant), avec un indicateur de recherche ;
  * - Aller à (pages du rôle), Réglages (sections des Paramètres, gérant) et Actions (« Nouveau ») ;
- * - pour le gérant, question à l'assistant dans la même palette.
+ * - pour le gérant dont la salle a configuré l'assistant, question à l'assistant, en dernier.
  */
 export function CommandPalette({
   members,
@@ -191,6 +192,24 @@ export function CommandPalette({
     enabled: members && open,
   });
   const matches = useMemo(() => filterEntries(entries, term), [entries, term]);
+
+  // Entrée ouvre le premier résultat (fiche, puis page) : la sélection revient en tête à chaque
+  // mise à jour de la liste, sans rester sur l'assistant proposé avant l'arrivée des adhérents.
+  const values = [
+    ...(term ? [] : recents.map((recent) => `recent:${recent.href}`)),
+    ...(results.length ? [...results.map((member) => `member:${member.id}`), `all:${term}`] : []),
+    ...GROUPS.flatMap(([group]) =>
+      matches.filter((entry) => entry.group === group).map((entry) => `${group}:${entry.href}`),
+    ),
+    ...(assistant ? (term ? [`ask:${term}`] : SUGGESTIONS) : []),
+  ];
+  const listKey = values.join("\n");
+  const [selected, setSelected] = useState("");
+  const [shownKey, setShownKey] = useState("");
+  if (listKey !== shownKey) {
+    setShownKey(listKey);
+    setSelected(values[0] ?? "");
+  }
 
   function reset(next: boolean) {
     setOpen(next);
@@ -266,7 +285,7 @@ export function CommandPalette({
               <DialogTitle>{placeholder}</DialogTitle>
               <DialogDescription>{t("topbar.paletteHelp")}</DialogDescription>
             </DialogHeader>
-            <Command shouldFilter={false} loop>
+            <Command shouldFilter={false} loop value={selected} onValueChange={setSelected}>
               <CommandInput value={query} onValueChange={setQuery} placeholder={placeholder} />
               <CommandList>
                 {searching ? (
@@ -296,16 +315,6 @@ export function CommandPalette({
                     ))}
                   </CommandGroup>
                 ) : null}
-                {assistant && !term ? (
-                  <CommandGroup heading={t("topbar.assistantGroup")}>
-                    {SUGGESTIONS.map((key) => (
-                      <CommandItem key={key} value={key} onSelect={() => setQuestion(t(key))}>
-                        <SparklesIcon className="text-primary" />
-                        {t(key)}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ) : null}
                 {results.length ? (
                   <CommandGroup heading={t("topbar.membersGroup")}>
                     {results.map((member) => (
@@ -325,9 +334,9 @@ export function CommandPalette({
                           {member.first_name} {member.last_name}
                         </span>
                         {member.email ? (
-                          <span className="ml-auto truncate text-xs text-muted-foreground">
+                          <CommandShortcut className="truncate pl-3 tracking-normal">
                             {member.email}
-                          </span>
+                          </CommandShortcut>
                         ) : null}
                       </CommandItem>
                     ))}
@@ -363,9 +372,9 @@ export function CommandPalette({
                             <Icon />
                             <span className="truncate">{entry.label}</span>
                             {entry.hint ? (
-                              <span className="ml-auto truncate pl-3 text-xs text-muted-foreground">
+                              <CommandShortcut className="truncate pl-3 tracking-normal">
                                 {entry.hint}
-                              </span>
+                              </CommandShortcut>
                             ) : null}
                           </CommandItem>
                         );
@@ -373,13 +382,23 @@ export function CommandPalette({
                     </CommandGroup>
                   );
                 })}
-                {/* Question libre en dernier : Entrée ouvre d'abord une page ou une fiche trouvée. */}
-                {assistant && term ? (
+                {/* Assistant en dernier (question libre ou suggestions) : Entrée ouvre d'abord une
+                    fiche ou une page trouvée. */}
+                {assistant ? (
                   <CommandGroup heading={t("topbar.assistantGroup")}>
-                    <CommandItem value={`ask:${term}`} onSelect={() => setQuestion(term)}>
-                      <SparklesIcon className="text-primary" />
-                      <span className="truncate">{t("topbar.askAbout", { question: term })}</span>
-                    </CommandItem>
+                    {term ? (
+                      <CommandItem value={`ask:${term}`} onSelect={() => setQuestion(term)}>
+                        <SparklesIcon className="text-primary" />
+                        <span className="truncate">{t("topbar.askAbout", { question: term })}</span>
+                      </CommandItem>
+                    ) : (
+                      SUGGESTIONS.map((key) => (
+                        <CommandItem key={key} value={key} onSelect={() => setQuestion(t(key))}>
+                          <SparklesIcon className="text-primary" />
+                          {t(key)}
+                        </CommandItem>
+                      ))
+                    )}
                   </CommandGroup>
                 ) : null}
               </CommandList>

@@ -33,10 +33,11 @@ export function AutomationCard({
   );
   const kind = value.kind;
   return (
-    <Card aria-busy={pending}>
+    // Groupe nommé par le titre : au lecteur d'écran, « Activer » dit de quelle automatisation il s'agit.
+    <Card aria-busy={pending} role="group" aria-labelledby={`${id}-title`}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2">
-          {t(`emailing.automation.${kind}`)}
+          <span id={`${id}-title`}>{t(`emailing.automation.${kind}`)}</span>
           <StatusPill tone={value.enabled ? "success" : "neutral"}>
             {value.enabled ? t("emailing.on") : t("emailing.off")}
           </StatusPill>

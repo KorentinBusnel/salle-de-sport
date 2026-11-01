@@ -80,10 +80,18 @@ function Stat({
   );
 }
 
-/** Ancienneté : en mois la première année, puis en années. */
+/**
+ * Ancienneté : en mois révolus la première année (« Nouveau » le premier mois), puis en années.
+ * Un mois n'est compté qu'une fois son jour passé : créée le 22 octobre, la fiche a 0 mois le
+ * 1er novembre, pas 1.
+ */
 function tenure(since: string, now: Date): string {
   const start = new Date(since);
-  const months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth();
+  const months =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    now.getMonth() -
+    start.getMonth() -
+    (now.getDate() < start.getDate() ? 1 : 0);
   return months < 12
     ? t("memberOverview.tenureMonths", { count: Math.max(0, months) })
     : t("memberOverview.tenureYears", { count: Math.floor(months / 12) });

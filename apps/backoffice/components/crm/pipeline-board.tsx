@@ -43,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -376,7 +376,10 @@ function Column({
       {hidden > 0 ? (
         <Link
           href={column.moreHref}
-          className="px-1 py-1 text-xs text-muted-foreground hover:text-foreground"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "w-fit text-muted-foreground",
+          )}
         >
           {t("crm.more", { count: hidden })}
         </Link>

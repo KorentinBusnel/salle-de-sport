@@ -13,6 +13,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
+  KANBAN_NONE,
   type PipelineStage,
   PIPELINE_STAGES,
   pipelineMove,
@@ -21,7 +22,7 @@ import {
 } from "@salle/shared";
 import { GripVerticalIcon, MoveRightIcon } from "lucide-react";
 import Link from "next/link";
-import { useOptimistic, useState, useTransition } from "react";
+import { type CSSProperties, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -52,46 +53,56 @@ export type PipelineCard = {
   bookings: number;
   lastActivity: string;
 };
-export type PipelineColumn = { stage: PipelineStage; total: number; cards: PipelineCard[] };
-type Move = { card: PipelineCard; from: PipelineStage; to: PipelineStage };
-
-// Couleurs des étapes : tons partagés (tokens), comme les pastilles de statut.
-const STAGE_TONE: Record<PipelineStage, Tone> = {
-  lead: "brand",
-  trial: "warning",
-  active: "success",
-  suspended: "neutral",
-  cancelled: "danger",
+export type BoardColumn = {
+  /** Étape, valeur d'option, ou `KANBAN_NONE` (« Sans valeur »). */
+  key: string;
+  label: string;
+  tone: Tone;
+  total: number;
+  cards: PipelineCard[];
+  /** Liste complète de la colonne (« Voir les N autres »). */
+  moreHref: string;
 };
+/** Groupement du tableau : étapes déduites, ou options d'un champ liste. */
+export type BoardMode = { kind: "stage" } | { kind: "field"; key: string };
+type Move = { card: PipelineCard; from: string; to: string };
+type Result = { error: MessageKey | null };
+
+const isStage = (key: string): key is PipelineStage =>
+  (PIPELINE_STAGES as readonly string[]).includes(key);
 
 /**
- * Pipeline en colonnes : les cartes se glissent d'une étape à l'autre (souris, doigt ou
- * clavier via « Déplacer vers… »). Déplacement optimiste ; la base tranche et la carte revient
- * si la transition est refusée. « Annuler » quand le retour est permis (sinon pas de bouton) ;
- * résilier demande une confirmation. Au téléphone, les colonnes défilent une à une.
+ * Kanban des adhérents : les cartes se glissent d'une colonne à l'autre (souris, doigt ou clavier
+ * via « Déplacer vers… »). Par étapes, les transitions suivent `pipelineMove` (statut et tag
+ * « essai ») et résilier demande une confirmation ; par champ liste, toute colonne est permise et
+ * le déplacement écrit la valeur du champ (« Sans valeur » l'efface). Déplacement optimiste ; la
+ * base tranche et la carte revient si elle refuse ; « Annuler » quand le retour est permis.
+ * Au téléphone, les colonnes défilent une à une ; au-delà de cinq colonnes aussi sur grand écran.
  */
 export function PipelineBoard({
   columns,
-  moreHref,
-  action,
+  mode,
+  moveStage,
+  moveField,
 }: {
-  columns: PipelineColumn[];
-  moreHref: Record<PipelineStage, string>;
-  action: (input: {
+  columns: BoardColumn[];
+  mode: BoardMode;
+  moveStage: (input: {
     memberId: string;
     from: PipelineStage;
     to: PipelineStage;
-  }) => Promise<{ error: MessageKey | null }>;
+  }) => Promise<Result>;
+  moveField: (input: { memberId: string; key: string; to: string | null }) => Promise<Result>;
 }) {
   const [board, applyMove] = useOptimistic(columns, (state, move: Move) =>
     state.map((column) => {
-      if (column.stage === move.from)
+      if (column.key === move.from)
         return {
           ...column,
           total: column.total - 1,
           cards: column.cards.filter((c) => c.id !== move.card.id),
         };
-      if (column.stage === move.to)
+      if (column.key === move.to)
         return { ...column, total: column.total + 1, cards: [move.card, ...column.cards] };
       return column;
     }),
@@ -103,31 +114,54 @@ export function PipelineBoard({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
+  const labelOf = (key: string) => columns.find((column) => column.key === key)?.label ?? key;
+
+  /** Déplacement permis d'une colonne à l'autre (et s'il demande confirmation). */
+  function rule(from: string, to: string): { confirm: boolean } | null {
+    if (from === to) return null;
+    if (mode.kind === "field") return { confirm: false };
+    if (!isStage(from) || !isStage(to)) return null;
+    const move = pipelineMove(from, to);
+    if (!move) return null;
+    return { confirm: move.kind === "status" && move.confirm };
+  }
 
   function request(move: Move) {
-    const rule = pipelineMove(move.from, move.to);
-    if (!rule) {
+    const allowed = rule(move.from, move.to);
+    if (!allowed) {
       toast.error(t("crm.errors.notAllowed"), { closeButton: true });
       return;
     }
-    if (rule.kind === "status" && rule.confirm) {
+    if (allowed.confirm) {
       setConfirm(move);
       return;
     }
     run(move);
   }
 
+  function send(move: Move): Promise<Result> {
+    if (mode.kind === "field")
+      return moveField({
+        memberId: move.card.id,
+        key: mode.key,
+        to: move.to === KANBAN_NONE ? null : move.to,
+      });
+    return moveStage({
+      memberId: move.card.id,
+      from: move.from as PipelineStage,
+      to: move.to as PipelineStage,
+    });
+  }
+
   function run(move: Move, undoing = false) {
     startTransition(async () => {
       applyMove(move);
-      const result = await action({ memberId: move.card.id, from: move.from, to: move.to });
+      const result = await send(move);
       if (result.error) {
         // Retour refusé (ex. : l'essai a déjà réservé) : la carte reste où la base l'a laissée.
         toast.error(
           undoing ? t("crm.errors.undoRefused", { reason: t(result.error) }) : t(result.error),
-          {
-            closeButton: true,
-          },
+          { closeButton: true },
         );
         return;
       }
@@ -135,9 +169,9 @@ export function PipelineBoard({
         toast(t("ui.undone"));
         return;
       }
-      const back = pipelineMove(move.to, move.from);
-      const reversible = back !== null && !(back.kind === "status" && back.confirm);
-      toast.success(t("crm.moved", { name: move.card.name, stage: t(`crm.stage.${move.to}`) }), {
+      const back = rule(move.to, move.from);
+      const reversible = back !== null && !back.confirm;
+      toast.success(t("crm.moved", { name: move.card.name, stage: labelOf(move.to) }), {
         id: `crm-${move.card.id}`,
         ...(reversible
           ? {
@@ -154,12 +188,14 @@ export function PipelineBoard({
 
   function onDragEnd(event: DragEndEvent) {
     setDragging(null);
-    const data = event.active.data.current as { card: PipelineCard; stage: PipelineStage };
-    const to = event.over?.data.current?.stage as PipelineStage | undefined;
-    if (!data || !to || to === data.stage) return;
-    request({ card: data.card, from: data.stage, to });
+    const data = event.active.data.current as { card: PipelineCard; column: string } | undefined;
+    const to = event.over?.data.current?.column as string | undefined;
+    if (!data || !to || to === data.column) return;
+    request({ card: data.card, from: data.column, to });
   }
 
+  // Jusqu'à cinq colonnes, la grille remplit la largeur sur grand écran ; au-delà, elle défile.
+  const fits = board.length <= 5;
   return (
     <>
       <DndContext
@@ -173,14 +209,25 @@ export function PipelineBoard({
           screenReaderInstructions: { draggable: t("crm.dragInstructions") },
         }}
       >
-        <div className="-mx-4 snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-2 md:-mx-6 md:scroll-px-6 md:px-6 xl:snap-none">
-          <div className="grid auto-cols-[min(85vw,18rem)] grid-flow-col gap-3 xl:grid-flow-row xl:grid-cols-5">
+        <div
+          className={cn(
+            "-mx-4 snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-2 md:-mx-6 md:scroll-px-6 md:px-6",
+            fits && "xl:snap-none",
+          )}
+        >
+          <div
+            style={{ "--board-cols": board.length } as CSSProperties}
+            className={cn(
+              "grid auto-cols-[min(85vw,18rem)] grid-flow-col gap-3",
+              fits && "xl:grid-flow-row xl:grid-cols-[repeat(var(--board-cols),minmax(0,1fr))]",
+            )}
+          >
             {board.map((column) => (
               <Column
-                key={column.stage}
+                key={column.key}
                 column={column}
-                moreHref={moreHref[column.stage]}
-                onMove={(card, to) => request({ card, from: column.stage, to })}
+                targets={board.filter((other) => rule(column.key, other.key) !== null)}
+                onMove={(card, to) => request({ card, from: column.key, to })}
               />
             ))}
           </div>
@@ -222,40 +269,44 @@ export function PipelineBoard({
 
 function Column({
   column,
-  moreHref,
+  targets,
   onMove,
 }: {
-  column: PipelineColumn;
-  moreHref: string;
-  onMove: (card: PipelineCard, to: PipelineStage) => void;
+  column: BoardColumn;
+  targets: BoardColumn[];
+  onMove: (card: PipelineCard, to: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: `stage-${column.stage}`,
-    data: { stage: column.stage },
+    id: `column-${column.key}`,
+    data: { column: column.key },
   });
   const hidden = column.total - column.cards.length;
+  const headingId = `col-${column.key}`;
   return (
     <section
       ref={setNodeRef}
-      aria-labelledby={`col-${column.stage}`}
+      aria-labelledby={headingId}
       className={cn(
         "grid min-h-40 snap-start content-start gap-2 rounded-xl bg-muted/60 p-2 transition-colors",
         isOver && "bg-accent ring-2 ring-ring/40",
       )}
     >
-      <h2
-        id={`col-${column.stage}`}
-        className="flex items-center gap-2 px-1 py-1 text-sm font-medium"
-      >
+      <h2 id={headingId} className="flex items-center gap-2 px-1 py-1 text-sm font-medium">
         <span
           aria-hidden
-          className={cn("size-2 rounded-full", TONE_CLASSES[STAGE_TONE[column.stage]].dot)}
+          className={cn("size-2 shrink-0 rounded-full", TONE_CLASSES[column.tone].dot)}
         />
-        {t(`crm.stage.${column.stage}`)}
+        <span className="truncate">{column.label}</span>
         <span className="ml-auto text-muted-foreground tabular-nums">{column.total}</span>
       </h2>
       {column.cards.map((card) => (
-        <DraggableCard key={card.id} card={card} stage={column.stage} onMove={onMove} />
+        <DraggableCard
+          key={card.id}
+          card={card}
+          column={column.key}
+          targets={targets}
+          onMove={onMove}
+        />
       ))}
       {column.cards.length === 0 ? (
         <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
@@ -264,7 +315,7 @@ function Column({
       ) : null}
       {hidden > 0 ? (
         <Link
-          href={moreHref}
+          href={column.moreHref}
           className="px-1 py-1 text-xs text-muted-foreground hover:text-foreground"
         >
           {t("crm.more", { count: hidden })}
@@ -276,18 +327,19 @@ function Column({
 
 function DraggableCard({
   card,
-  stage,
+  column,
+  targets,
   onMove,
 }: {
   card: PipelineCard;
-  stage: PipelineStage;
-  onMove: (card: PipelineCard, to: PipelineStage) => void;
+  column: string;
+  targets: BoardColumn[];
+  onMove: (card: PipelineCard, to: string) => void;
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: card.id,
-    data: { card, stage },
+    data: { card, column },
   });
-  const targets = PIPELINE_STAGES.filter((to) => pipelineMove(stage, to) !== null);
   return (
     <div ref={setNodeRef} className={cn("relative", isDragging && "opacity-40")}>
       <CardBody
@@ -301,7 +353,7 @@ function DraggableCard({
               aria-label={t("crm.dragCard", { name: card.name })}
               className="flex size-7 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing pointer-coarse:size-10"
             >
-              <GripVerticalIcon className="size-4" />
+              <GripVerticalIcon aria-hidden className="size-4" />
             </button>
             {targets.length ? (
               <DropdownMenu>
@@ -312,14 +364,18 @@ function DraggableCard({
                     aria-label={t("crm.moveTo", { name: card.name })}
                     className="relative z-10 text-muted-foreground"
                   >
-                    <MoveRightIcon />
+                    <MoveRightIcon aria-hidden />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{t("crm.moveToLabel")}</DropdownMenuLabel>
-                  {targets.map((to) => (
-                    <DropdownMenuItem key={to} onSelect={() => onMove(card, to)}>
-                      {t(`crm.stage.${to}`)}
+                  {targets.map((target) => (
+                    <DropdownMenuItem key={target.key} onSelect={() => onMove(card, target.key)}>
+                      <span
+                        aria-hidden
+                        className={cn("size-2 rounded-full", TONE_CLASSES[target.tone].dot)}
+                      />
+                      {target.label}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

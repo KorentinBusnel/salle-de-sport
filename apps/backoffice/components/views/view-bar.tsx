@@ -2,6 +2,7 @@
 
 import {
   VIEW_NAME_MAX,
+  type MemberLayout,
   type MemberView,
   type MemberViewState,
   type ViewVisibility,
@@ -59,6 +60,7 @@ type SaveState = {
   filters: MemberViewState["filters"];
   sort: MemberViewState["sort"];
   columns: string[];
+  group_by: string | null;
 };
 
 /**
@@ -75,6 +77,7 @@ export function ViewBar({
   userId,
   manager,
   basePath,
+  layout = "table",
   segmentHref,
 }: {
   tabs: ViewTab[];
@@ -83,8 +86,10 @@ export function ViewBar({
   dirty: boolean;
   userId: string;
   manager: boolean;
-  /** Page qui porte la barre (`/adherents`) : un onglet ouvre `?vue=`. */
+  /** Page qui porte la barre (`/adherents`, `/crm`) : un onglet ouvre `?vue=`. */
   basePath: string;
+  /** Disposition des vues créées depuis cette page. */
+  layout?: MemberLayout | undefined;
   /** Gérant : « Créer un segment avec ces filtres » (null sinon). */
   segmentHref?: string | null | undefined;
 }) {
@@ -93,7 +98,12 @@ export function ViewBar({
   const [saveAs, setSaveAs] = useState<{ name: string } | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const saveState: SaveState = { filters: state.filters, sort: state.sort, columns: state.columns };
+  const saveState: SaveState = {
+    filters: state.filters,
+    sort: state.sort,
+    columns: state.columns,
+    group_by: state.groupBy,
+  };
 
   const owner = current.createdBy === userId;
   const canEdit = !current.builtin && (current.visibility === "private" ? owner : manager);
@@ -246,7 +256,12 @@ export function ViewBar({
           onClose={() => setSaveAs(null)}
           onSubmit={(name, visibility) =>
             startTransition(async () => {
-              const result = await createMemberView({ name, visibility, state: saveState });
+              const result = await createMemberView({
+                name,
+                visibility,
+                layout,
+                state: saveState,
+              });
               if (!result.ok) {
                 toast.error(t(result.error), { closeButton: true });
                 return;

@@ -1,9 +1,11 @@
 "use server";
 
 import {
+  MEMBER_LAYOUTS,
   memberViewSchema,
   VIEW_NAME_MAX,
   VIEW_VISIBILITIES,
+  type MemberLayout,
   type ViewVisibility,
 } from "@salle/shared";
 import { refresh, revalidatePath } from "next/cache";
@@ -14,34 +16,48 @@ import { isFrontDeskRole, isManagerRole, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 /*
- * Vues enregistrées des adhérents (saved_views, objet « members ») : CRUD direct sous RLS,
- * validation Zod ici. La base tranche les droits (vue personnelle : son créateur ; vue
- * d'équipe : le gérant) ; une écriture refusée ne touche aucune ligne.
+ * Vues enregistrées des adhérents (saved_views, objet « members ») : tableaux (`/adherents`)
+ * et kanbans (`/crm`). CRUD direct sous RLS, validation Zod ici. La base tranche les droits
+ * (vue personnelle : son créateur ; vue d'équipe : le gérant) ; une écriture refusée ne touche
+ * aucune ligne.
  */
 
-const stateSchema = memberViewSchema.pick({ filters: true, sort: true, columns: true });
+const stateSchema = memberViewSchema.pick({
+  filters: true,
+  sort: true,
+  columns: true,
+  group_by: true,
+});
 const nameSchema = z.string().trim().min(1).max(VIEW_NAME_MAX);
 const idSchema = z.guid();
 type ViewState = z.infer<typeof stateSchema>;
 
 function done<T>(result: T): T {
   revalidatePath("/adherents");
+  revalidatePath("/crm");
   refresh();
   return result;
 }
 
-/** « Enregistrer comme… » : nouvelle vue à partir de l'état courant (filtres, tri, colonnes). */
+/** Une vue tableau n'a pas de groupement ; un kanban en a toujours un (les étapes à défaut). */
+function groupFor(layout: MemberLayout, groupBy: string | null): string | null {
+  return layout === "kanban" ? (groupBy ?? "stage") : null;
+}
+
+/** « Enregistrer comme… » : nouvelle vue à partir de l'état courant de la page. */
 export async function createMemberView(input: {
   name: string;
   visibility: ViewVisibility;
+  layout: MemberLayout;
   state: ViewState;
 }): Promise<ActionResult<{ id: string }>> {
   const context = await requireRole(isFrontDeskRole);
   const name = nameSchema.safeParse(input.name);
   const visibility = z.enum(VIEW_VISIBILITIES).safeParse(input.visibility);
+  const layout = z.enum(MEMBER_LAYOUTS).safeParse(input.layout);
   const state = stateSchema.safeParse(input.state);
   if (!name.success) return fail("views.errors.name");
-  if (!visibility.success || !state.success) return fail("views.errors.save");
+  if (!visibility.success || !layout.success || !state.success) return fail("views.errors.save");
   if (visibility.data === "team" && !isManagerRole(context.role))
     return fail("views.errors.notAllowed");
 
@@ -59,12 +75,13 @@ export async function createMemberView(input: {
     .insert({
       gym_id: context.gym.id,
       object: "members",
-      layout: "table",
+      layout: layout.data,
       name: name.data,
       visibility: visibility.data,
       filters: state.data.filters as NonNullable<Json>,
       sort: state.data.sort,
       columns: state.data.columns,
+      group_by: groupFor(layout.data, state.data.group_by),
       created_by: context.userId,
       position: (last?.position ?? -1) + 1,
     })
@@ -74,7 +91,7 @@ export async function createMemberView(input: {
   return done({ ok: true, message: "views.created", data: { id: data.id } });
 }
 
-/** « Enregistrer » : l'état courant remplace celui de la vue. */
+/** « Enregistrer » : l'état courant remplace celui de la vue (sa disposition ne change pas). */
 export async function updateMemberView(input: {
   id: string;
   state: ViewState;
@@ -84,12 +101,20 @@ export async function updateMemberView(input: {
   const state = stateSchema.safeParse(input.state);
   if (!id.success || !state.success) return fail("views.errors.save");
   const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("saved_views")
+    .select("layout")
+    .eq("id", id.data)
+    .maybeSingle();
+  if (!current) return fail("views.errors.notAllowed");
+  const layout = current.layout === "kanban" ? "kanban" : "table";
   const { data, error } = await supabase
     .from("saved_views")
     .update({
       filters: state.data.filters as NonNullable<Json>,
       sort: state.data.sort,
       columns: state.data.columns,
+      group_by: groupFor(layout, state.data.group_by),
     })
     .eq("id", id.data)
     .select("id");

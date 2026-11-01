@@ -1023,6 +1023,13 @@ export const fr = {
   crm: {
     title: "Pipeline",
     hint: "Glissez une carte vers une autre étape (ou « Déplacer vers… ») : statut et tag « essai » suivent.",
+    hintField:
+      "Glissez une carte vers une autre colonne (ou « Déplacer vers… ») : la valeur de « {field} » suit.",
+    viewStages: "Étapes",
+    groupBy: "Grouper par",
+    groupByStages: "Étapes du pipeline",
+    groupByHint: "Grouper par un champ liste",
+    noValue: "Sans valeur",
     stage: {
       lead: "Prospects",
       trial: "Essai",
@@ -1037,10 +1044,10 @@ export const fr = {
     moved: "{name} → {stage}.",
     dropHere: "Déposez une carte ici",
     dragCard: "Déplacer {name} (glisser)",
-    moveTo: "Déplacer {name} vers une autre étape",
+    moveTo: "Déplacer {name} vers une autre colonne",
     moveToLabel: "Déplacer vers…",
     dragInstructions:
-      "Pour déplacer une carte : Espace pour la saisir, flèches pour changer d'étape, Espace pour la déposer, Échap pour annuler.",
+      "Pour déplacer une carte : Espace pour la saisir, flèches pour changer de colonne, Espace pour la déposer, Échap pour annuler.",
     cancelTitle: "Passer {name} en « Résilié » ?",
     cancelMemberBody: "L'adhésion est arrêtée : l'adhérent ne pourra plus réserver.",
     cancelLeadBody: "Le prospect est marqué comme perdu.",

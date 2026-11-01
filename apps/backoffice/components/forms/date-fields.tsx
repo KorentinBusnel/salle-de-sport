@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useIsMobile } from "@/hooks/use-mobile";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { formatWithFirst } from "@/lib/format";
 
 /*
  * Champs de date (Watermelon date-picker-2/3/10/11/12, calendar-25), recomposés sur Popover +
@@ -57,7 +58,7 @@ const monthLong = new Intl.DateTimeFormat("fr-FR", {
 const monthShort = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", month: "short" });
 
 const atNoon = (key: string) => new Date(`${key}T12:00:00Z`);
-export const formatDateKey = (key: string) => civilLong.format(atNoon(key));
+export const formatDateKey = (key: string) => formatWithFirst(civilLong, atNoon(key));
 const formatMonthKey = (key: string) => {
   const text = monthLong.format(atNoon(`${key}-01`));
   return text.charAt(0).toUpperCase() + text.slice(1);

@@ -20,6 +20,7 @@ import {
 } from "@/components/platform/platform-controls";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TabScroller } from "@/components/tab-scroller";
 import {
   Table,
   TableBody,
@@ -85,8 +86,9 @@ export default async function PlatformPage({
   return (
     <div className="grid gap-6">
       <PageHeader title={t("platform.title")} description={t("platform.hint")} />
-      <nav
-        aria-label={t("platform.title")}
+      <TabScroller
+        label={t("platform.title")}
+        active={tab}
         className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1"
       >
         {TABS.map((x) => (
@@ -104,7 +106,7 @@ export default async function PlatformPage({
             {t(TAB_LABEL[x])}
           </Link>
         ))}
-      </nav>
+      </TabScroller>
       {tab === "catalogue" ? (
         <CatalogTab />
       ) : tab === "fournisseurs" ? (

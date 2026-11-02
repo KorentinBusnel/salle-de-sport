@@ -35,6 +35,20 @@ async function settle(page) {
   await page.waitForTimeout(800);
 }
 
+/** Mois précédent au format « AAAA-MM », à Paris (paramètre `?mois=` des heures des coachs). */
+function previousMonth() {
+  const [year, month] = new Intl.DateTimeFormat("fr-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+  })
+    .format(new Date())
+    .split("-")
+    .map(Number);
+  const date = new Date(Date.UTC(year, month - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 /** Back office en gérant : la page Aujourd'hui entière, les autres limitées au panneau principal. */
 async function backoffice(browser) {
   const context = await browser.newContext({
@@ -66,11 +80,19 @@ async function backoffice(browser) {
     ["planning", "/planning", 640],
     ["paiements", "/paiements", 640],
     ["fiche-adherent", member, 640],
-    ["heures-coachs", "/coachs/heures", 560],
+    // Mois précédent : en début de mois, le mois en cours n'a presque pas d'heures.
+    ["heures-coachs", `/coachs/heures?mois=${previousMonth()}`, 560],
   ];
   for (const [name, path, height] of panels) {
     await page.goto(`${args.backoffice}${path}`);
     await settle(page);
+    // Le planning s'ouvre sur l'heure courante : la capture le remonte au début de la journée.
+    await page.evaluate(() => {
+      let area = document.querySelector("[data-scroll-target]")?.parentElement;
+      while (area && area.scrollHeight <= area.clientHeight) area = area.parentElement;
+      if (area) area.scrollTop = 0;
+    });
+    await page.waitForTimeout(300);
     const box = await page.locator('[data-slot="sidebar-inset"]').boundingBox();
     await page.screenshot({
       path: `${CAPTURES}/${name}.jpg`,

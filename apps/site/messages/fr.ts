@@ -150,8 +150,6 @@ export const fr = {
   },
   footer: {
     tagline: "La gestion de salle de sport avec l'IA native, pour toutes les activités.",
-    product: "Produit",
-    contact: "Contact",
     legal: "Informations",
     privacy: "Confidentialité",
     legalNotice: "Mentions légales",

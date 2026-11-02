@@ -19,7 +19,7 @@ import {
   type SegmentFilters,
 } from "@salle/shared";
 import type { Json } from "@salle/supabase";
-import { UsersIcon } from "lucide-react";
+import { ArrowLeftIcon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -192,18 +192,27 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           .eq("gym_id", context.gym.id)
           .in("id", todoIds.length ? todoIds : ["00000000-0000-0000-0000-000000000000"])
           .order("last_name")
-          .then(({ data, error }) => ({
-            error,
-            data: (data ?? []).map((m) => ({
-              ...m,
-              email: m.email ?? "",
-              phone: m.phone ?? "",
-              credits: null,
-              // Même forme que search_members : valeurs des champs personnalisés par clé.
-              fields: {} as Json,
-              total_count: data?.length ?? 0,
-            })),
-          }))
+          .then(async ({ data, error }) => {
+            // Liste réservée au gérant : soldes lus comme search_members (somme du registre).
+            const balances = data?.length
+              ? await creditBalances(
+                  supabase,
+                  data.map((m) => m.id),
+                )
+              : null;
+            return {
+              error,
+              data: (data ?? []).map((m) => ({
+                ...m,
+                email: m.email ?? "",
+                phone: m.phone ?? "",
+                credits: balances ? (balances.get(m.id) ?? 0) : null,
+                // Même forme que search_members : valeurs des champs personnalisés par clé.
+                fields: {} as Json,
+                total_count: data?.length ?? 0,
+              })),
+            };
+          })
       : supabase.rpc("search_members", {
           p_gym_id: context.gym.id,
           ...(state.query ? { p_query: state.query } : {}),
@@ -234,6 +243,21 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const sortHref = (asc: MemberSort, desc: MemberSort) => href({ tri: sort === asc ? desc : asc });
   const directionOf = (asc: MemberSort, desc: MemberSort) =>
     sort === asc ? ("asc" as const) : sort === desc ? ("desc" as const) : null;
+  // En-tête triable ; liste « à faire » : ordre fixe (par nom), en-têtes sans lien de tri.
+  const head = (
+    key: string,
+    label: string,
+    target: string,
+    direction: "asc" | "desc" | null,
+    className?: string,
+  ) =>
+    todoKind ? (
+      <TableHead key={key} className={className}>
+        {label}
+      </TableHead>
+    ) : (
+      <SortHead key={key} label={label} href={target} direction={direction} className={className} />
+    );
 
   const tabs: ViewTab[] = [
     ...BUILTIN_MEMBER_VIEWS.map((entry) => {
@@ -273,60 +297,67 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
             }
           />
 
-          <ViewBar
-            tabs={tabs}
-            current={view}
-            saveState={{
-              filters: state.filters,
-              sort: state.sort,
-              columns: state.columns,
-              group_by: null,
-            }}
-            dirty={dirty}
-            userId={context.userId}
-            manager={manager}
-            basePath="/adherents"
-            // Recherche et taille de page gardées en changeant de vue.
-            tabQuery={
-              new URLSearchParams([
-                ...(state.query ? [["q", state.query]] : []),
-                ...(size !== 25 ? [["taille", String(size)]] : []),
-              ]).toString() || undefined
-            }
-            layout="table"
-            create={createMemberView}
-            update={updateMemberView}
-            segmentHref={segmentHref}
-          />
-
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <FilterBar
-              canFilterCredits={manager}
-              filters={state.filters}
-              baseFilters={view.filters}
-              disciplines={disciplines}
-              fields={fields}
-              className="min-w-0 flex-1"
-            />
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
-              <MembersSearch initial={state.query} />
+          {todoKind ? (
+            // Liste « à faire » de l'accueil : sa propre sélection, par nom ; vues, filtres,
+            // recherche et tri n'y ont pas cours, ils ne sont donc pas proposés.
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h2 className="text-base font-semibold">{t(`members.todo.${todoKind}`)}</h2>
+                <Link
+                  href="/adherents"
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline pointer-coarse:py-2"
+                >
+                  <ArrowLeftIcon aria-hidden className="size-3.5 self-center" />
+                  {t("members.todoBack")}
+                </Link>
+              </div>
               <ColumnsMenu table={TABLE} columns={availableColumns} visible={visible} />
             </div>
-          </div>
+          ) : (
+            <>
+              <ViewBar
+                tabs={tabs}
+                current={view}
+                saveState={{
+                  filters: state.filters,
+                  sort: state.sort,
+                  columns: state.columns,
+                  group_by: null,
+                }}
+                dirty={dirty}
+                userId={context.userId}
+                manager={manager}
+                basePath="/adherents"
+                // Recherche et taille de page gardées en changeant de vue.
+                tabQuery={
+                  new URLSearchParams([
+                    ...(state.query ? [["q", state.query]] : []),
+                    ...(size !== 25 ? [["taille", String(size)]] : []),
+                  ]).toString() || undefined
+                }
+                layout="table"
+                create={createMemberView}
+                update={updateMemberView}
+                segmentHref={segmentHref}
+              />
 
-          {todoKind ? (
-            <p className="flex items-center gap-2 text-sm">
-              <span className="rounded-full bg-accent px-3 py-0.5 font-medium text-accent-foreground">
-                {t(`members.todo.${todoKind}`)}
-              </span>
-              <Link
-                href="/adherents"
-                className="text-muted-foreground underline hover:text-foreground"
-              >
-                {t("members.clearTag")}
-              </Link>
-            </p>
-          ) : null}
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <FilterBar
+                  canFilterCredits={manager}
+                  filters={state.filters}
+                  baseFilters={view.filters}
+                  disciplines={disciplines}
+                  fields={fields}
+                  className="min-w-0 flex-1"
+                />
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+                  <MembersSearch initial={state.query} />
+                  <ColumnsMenu table={TABLE} columns={availableColumns} visible={visible} />
+                </div>
+              </div>
+            </>
+          )}
+
           <Flash
             ok={typeof params.ok === "string" ? params.ok : undefined}
             error={typeof params.erreur === "string" ? params.erreur : undefined}
@@ -358,38 +389,29 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                         <TableHead className="w-10 pl-4">
                           <AllCheckbox ids={ids} label={t("table.selectAll")} />
                         </TableHead>
-                        <SortHead
-                          label={t("members.name")}
-                          href={sortHref("name", "name_desc")}
-                          direction={directionOf("name", "name_desc")}
-                        />
+                        {head(
+                          "name",
+                          t("members.name"),
+                          sortHref("name", "name_desc"),
+                          directionOf("name", "name_desc"),
+                        )}
                         {visible.map((column) => {
                           if (column === "contact")
                             return <TableHead key={column}>{t("members.contact")}</TableHead>;
                           if (column === "status")
-                            return (
-                              <SortHead
-                                key={column}
-                                label={t("members.status")}
-                                href={href({ tri: sort === "status" ? view.sort : "status" })}
-                                direction={sort === "status" ? "asc" : null}
-                              />
+                            return head(
+                              column,
+                              t("members.status"),
+                              href({ tri: sort === "status" ? view.sort : "status" }),
+                              sort === "status" ? "asc" : null,
                             );
                           if (column === "credits")
-                            return (
-                              <SortHead
-                                key={column}
-                                label={t("members.credits")}
-                                href={sortHref("credits_desc", "credits")}
-                                direction={
-                                  sort === "credits_desc"
-                                    ? "desc"
-                                    : sort === "credits"
-                                      ? "asc"
-                                      : null
-                                }
-                                className="text-right"
-                              />
+                            return head(
+                              column,
+                              t("members.credits"),
+                              sortHref("credits_desc", "credits"),
+                              sort === "credits_desc" ? "desc" : sort === "credits" ? "asc" : null,
+                              "text-right",
                             );
                           const key = fieldKeyOfColumn(column);
                           const field = fields.find((f) => f.key === key);
@@ -491,7 +513,11 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                             <TableCell className="pr-4">
                               <div className="flex items-center justify-end gap-1">
                                 {member.status === "prospect" ? (
-                                  <ActivateButton memberId={member.id} name={name} />
+                                  <ActivateButton
+                                    memberId={member.id}
+                                    name={name}
+                                    variant="outline"
+                                  />
                                 ) : null}
                                 {manager ? (
                                   <CreditsDialog
@@ -539,4 +565,28 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
       </SelectionProvider>
     </UrlStateProvider>
   );
+}
+
+/**
+ * Soldes de crédits de quelques fiches (somme du registre, lisible du seul gérant), comme
+ * `search_members` ; lus par pages, l'API plafonnant le nombre de lignes. `null` en cas d'échec.
+ */
+async function creditBalances(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  memberIds: string[],
+) {
+  const balances = new Map<string, number>();
+  for (let from = 0; ;) {
+    const { data, error } = await supabase
+      .from("credit_ledger")
+      .select("id, member_id, delta")
+      .in("member_id", memberIds)
+      .order("id")
+      .range(from, from + 999);
+    if (error) return null;
+    if (data.length === 0) return balances;
+    for (const row of data)
+      balances.set(row.member_id, (balances.get(row.member_id) ?? 0) + row.delta);
+    from += data.length;
+  }
 }

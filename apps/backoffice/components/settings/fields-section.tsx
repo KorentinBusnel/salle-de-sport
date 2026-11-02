@@ -1,11 +1,11 @@
-import { isChoiceField, LABEL_MAX, parseMemberField } from "@salle/shared";
+import { isChoiceField, LABEL_MAX, MAX_FIELDS, parseMemberField } from "@salle/shared";
 import { ListChecksIcon } from "lucide-react";
 import { FocusRow } from "@/components/inline/add-row";
 import { EditableCell } from "@/components/inline/editable-cell";
 import { FieldOptions } from "@/components/settings/field-options";
 import { FieldOrder, FieldRowMenu } from "@/components/settings/field-order";
 import { NewFieldDialog } from "@/components/settings/new-field-dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -84,8 +84,11 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
         </Empty>
       ) : (
         <Card>
+          <CardHeader>
+            <CardDescription>{t("fields.columnsHint", { max: MAX_FIELDS })}</CardDescription>
+          </CardHeader>
           <CardContent className="overflow-x-auto px-2">
-            {/* Tient dans la colonne des Paramètres (48 rem) : les interrupteurs restent visibles sans défilement. */}
+            {/* Section en pleine largeur : sur grand écran, les interrupteurs restent visibles sans défilement. */}
             <Table className="min-w-[46rem]">
               <TableHeader>
                 <TableRow>
@@ -117,7 +120,7 @@ export async function FieldsSection({ gymId, fresh }: { gymId: string; fresh: st
                         !field.is_active && "text-muted-foreground",
                       )}
                     >
-                      <TableCell className="p-1">
+                      <TableCell className="p-1 align-top">
                         <FieldOrder ids={ids} index={index} name={field.label} />
                       </TableCell>
                       <TableCell data-focus-target className="p-1 align-top">

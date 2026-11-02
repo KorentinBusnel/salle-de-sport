@@ -16,6 +16,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { Heatmap } from "@/components/kpis/heatmap";
 import { KpiPeriod } from "@/components/kpis/kpi-period";
 import { PageHeader } from "@/components/page-header";
+import { ShowMore } from "@/components/today/show-more";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PendingRegion, UrlStateProvider } from "@/hooks/use-url-state";
@@ -60,6 +61,8 @@ const kpisSchema = z.object({
       last_at: z.string().nullable(),
     }),
   ),
+  // Vrai nombre (la liste at_risk est plafonnée) ; absent avant la migration 20261104090000.
+  at_risk_count: z.number().optional(),
   coach_minutes: z.number(),
   coach_amount_cents: z.number(),
   revenue_cents: z.number(),
@@ -113,6 +116,12 @@ export default async function KpisPage({
   const k = parsed.data;
   const checked = k.attended + k.no_show;
   const previousChecked = previous ? previous.attended + previous.no_show : 0;
+  // Les heures du mois (/coachs/heures) ne disent la même chose que pour un mois civil entier :
+  // sur une période glissante, pas de lien (deux totaux qui se contrediraient).
+  const wholeMonth =
+    from.endsWith("-01") &&
+    from.slice(0, 7) === to.slice(0, 7) &&
+    shiftDateKey(to, 1).endsWith("-01");
 
   return (
     <UrlStateProvider>
@@ -157,17 +166,22 @@ export default async function KpisPage({
             />
             <KpiCard
               label={t("kpis.atRisk")}
-              value={k.at_risk.length}
+              value={k.at_risk_count ?? k.at_risk.length}
               hint={t("kpis.atRiskHint")}
               icon={UserXIcon}
             />
             <KpiCard
               label={t("kpis.coachHours")}
               value={hoursLabel(k.coach_minutes)}
-              hint={euros(k.coach_amount_cents)}
+              hint={t("kpis.coachAmount", { amount: euros(k.coach_amount_cents) })}
               icon={ClockIcon}
-              trend={{ current: k.coach_minutes, previous: previous?.coach_minutes ?? null }}
-              href={`/coachs/heures?mois=${to.slice(0, 7)}`}
+              // Un coût : ni hausse ni baisse n'est bonne en soi.
+              trend={{
+                current: k.coach_minutes,
+                previous: previous?.coach_minutes ?? null,
+                higherIsBetter: null,
+              }}
+              href={wholeMonth ? `/coachs/heures?mois=${to.slice(0, 7)}` : undefined}
             />
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4">
@@ -248,21 +262,31 @@ export default async function KpisPage({
                 {k.at_risk.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("kpis.noRisk")}</p>
                 ) : (
-                  <ul className="-mx-2">
-                    {k.at_risk.map((m) => (
-                      <li key={m.id}>
-                        <Link
-                          href={`/adherents/${m.id}`}
-                          className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/50"
-                        >
-                          <span className="font-medium">{m.name}</span>
-                          <span className="text-muted-foreground tabular-nums">
-                            {t("kpis.trend", { previous: m.previous, recent: m.recent })}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <ShowMore
+                      label={t("kpis.atRiskTitle")}
+                      initial={10}
+                      className="-mx-2"
+                      items={k.at_risk.map((m) => (
+                        <li key={m.id}>
+                          <Link
+                            href={`/adherents/${m.id}`}
+                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/50"
+                          >
+                            <span className="font-medium">{m.name}</span>
+                            <span className="text-muted-foreground tabular-nums">
+                              {t("kpis.trend", { previous: m.previous, recent: m.recent })}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    />
+                    {(k.at_risk_count ?? 0) > k.at_risk.length ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {t("kpis.atRiskTruncated", { count: k.at_risk.length })}
+                      </p>
+                    ) : null}
+                  </>
                 )}
               </CardContent>
             </Card>

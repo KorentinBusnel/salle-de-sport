@@ -153,7 +153,8 @@ export default function AccountScreen() {
             <Text className="text-sm text-muted-foreground tabular-nums">
               {formatPrice(subscription.plans)}
             </Text>
-            {subscription.current_period_end ? (
+            {/* Impayé : « Payé jusqu'au » contredirait la pastille ; l'avis rouge suffit. */}
+            {subscription.current_period_end && subscription.status !== "past_due" ? (
               <Text className="text-sm text-foreground">
                 {t(subscription.cancel_at ? "account.endsOn" : "account.paidUntil", {
                   date: day.format(new Date(subscription.current_period_end)),
@@ -208,7 +209,10 @@ export default function AccountScreen() {
       ) : null}
 
       <View className="flex-row gap-3">
-        <Stat label={t("account.credits")} value={credits} />
+        {/* Abonné sans carnet : « 0 crédit » laisserait croire qu'il ne peut pas réserver. */}
+        {hasSubscription && credits === 0 ? null : (
+          <Stat label={t("account.credits")} value={credits} />
+        )}
         <Stat label={t("account.attendance")} value={attended} />
         <Stat label={t("account.noShows")} value={noShows} />
       </View>

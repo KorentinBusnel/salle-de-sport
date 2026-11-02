@@ -221,11 +221,11 @@ export default async function MarketplacePage({
                       <span className="text-lg font-semibold tabular-nums">
                         {formatMoney(p.price_cents, "eur")}
                       </span>
-                      {p.unit ? (
-                        <span className="text-xs text-muted-foreground">
-                          {t("marketplace.perUnit", { unit: p.unit })}
-                        </span>
-                      ) : null}
+                      <span className="text-xs text-muted-foreground">
+                        {p.unit
+                          ? t("marketplace.perUnit", { unit: p.unit })
+                          : t("marketplace.excludingTax")}
+                      </span>
                       {saving ? (
                         <>
                           <span className="text-xs text-muted-foreground line-through tabular-nums">

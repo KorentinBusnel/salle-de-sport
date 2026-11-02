@@ -22,7 +22,7 @@ import {
   TONE_CLASSES,
   type Tone,
 } from "@salle/shared";
-import { GripVerticalIcon, MoveRightIcon } from "lucide-react";
+import { GripVerticalIcon, HistoryIcon, MoveRightIcon } from "lucide-react";
 import Link from "next/link";
 import {
   type CSSProperties,
@@ -43,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -274,8 +274,10 @@ export function PipelineBoard({
         >
           <div
             style={{ "--board-cols": board.length } as CSSProperties}
+            // Colonnes à leur hauteur (une seule à l'écran sous `xl`) ; à partir de `xl`, côte à
+            // côte, elles s'étirent : toute leur hauteur sert de zone de dépôt.
             className={cn(
-              "grid auto-cols-[min(85vw,18rem)] grid-flow-col gap-3",
+              "grid auto-cols-[min(85vw,18rem)] grid-flow-col items-start gap-3 xl:items-stretch",
               fits && "xl:grid-flow-row xl:grid-cols-[repeat(var(--board-cols),minmax(0,1fr))]",
             )}
           >
@@ -376,7 +378,10 @@ function Column({
       {hidden > 0 ? (
         <Link
           href={column.moreHref}
-          className="px-1 py-1 text-xs text-muted-foreground hover:text-foreground"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "w-fit text-muted-foreground",
+          )}
         >
           {t("crm.more", { count: hidden })}
         </Link>
@@ -485,7 +490,16 @@ function CardBody({
       <span className="truncate text-xs text-muted-foreground">{card.contact}</span>
       <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{t("crm.bookings", { count: card.bookings })}</span>
-        <span className="shrink-0 whitespace-nowrap">{card.lastActivity}</span>
+        {card.lastActivity ? (
+          <span
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap"
+            title={t("crm.lastActivity", { when: card.lastActivity })}
+          >
+            <HistoryIcon aria-hidden className="size-3" />
+            <span aria-hidden>{card.lastActivity}</span>
+            <span className="sr-only">{t("crm.lastActivity", { when: card.lastActivity })}</span>
+          </span>
+        ) : null}
       </span>
     </article>
   );

@@ -27,7 +27,10 @@ export function AppTopbar({
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 rounded-t-xl border-b bg-card/90 px-4 backdrop-blur md:px-6">
       <SidebarTrigger className="-ml-1.5" />
-      <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+      <Separator
+        orientation="vertical"
+        className="data-[orientation=vertical]:h-4 data-vertical:self-center max-sm:hidden"
+      />
       <AppBreadcrumb crumbs={crumbs} />
       <div className="flex min-w-0 flex-1 justify-center">
         <CommandPalette members={search} assistant={assistant} entries={palette} userId={userId} />

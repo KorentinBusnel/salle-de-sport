@@ -130,7 +130,9 @@ export function AppSidebar({
                 </Avatar>
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{gymName}</span>
-                  <span className="truncate text-xs text-muted-foreground">{t("app.title")}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {t("app.teamSpace")}
+                  </span>
                 </span>
               </Link>
             </SidebarMenuButton>

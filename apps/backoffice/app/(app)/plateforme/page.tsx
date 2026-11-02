@@ -1,5 +1,4 @@
 import {
-  DEMO_REQUEST_STATUS_TONE,
   DEMO_REQUEST_STATUSES,
   formatMoney,
   MP_CAMPAIGN_STATUS_TONE,
@@ -21,6 +20,7 @@ import {
 } from "@/components/platform/platform-controls";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TabScroller } from "@/components/tab-scroller";
 import {
   Table,
   TableBody,
@@ -53,7 +53,7 @@ const TABS = [
   "devis",
   "commandes",
   "achats-groupes",
-  "demos",
+  "demandes",
 ] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL = {
@@ -62,8 +62,11 @@ const TAB_LABEL = {
   devis: "platform.tab.quotes",
   commandes: "platform.tab.orders",
   "achats-groupes": "platform.tab.campaigns",
-  demos: "platform.tab.demos",
+  demandes: "platform.tab.demos",
 } as const;
+
+/** Anciens liens : « ?onglet=demos » ouvre l'onglet Demandes. */
+const TAB_ALIASES: Record<string, Tab> = { demos: "demandes" };
 
 /**
  * Espace Plateforme (administrateurs) : catalogue commun de la marketplace édité sur place,
@@ -77,13 +80,15 @@ export default async function PlatformPage({
 }) {
   const params = await searchParams;
   const context = await requireRole((role) => role === "admin");
-  const tab: Tab = TABS.find((x) => x === params.onglet) ?? "catalogue";
+  const requested = params.onglet ? (TAB_ALIASES[params.onglet] ?? params.onglet) : null;
+  const tab: Tab = TABS.find((x) => x === requested) ?? "catalogue";
 
   return (
     <div className="grid gap-6">
       <PageHeader title={t("platform.title")} description={t("platform.hint")} />
-      <nav
-        aria-label={t("platform.title")}
+      <TabScroller
+        label={t("platform.title")}
+        active={tab}
         className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1"
       >
         {TABS.map((x) => (
@@ -101,7 +106,7 @@ export default async function PlatformPage({
             {t(TAB_LABEL[x])}
           </Link>
         ))}
-      </nav>
+      </TabScroller>
       {tab === "catalogue" ? (
         <CatalogTab />
       ) : tab === "fournisseurs" ? (
@@ -110,7 +115,7 @@ export default async function PlatformPage({
         <QuotesTab timeZone={context.gym.timezone} />
       ) : tab === "achats-groupes" ? (
         <CampaignsTab timeZone={context.gym.timezone} />
-      ) : tab === "demos" ? (
+      ) : tab === "demandes" ? (
         <DemosTab timeZone={context.gym.timezone} />
       ) : (
         <OrdersTab timeZone={context.gym.timezone} />
@@ -479,7 +484,8 @@ async function QuotesTab({ timeZone }: { timeZone: string }) {
     .limit(200);
   const pending = (quotes ?? []).filter((q) => q.status === "requested");
   const others = (quotes ?? []).filter((q) => q.status !== "requested");
-  const inTwoWeeks = new Date(currentTime().getTime() + 14 * 86_400_000).toISOString().slice(0, 10);
+  // Validité par défaut : dans deux semaines, au calendrier de la salle (pas en UTC).
+  const inTwoWeeks = zonedDateKey(new Date(currentTime().getTime() + 14 * 86_400_000), timeZone);
 
   return (
     <div className="grid gap-6">
@@ -531,13 +537,17 @@ async function QuotesTab({ timeZone }: { timeZone: string }) {
                       <span className="text-xs text-muted-foreground">{q.gyms?.name}</span>
                     </TableCell>
                     <TableCell className="tabular-nums">
+                      {/* Prix unitaire, puis total : « 420 € » seul se lisait comme un total. */}
                       {q.unit_price_cents !== null
-                        ? formatMoney(q.unit_price_cents)
+                        ? t("platform.quotePrice", {
+                            unit: formatMoney(q.unit_price_cents),
+                            total: formatMoney(q.unit_price_cents * q.quantity),
+                          })
                         : t("platform.none")}
                     </TableCell>
                     <TableCell className="pr-2 text-right">
                       <StatusPill tone={MP_QUOTE_STATUS_TONE[q.status]}>
-                        {t(`marketplace.quotes.status.${q.status}`)}
+                        {t(`platform.quoteStatus.${q.status}`)}
                       </StatusPill>
                     </TableCell>
                   </TableRow>
@@ -604,7 +614,13 @@ async function OrdersTab({ timeZone }: { timeZone: string }) {
                     {formatMoney(o.total_cents, o.currency)}
                   </TableCell>
                   <TableCell className="pr-2">
-                    <OrderStatusButtons id={o.id} status={o.status} />
+                    <OrderStatusButtons
+                      id={o.id}
+                      status={o.status}
+                      reference={o.reference}
+                      gym={o.gyms?.name ?? ""}
+                      amount={formatMoney(o.total_cents, o.currency)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -677,7 +693,10 @@ async function CampaignsTab({ timeZone }: { timeZone: string }) {
                       </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(c.unit_price_cents)}
+                      {/* Sous le minimum, aucun palier n'est atteint : rien ne sera débité. */}
+                      {c.total_qty < c.min_qty
+                        ? t("platform.none")
+                        : formatMoney(c.unit_price_cents)}
                     </TableCell>
                     <TableCell>
                       <StatusPill tone={MP_CAMPAIGN_STATUS_TONE[c.status]}>
@@ -740,17 +759,16 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
               {requests.map((r) => (
                 <TableRow key={r.id} className="align-top">
                   <TableCell className="pl-2">
+                    {/* Accès anticipé (hero du site) : l'email seul, sans salle ; l'état est dans Suivi. */}
                     <span className="flex items-center gap-2 font-medium">
-                      {/* Démo du hero du site : l'email seul, sans nom ni salle. */}
-                      {r.gym_name ?? r.email}
-                      <StatusPill tone={r.kind === "trial" ? "brand" : "neutral"}>
+                      {r.gym_name ?? (
+                        <span className="font-normal text-muted-foreground">
+                          {t("platform.none")}
+                        </span>
+                      )}
+                      <StatusPill tone={r.kind === "demo" ? "brand" : "neutral"}>
                         {t(`platform.demos.kind.${r.kind}`)}
                       </StatusPill>
-                      {r.status === "new" ? (
-                        <StatusPill tone={DEMO_REQUEST_STATUS_TONE.new}>
-                          {t("platform.demos.statusLabel.new")}
-                        </StatusPill>
-                      ) : null}
                     </span>
                     <span className="block text-xs text-muted-foreground">
                       {[r.city, r.members_band && t(`platform.demos.bands.${r.members_band}`)]
@@ -762,10 +780,14 @@ async function DemosTab({ timeZone }: { timeZone: string }) {
                     </span>
                   </TableCell>
                   <TableCell>
+                    {/* Sans nom (accès anticipé), l'email devient le titre du contact. */}
                     {r.full_name ? <span className="block font-medium">{r.full_name}</span> : null}
                     <a
                       href={`mailto:${r.email}`}
-                      className="block text-sm text-primary underline-offset-4 hover:underline"
+                      className={cn(
+                        "block text-sm text-primary underline-offset-4 hover:underline",
+                        !r.full_name && "font-medium",
+                      )}
                     >
                       {r.email}
                     </a>

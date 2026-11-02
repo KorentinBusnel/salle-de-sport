@@ -1,5 +1,7 @@
-/** Nom du produit (provisoire, BRIEF §11) : un seul endroit à changer. */
-export const BRAND = { name: "Chalq" } as const;
+import { BRAND_NAME } from "@salle/shared";
+
+/** Nom du produit : `BRAND_NAME` de packages/shared (provisoire, BRIEF §12). */
+export const BRAND = { name: BRAND_NAME } as const;
 
 /**
  * Mentions légales (LCEN, art. 6) : à compléter avant la mise en ligne ; le site n'est indexé

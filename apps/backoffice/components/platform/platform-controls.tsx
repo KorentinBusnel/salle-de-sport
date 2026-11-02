@@ -11,6 +11,7 @@ import {
   setOrderStatus,
   uploadProductImage,
 } from "@/app/(app)/plateforme/actions";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -261,9 +262,26 @@ const NEXT: Record<string, string | undefined> = {
   shipped: "delivered",
 };
 
-/** Suivi d'une commande : étape suivante, ou annulation. */
-export function OrderStatusButtons({ id, status }: { id: string; status: string }) {
+/**
+ * Suivi d'une commande : étape suivante, ou annulation. Annuler est définitif (et ne rembourse
+ * pas une commande payée) : confirmé, avec la référence, la salle et le montant.
+ */
+export function OrderStatusButtons({
+  id,
+  status,
+  reference,
+  gym,
+  amount,
+}: {
+  id: string;
+  status: string;
+  reference: string;
+  gym: string;
+  /** Total HT déjà formaté. */
+  amount: string;
+}) {
   const { pending, run } = useRun();
+  const [confirm, setConfirm] = useState(false);
   const next = NEXT[status];
   if (status === "received" || status === "cancelled" || status === "delivered") return null;
   return (
@@ -278,14 +296,32 @@ export function OrderStatusButtons({ id, status }: { id: string; status: string 
           {t(`platform.markAs.${next as "paid" | "ordered" | "shipped" | "delivered"}`)}
         </Button>
       ) : null}
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={pending}
-        onClick={() => run(() => setOrderStatus({ id, status: "cancelled" }))}
-      >
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => setConfirm(true)}>
         {t("platform.cancelOrder")}
       </Button>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={t("platform.cancelOrderTitle", { reference })}
+        description={t(
+          status === "pending_payment"
+            ? "platform.cancelOrderBody"
+            : "platform.cancelOrderPaidBody",
+          { gym, amount },
+        )}
+        confirmLabel={t("platform.cancelOrderConfirm")}
+        // La boîte se ferme à la réponse, acceptée ou refusée (le refus s'affiche en toast).
+        action={() =>
+          new Promise<void>((resolve) =>
+            run(async () => {
+              const result = await setOrderStatus({ id, status: "cancelled" });
+              setConfirm(false);
+              resolve();
+              return result;
+            }),
+          )
+        }
+      />
     </div>
   );
 }

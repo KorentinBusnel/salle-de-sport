@@ -54,10 +54,11 @@ export function foldText(text: string): string {
 }
 
 /**
- * Entrées dont chaque mot de la frappe figure dans le libellé ou l'aide ; celles dont le libellé
- * commence par la frappe passent devant. Sans frappe, tout est rendu dans l'ordre d'origine.
+ * Entrées dont chaque mot de la frappe figure dans le libellé (jamais dans l'aide : « ines »
+ * ne doit pas sortir Catalogue pour son aide « Disciplines ») ; celles dont le libellé commence
+ * par la frappe passent devant. Sans frappe, tout est rendu dans l'ordre d'origine.
  */
-export function filterEntries<T extends { label: string; hint?: string | undefined }>(
+export function filterEntries<T extends { label: string }>(
   entries: readonly T[],
   query: string,
 ): T[] {
@@ -67,8 +68,7 @@ export function filterEntries<T extends { label: string; hint?: string | undefin
   return entries
     .map((entry, index) => {
       const label = foldText(entry.label);
-      const haystack = `${label} ${foldText(entry.hint ?? "")}`;
-      if (!words.every((word) => haystack.includes(word))) return null;
+      if (!words.every((word) => label.includes(word))) return null;
       return { entry, index, rank: label.startsWith(needle) ? 0 : label.includes(needle) ? 1 : 2 };
     })
     .filter((item) => item !== null)

@@ -85,6 +85,12 @@ export const fr = {
     calendarUnavailable: "Aucun calendrier modifiable sur ce téléphone.",
     notActive:
       "Votre fiche n'est pas encore active : l'accueil doit la valider avant votre première réservation.",
+    suspended:
+      "Votre fiche est suspendue : la réservation des séances est bloquée. Adressez-vous à l'accueil de la salle.",
+    memberCancelled:
+      "Votre abonnement est résilié : pour réserver à nouveau, adressez-vous à l'accueil de la salle.",
+    unpaid:
+      "Votre abonnement est à régler : la réservation des séances est suspendue. Le détail est dans Compte.",
     bookedToast: "Réservation confirmée.",
     waitlistedToast: "Vous êtes sur la liste d'attente.",
     cancelledToast: "Réservation annulée.",
@@ -194,7 +200,7 @@ export const fr = {
     not_a_member: "Votre compte n'est pas rattaché à la salle.",
     member_not_found: "Fiche adhérent introuvable.",
     forbidden: "Action non autorisée.",
-    member_not_active: "Votre fiche n'est pas encore active : l'accueil doit la valider.",
+    member_not_active: "Votre fiche n'est pas active : adressez-vous à l'accueil de la salle.",
     already_booked: "Vous êtes déjà inscrit à cette séance.",
     max_upcoming_reached: "Vous avez atteint le nombre maximum de réservations à venir.",
     no_credit: "Il vous faut un abonnement en cours ou un crédit pour réserver.",

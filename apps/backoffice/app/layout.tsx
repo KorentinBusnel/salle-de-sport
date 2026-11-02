@@ -5,14 +5,14 @@ import { FlashToast } from "@/components/flash-toast";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { BRAND_NAME } from "@salle/shared";
 import "./globals.css";
 
 // Police de packages/ui (fontFamily.sans).
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: { default: t("app.title"), template: `%s · ${t("app.title")}` },
+  title: { default: BRAND_NAME, template: `%s · ${BRAND_NAME}` },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -14,8 +14,9 @@ import { cn } from "@/lib/utils";
 const percent = new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 0 });
 
 /**
- * Carte d'indicateur (medesk, Watermelon widget-9) : libellé et icône en haut, valeur en bas,
- * avec en option la variation par rapport à la période précédente et une courbe.
+ * Carte d'indicateur (medesk, Watermelon widget-9) : libellé et icône en haut, valeur juste
+ * dessous (alignée d'une carte à l'autre sur une rangée), avec en option la variation par
+ * rapport à la période précédente et une courbe.
  */
 export function KpiCard({
   label,
@@ -33,15 +34,21 @@ export function KpiCard({
   hint?: ReactNode | undefined;
   icon: LucideIcon;
   href?: string | undefined;
-  /** Valeur actuelle et précédente ; `higherIsBetter: false` pour un indicateur à faire baisser. */
-  trend?: { current: number; previous: number | null; higherIsBetter?: boolean } | undefined;
+  /**
+   * Valeur actuelle et précédente ; `higherIsBetter: false` pour un indicateur à faire baisser,
+   * `null` pour un indicateur ni bon ni mauvais (un coût) : variation en gris.
+   */
+  trend?:
+    | { current: number; previous: number | null; higherIsBetter?: boolean | null | undefined }
+    | undefined;
   /** Points de la courbe (du plus ancien au plus récent). */
   series?: number[] | undefined;
 }) {
   const change = trend ? trendChange(trend.current, trend.previous) : null;
+  const direction = trend?.higherIsBetter === undefined ? true : trend.higherIsBetter;
   const good =
-    change && change.direction !== "flat"
-      ? (change.direction === "up") === (trend?.higherIsBetter ?? true)
+    change && change.direction !== "flat" && direction !== null
+      ? (change.direction === "up") === direction
       : null;
   const body = (
     <>
@@ -55,15 +62,14 @@ export function KpiCard({
             {value}
             {suffix ? <span className="ml-1 text-lg text-foreground/70">{suffix}</span> : null}
           </p>
-          {trend ? <TrendLine change={change} good={good} /> : null}
+          {trend ? <TrendLine change={change} good={good} previous={trend.previous} /> : null}
           {hint ? <p className="mt-2 text-xs text-muted-foreground">{hint}</p> : null}
         </div>
         {series && series.length > 1 ? <Sparkline points={series} /> : null}
       </div>
     </>
   );
-  const className =
-    "flex min-h-32 flex-col justify-between gap-4 rounded-xl bg-card p-4 shadow-border";
+  const className = "flex min-h-32 flex-col gap-3 rounded-xl bg-card p-4 shadow-border";
   return href ? (
     <Link
       href={href}
@@ -82,12 +88,19 @@ export function KpiCard({
 function TrendLine({
   change,
   good,
+  previous,
 }: {
   change: ReturnType<typeof trendChange>;
   good: boolean | null;
+  previous: number | null;
 }) {
   if (!change) {
-    return <p className="mt-2 text-xs text-muted-foreground">{t("forms.trendNone")}</p>;
+    // Depuis zéro, pas de pourcentage : la valeur précédente dit l'essentiel.
+    return (
+      <p className="mt-2 text-xs text-muted-foreground tabular-nums">
+        {previous === 0 ? t("forms.trendFromZero") : t("forms.trendNone")}
+      </p>
+    );
   }
   const value = percent.format(Math.abs(change.ratio));
   const Arrow =
@@ -151,7 +164,7 @@ function Sparkline({ points }: { points: number[] }) {
 /** Carte d'indicateur en chargement (section sous Suspense). */
 export function KpiCardSkeleton() {
   return (
-    <div className="flex min-h-32 flex-col justify-between gap-4 rounded-xl bg-card p-4 shadow-border">
+    <div className="flex min-h-32 flex-col gap-3 rounded-xl bg-card p-4 shadow-border">
       <div className="flex items-start justify-between">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="size-5 rounded-md" />

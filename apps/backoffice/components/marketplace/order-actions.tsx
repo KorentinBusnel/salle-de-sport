@@ -114,22 +114,36 @@ export function OrderActions({
   );
 }
 
-/** Devis répondu : accepter (commande créée) ou refuser. */
+/** Devis répondu : accepter (commande créée) ou refuser (définitif, donc confirmé). */
 export function QuoteActions({ id }: { id: string }) {
   const { pending, run } = useRun();
+  const [confirm, setConfirm] = useState(false);
   return (
     <div className="flex gap-1.5">
       <Button size="sm" onClick={() => run(() => acceptQuote({ id }))} disabled={pending}>
         {t("marketplace.quotes.accept")}
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => run(() => declineQuote({ id }))}
-        disabled={pending}
-      >
+      <Button size="sm" variant="outline" onClick={() => setConfirm(true)} disabled={pending}>
         {t("marketplace.quotes.decline")}
       </Button>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={t("marketplace.quotes.declineTitle")}
+        description={t("marketplace.quotes.declineBody")}
+        confirmLabel={t("marketplace.quotes.decline")}
+        action={async () => {
+          await new Promise<void>((resolve) =>
+            run(
+              () => declineQuote({ id }),
+              () => {
+                setConfirm(false);
+                resolve();
+              },
+            ),
+          );
+        }}
+      />
     </div>
   );
 }

@@ -122,7 +122,14 @@ export default function PlanningScreen() {
       </View>
     );
 
-  const selectedDay = days.find((d) => d.key === dayKey) ?? days[0];
+  // Sans choix de l'adhérent : le premier jour qui a encore une séance (le soir, aujourd'hui est fini).
+  const firstBusyDay = days.find((d) =>
+    sessions.some(
+      (s) =>
+        Date.parse(s.starts_at) >= d.start.getTime() && Date.parse(s.starts_at) < d.end.getTime(),
+    ),
+  );
+  const selectedDay = days.find((d) => d.key === dayKey) ?? firstBusyDay ?? days[0];
   const disciplines = [...new Map(sessions.map((s) => [s.discipline_id, s.disciplines])).entries()];
   const coaches = [
     ...new Map(

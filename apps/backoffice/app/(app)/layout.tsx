@@ -20,6 +20,7 @@ import {
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getTeamContext, isFrontDeskRole, isManagerRole } from "@/lib/auth";
 import { getOwnCoachId } from "@/lib/coaches";
+import { aiEnv } from "@/lib/env.server";
 import type { PaletteEntry } from "@/lib/palette";
 import { buildNavigation, type BadgeKey } from "@/lib/navigation";
 import { t } from "@/lib/i18n";
@@ -167,7 +168,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <AppTopbar
             crumbs={crumbs}
             search={frontDesk}
-            assistant={manager}
+            // Assistant dans la palette : gérant, et clé configurée (sinon l'accueil montre AssistantOff).
+            assistant={manager && aiEnv().apiKey !== null}
             create={create}
             palette={palette}
             userId={context.userId}

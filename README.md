@@ -1,7 +1,7 @@
 # salle-de-sport
 
-Plateforme de gestion de salle de sport (CrossFit · Hyrox · Renfo · Run) : app mobile adhérent,
-back office et Hub 360°. Le cahier des charges est dans [BRIEF.md](BRIEF.md).
+**Chalq** : plateforme de gestion de salle de sport (CrossFit · Hyrox · Renfo · Run) : app mobile
+adhérent, back office et Hub 360°. Le cahier des charges est dans [BRIEF.md](BRIEF.md).
 
 ## Démarrer en local
 

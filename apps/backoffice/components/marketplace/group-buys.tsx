@@ -96,6 +96,7 @@ function GroupBuyCard({ campaign }: { campaign: GroupBuy }) {
         <div className="flex items-baseline justify-between gap-2 text-sm">
           <span className="tabular-nums">
             <span className="text-lg font-medium">{formatMoney(campaign.unitPriceCents)}</span>{" "}
+            <span className="text-xs text-muted-foreground">{t("marketplace.excludingTax")}</span>{" "}
             {campaign.listPriceCents ? (
               <span className="text-muted-foreground line-through">
                 {formatMoney(campaign.listPriceCents)}

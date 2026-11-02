@@ -15,6 +15,14 @@ import { useMember } from "@/lib/member";
 import { SESSION_COACHES_SELECT, type SessionCoachRow, sessionCoaches } from "@/lib/coaches";
 import { supabase } from "@/lib/supabase";
 
+// Fiche non active : la raison dite à l'adhérent dépend du statut (le serveur refuse dans tous les cas).
+const INACTIVE_NOTICE = {
+  prospect: "session.notActive",
+  active: "session.notActive",
+  suspended: "session.suspended",
+  cancelled: "session.memberCancelled",
+} as const;
+
 type SessionDetail = {
   id: string;
   starts_at: string;
@@ -78,7 +86,7 @@ export default function SessionScreen() {
     return <ErrorState message={t("common.unexpectedError")} onRetry={refreshMember} />;
   if (session === null) return <ErrorState message={t("session.notFound")} onRetry={load} />;
 
-  const { gym, member } = state;
+  const { gym, member, subscription } = state;
   const booking = state.bookings.find(
     (b) => b.session_id === session.id && b.status !== "cancelled",
   );
@@ -153,8 +161,10 @@ export default function SessionScreen() {
         ? t("session.youAreWaitlisted", { position: booking.waitlist_position ?? "?" })
         : t("session.youAreBooked")}
     </Notice>
+  ) : subscription?.status === "past_due" ? (
+    <Notice tone="error">{t("session.unpaid")}</Notice>
   ) : member.status !== "active" ? (
-    <Notice>{t("session.notActive")}</Notice>
+    <Notice>{t(INACTIVE_NOTICE[member.status])}</Notice>
   ) : null;
 
   // Action principale ancrée en bas d'écran, à portée de pouce.

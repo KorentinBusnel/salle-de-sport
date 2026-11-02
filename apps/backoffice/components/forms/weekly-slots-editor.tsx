@@ -69,6 +69,11 @@ export function WeeklySlotsEditor({
     } else setDraft(next);
   }
 
+  // Horaires de la salle jamais saisis : un jour vide n'est pas « Fermé » mais « Non renseigné ».
+  const unset = WEEKDAY_KEYS.every((day) => !week[day]?.length);
+  const emptyLabel =
+    labels?.closed ?? t(unset ? "settings.hours.unsetDay" : "settings.hours.closed");
+
   return (
     <ul className="divide-y">
       {WEEKDAY_KEYS.map((day) => {
@@ -161,11 +166,12 @@ export function WeeklySlotsEditor({
               </div>
             ) : (
               <p className="flex h-8 items-center text-sm text-muted-foreground pointer-coarse:h-10">
-                {labels?.closed ?? t("settings.hours.closed")}
+                {emptyLabel}
               </p>
             )}
 
-            <div className={cn("flex gap-1", !open && "invisible")}>
+            {/* Jour fermé : boutons masqués ; au téléphone, sans garder leur place. */}
+            <div className={cn("flex gap-1", !open && "invisible max-sm:hidden")}>
               <Button
                 type="button"
                 variant="ghost"

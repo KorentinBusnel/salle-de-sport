@@ -1,6 +1,6 @@
 -- Indicateurs (gym_kpis) et gestion de l'équipe (add/remove_team_role, team_members).
 begin;
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('a0000001-0000-0000-0000-000000000001', 't-gerant@test.local'),
@@ -52,6 +52,8 @@ select is((pg_temp.kpis() ->> 'attended')::integer, 4, 'indicateurs : présences
 select is((pg_temp.kpis() ->> 'no_show')::integer, 1, 'indicateurs : absences');
 select is((pg_temp.kpis() ->> 'new_members')::integer, 1, 'indicateurs : nouvelles fiches');
 select is(pg_temp.kpis() -> 'at_risk' -> 0 ->> 'name', 'Ralenti T', 'indicateurs : adhérent en baisse de fréquence');
+select is((pg_temp.kpis() ->> 'at_risk_count')::integer, jsonb_array_length(pg_temp.kpis() -> 'at_risk'),
+  'indicateurs : at_risk_count donne le nombre d''adhérents à risque');
 select is(jsonb_array_length(pg_temp.kpis() -> 'by_discipline'), 1, 'indicateurs : remplissage par discipline');
 select throws_ok($$select public.gym_kpis('aa000001-0000-0000-0000-000000000000', '2026-02-01', '2026-01-01')$$,
   'P0001', 'invalid_period', 'indicateurs : période invalide');

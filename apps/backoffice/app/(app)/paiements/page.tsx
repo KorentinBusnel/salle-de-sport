@@ -215,6 +215,7 @@ export default async function PaymentsPage({
                         {p.members ? (
                           <Link
                             href={`/adherents/${p.members.id}?onglet=paiements`}
+                            prefetch={false}
                             className="font-medium hover:underline"
                           >
                             {p.members.first_name} {p.members.last_name}

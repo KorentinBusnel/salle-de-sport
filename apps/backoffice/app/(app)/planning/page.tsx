@@ -925,6 +925,9 @@ export default async function PlanningPage({ searchParams }: { searchParams: Pro
                               >
                                 <Link
                                   href={`/planning/${session.id}`}
+                                  // Un bloc par séance : précharger chacun relançait la coque
+                                  // et la fiche pour tous les blocs visibles (BRIEF §12).
+                                  prefetch={false}
                                   data-session-link={session.id}
                                   aria-label={ariaLabel(session)}
                                   aria-describedby={movable ? DND_INSTRUCTIONS_ID : undefined}

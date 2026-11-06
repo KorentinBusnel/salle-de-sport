@@ -224,9 +224,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `private.enqueue_message` (clé `dedupe_key` pour l'idempotence), qui l'ajoute aussi aux
   `interactions`. Pas d'envoi réel : un job `pg_cron` passe les messages `queued` → `logged`.
   Avis aux inscrits d'une séance : `private.notify_session_members`. Un envoi automatique
-  (toute origine sauf `direct`) **ne vaut pas réponse** à un adhérent :
-  `private.is_automatic_message(source_ref)`, filtré par `crm_todo`, `nav_counts` et la date
-  d'activité de `crm_pipeline`.
+  (toute origine sauf `direct`) **ne vaut pas réponse** à un adhérent : `private.automatic_refs(gym)`
+  (les `source_ref` des envois automatiques de la salle, lus une fois par requête), exclus par
+  `not exists` dans `crm_todo`, `nav_counts` et la date d'activité de `crm_pipeline` — jamais une
+  fonction appelée par ligne d'interaction.
 - **Coachs d'une séance** : `session_coaches` / `template_coaches` font foi (plusieurs coachs,
   `position` 0 = principal). `class_sessions.coach_id` et `class_templates.default_coach_id` ne
   sont qu'un miroir tenu par trigger, pour les apps déjà publiées : ne jamais les écrire ni filtrer
@@ -241,8 +242,10 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `remove_team_role`, `set_attendance_many` (« Tous présents » : `set_attendance` pour chaque
   confirmé, renvoie les réservations pointées), `add_member_tag` (étiquette en lot). Lectures
   agrégées : `coach_hours`, `gym_kpis` (`at_risk` plafonnée à 50 pour l'affichage, vrai nombre
-  `at_risk_count`), `crm_pipeline(gym, p_filters)` (étape déduite, `tags`,
-  `fields` ; filtres d'une vue), `filter_members` (filtres JSON =
+  `at_risk_count`), `crm_pipeline(gym, p_filters)` (gérant seul, `security definer` : la RLS de
+  `bookings` par ligne coûtait 290 ms au seed ; étape déduite, `tags`,
+  `fields` ; filtres d'une vue), `member_status_counts(gym)` (onglets d'Adhérents, une lecture
+  pour les quatre statuts), `filter_members` (filtres JSON =
   `segmentFiltersSchema` de `packages/shared`, droits de l'appelant), `session_coach_options`,
   `search_members` (tri `p_sort`, solde `credits` pour le gérant, null sinon),
   `template_change_preview` (séances à venir d'un cours avant de changer son créneau).
@@ -342,7 +345,9 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   séances. Trous de permanence par `deskWindows` (horaires d'ouverture du jour, sinon
   séances ± marge) / `uncoveredIntervals` (`packages/shared/src/desk.ts`) ; « peu remplie » :
   `isLowFill` (`display.ts`, seuil `low_fill_percent`). Données vivantes : `LiveRefresh`
-  (`router.refresh()` toutes les 60 s onglet visible, et Realtime sur `class_sessions` de la salle).
+  (Realtime sur `class_sessions` de la salle, retour sur l'onglet ; `router.refresh()` toutes les
+  60 s **seulement** tant qu'une séance est en cours ou commence dans l'heure — fenêtre
+  `liveWindow`, `lib/live-window.ts`, props `pollUntil` / `resumeAt`).
   Client Supabase du navigateur (`lib/supabase/client.ts`) : **Realtime seulement**, jamais
   d'écriture. Listes longues : `ShowMore` (« Voir les N autres »), pas de zone à défilement.
   Barres d'onglets qui défilent au téléphone : l'onglet `aria-current` est amené à l'écran
@@ -362,6 +367,11 @@ min, max)` — défauts identiques des deux côtés. Écriture des deux familles
   `submit_digest`, entrée validée par `digestInputSchema` (`packages/shared/src/digest.ts`), stocké
   dans `daily_digests` ; lu par `getTodayDigest` (`lib/digest.ts`). Ne jamais transmettre le contenu
   d'une note « à savoir » au modèle.
+- **Liens répétés sans préchargement** : `next/link` précharge chaque lien visible d'une page
+  dynamique, ce qui relance la coque (`gym_roles`, `profiles`, `gyms`, réglages) et la page cible
+  pour chacun (planning : 28 rendus de coque par affichage). Les liens de liste (blocs de séance,
+  lignes d'adhérents et de paiements, cartes du kanban) portent `prefetch={false}` ; les entrées
+  de menu et les liens uniques gardent le préchargement.
 - Tailles tactiles : `pointer-coarse:` dans les variantes (bouton, champ, select) ; le rendu bureau
   ne change pas. Lectures au fil de la frappe : Route Handler (`app/api/…`), pas de Server Action. Identifiants : **`z.guid()`**, pas `z.uuid()` (les UUID
   du seed, dérivés d'un hash, ne respectent pas la version RFC exigée par `z.uuid()`).

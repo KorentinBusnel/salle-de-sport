@@ -15,6 +15,7 @@ import { OccupancyMeter } from "@/components/occupancy-meter";
 import { DisciplineChip, StatusPill } from "@/components/status-pill";
 import { CareNotePopover } from "@/components/today/care-note-popover";
 import { HomeCard, HomeSection } from "@/components/today/home-section";
+import { LiveRefresh } from "@/components/today/live-refresh";
 import { ShowMore } from "@/components/today/show-more";
 import {
   Empty,
@@ -26,6 +27,7 @@ import {
 import type { TeamContext } from "@/lib/auth";
 import { gymFormatters } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { liveWindow } from "@/lib/live-window";
 import { getTeamOptions } from "@/lib/team";
 import { getTodayDesk, getTodayFrame, getTodaySessions, getTodayTrials } from "@/lib/today";
 import { cn } from "@/lib/utils";
@@ -39,7 +41,8 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
   const [day, trials, desk, team] = await Promise.all([
     getTodaySessions(context),
     getTodayTrials(context),
-    getTodayDesk(context),
+    // Un coach ne lit pas les permanences : il n'en voit ni les noms (RLS) ni les actions.
+    frame.isCoachOnly ? null : getTodayDesk(context),
     frame.manager ? getTeamOptions(context) : [],
   ]);
   const format = gymFormatters(frame.tz);
@@ -52,10 +55,13 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
 
   // Coach : les indicateurs portent sur ses séances, la liste aussi.
   const listed = frame.isCoachOnly ? day.sessions.filter((s) => s.mine) : day.sessions;
-  const deskEntries = [
-    ...desk.shifts.map((shift) => ({ kind: "shift" as const, at: shift.starts_at, shift })),
-    ...desk.gaps.map((gap) => ({ kind: "gap" as const, at: gap.start.toISOString(), gap })),
-  ].sort((a, b) => a.at.localeCompare(b.at));
+  const deskEntries = desk
+    ? [
+        ...desk.shifts.map((shift) => ({ kind: "shift" as const, at: shift.starts_at, shift })),
+        ...desk.gaps.map((gap) => ({ kind: "gap" as const, at: gap.start.toISOString(), gap })),
+      ].sort((a, b) => a.at.localeCompare(b.at))
+    : [];
+  const live = liveWindow(day.counted, frame.now);
 
   return (
     <HomeSection
@@ -64,6 +70,7 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
       href={`/planning?vue=jour&jour=${frame.today}`}
       link={t("today.dayPlanning")}
     >
+      <LiveRefresh gymId={context.gym.id} pollUntil={live.pollUntil} resumeAt={live.resumeAt} />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KpiCard
           label={t("today.fill")}
@@ -173,86 +180,88 @@ export async function OperationsSection({ context }: { context: TeamContext }) {
           )}
         </HomeCard>
 
-        <DeskShiftProvider team={team}>
-          <HomeCard title={t("today.desk")}>
-            {deskEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("today.deskEmpty")}</p>
-            ) : (
-              <ul className="grid gap-2">
-                {deskEntries.map((entry) =>
-                  entry.kind === "shift" ? (
-                    <li
-                      key={entry.shift.id}
-                      className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 text-sm"
-                    >
-                      <span className="w-28 shrink-0 font-medium tabular-nums">
-                        {clock(entry.shift.starts_at)} – {clock(entry.shift.ends_at)}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">
-                        {[entry.shift.profiles?.first_name, entry.shift.profiles?.last_name]
-                          .filter(Boolean)
-                          .join(" ")}
-                        {entry.shift.note ? (
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {entry.shift.note}
-                          </span>
+        {desk ? (
+          <DeskShiftProvider team={team}>
+            <HomeCard title={t("today.desk")}>
+              {deskEntries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("today.deskEmpty")}</p>
+              ) : (
+                <ul className="grid gap-2">
+                  {deskEntries.map((entry) =>
+                    entry.kind === "shift" ? (
+                      <li
+                        key={entry.shift.id}
+                        className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 text-sm"
+                      >
+                        <span className="w-28 shrink-0 font-medium tabular-nums">
+                          {clock(entry.shift.starts_at)} – {clock(entry.shift.ends_at)}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {[entry.shift.profiles?.first_name, entry.shift.profiles?.last_name]
+                            .filter(Boolean)
+                            .join(" ")}
+                          {entry.shift.note ? (
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {entry.shift.note}
+                            </span>
+                          ) : null}
+                        </span>
+                        {frame.manager ? (
+                          <DeskShiftTrigger
+                            draft={{
+                              id: entry.shift.id,
+                              profileId: entry.shift.profile_id,
+                              ...draftFor(
+                                new Date(entry.shift.starts_at),
+                                new Date(entry.shift.ends_at),
+                              ),
+                              note: entry.shift.note ?? undefined,
+                            }}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            {t("today.edit")}
+                          </DeskShiftTrigger>
                         ) : null}
-                      </span>
-                      {frame.manager ? (
-                        <DeskShiftTrigger
-                          draft={{
-                            id: entry.shift.id,
-                            profileId: entry.shift.profile_id,
-                            ...draftFor(
-                              new Date(entry.shift.starts_at),
-                              new Date(entry.shift.ends_at),
-                            ),
-                            note: entry.shift.note ?? undefined,
-                          }}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          {t("today.edit")}
-                        </DeskShiftTrigger>
-                      ) : null}
-                    </li>
-                  ) : (
-                    <li
-                      key={entry.at}
-                      className="flex items-center gap-3 rounded-lg bg-warning/10 px-3 py-2 text-sm ring-1 ring-warning/25"
-                    >
-                      <span className="w-28 shrink-0 font-medium tabular-nums">
-                        {clock(entry.gap.start)} – {clock(entry.gap.end)}
-                      </span>
-                      <span className="min-w-0 flex-1 font-medium text-warning">
-                        {t("today.deskGap")}
-                      </span>
-                      {frame.manager ? (
-                        <DeskShiftTrigger
-                          draft={draftFor(entry.gap.start, entry.gap.end)}
-                          size="sm"
-                        >
-                          {t("today.assign")}
-                        </DeskShiftTrigger>
-                      ) : null}
-                    </li>
-                  ),
-                )}
-              </ul>
-            )}
-            {frame.manager ? (
-              <DeskShiftTrigger
-                draft={{ date: frame.today, ...desk.defaultSlot }}
-                size="sm"
-                variant="outline"
-                className="w-fit"
-              >
-                <PlusIcon data-icon="inline-start" aria-hidden />
-                {t("today.addShift")}
-              </DeskShiftTrigger>
-            ) : null}
-          </HomeCard>
-        </DeskShiftProvider>
+                      </li>
+                    ) : (
+                      <li
+                        key={entry.at}
+                        className="flex items-center gap-3 rounded-lg bg-warning/10 px-3 py-2 text-sm ring-1 ring-warning/25"
+                      >
+                        <span className="w-28 shrink-0 font-medium tabular-nums">
+                          {clock(entry.gap.start)} – {clock(entry.gap.end)}
+                        </span>
+                        <span className="min-w-0 flex-1 font-medium text-warning">
+                          {t("today.deskGap")}
+                        </span>
+                        {frame.manager ? (
+                          <DeskShiftTrigger
+                            draft={draftFor(entry.gap.start, entry.gap.end)}
+                            size="sm"
+                          >
+                            {t("today.assign")}
+                          </DeskShiftTrigger>
+                        ) : null}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              )}
+              {frame.manager ? (
+                <DeskShiftTrigger
+                  draft={{ date: frame.today, ...desk.defaultSlot }}
+                  size="sm"
+                  variant="outline"
+                  className="w-fit"
+                >
+                  <PlusIcon data-icon="inline-start" aria-hidden />
+                  {t("today.addShift")}
+                </DeskShiftTrigger>
+              ) : null}
+            </HomeCard>
+          </DeskShiftProvider>
+        ) : null}
       </div>
 
       <SessionList

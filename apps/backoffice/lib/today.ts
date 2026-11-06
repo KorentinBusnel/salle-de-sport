@@ -20,6 +20,7 @@ import { countActions, remindedToday } from "@/lib/home-actions";
 import { getCrmTodo } from "@/lib/nav-counts";
 import { getGymConfig } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
+import { getTeamOptions } from "@/lib/team";
 
 /*
  * Lectures de l'accueil, mémorisées pour la requête : chaque section (sous Suspense) appelle
@@ -223,7 +224,7 @@ export type SetupStep = {
 /** Mise en route de la salle (gérant) : étapes faites ou non ; masquée une fois tout fait. */
 export const getSetupSteps = cache(async (context: TeamContext): Promise<SetupStep[]> => {
   const supabase = await createClient();
-  const [config, disciplines, templates, team] = await Promise.all([
+  const [config, disciplines, templates, staff] = await Promise.all([
     getGymConfig(context.gym.id),
     supabase
       .from("disciplines")
@@ -234,10 +235,10 @@ export const getSetupSteps = cache(async (context: TeamContext): Promise<SetupSt
       .from("class_templates")
       .select("id", { count: "exact", head: true })
       .eq("gym_id", context.gym.id),
-    supabase.rpc("team_members", { p_gym_id: context.gym.id }),
+    // Même lecture que les permanences (mémorisée) : une seule RPC team_members par rendu.
+    getTeamOptions(context),
   ]);
   const identity = config.identity;
-  const staff = (team.data ?? []).filter((m) => m.roles.some((role) => role !== "member"));
   return [
     {
       key: "identity",

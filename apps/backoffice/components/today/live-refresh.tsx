@@ -9,10 +9,21 @@ const DEBOUNCE = 1_500;
 
 /**
  * Données vivantes de l'accueil : rafraîchit la page (sans squelette, l'ancien rendu reste
- * affiché) toutes les 60 s quand l'onglet est visible, au retour sur l'onglet, et peu après
- * chaque changement des séances de la salle (Realtime : places, annulations).
+ * affiché) au retour sur l'onglet et peu après chaque changement des séances de la salle
+ * (Realtime : places, annulations). L'intervalle de 60 s ne tourne que tant qu'une séance est en
+ * cours ou commence dans l'heure (`pollUntil`) ; salle fermée, la page ne relit rien. `resumeAt`
+ * : instant où la séance suivante entre dans cette fenêtre, pour reprendre sans attendre un
+ * retour sur l'onglet.
  */
-export function LiveRefresh({ gymId }: { gymId: string }) {
+export function LiveRefresh({
+  gymId,
+  pollUntil,
+  resumeAt,
+}: {
+  gymId: string;
+  pollUntil: string | null;
+  resumeAt: string | null;
+}) {
   const router = useRouter();
 
   useEffect(() => {
@@ -23,7 +34,18 @@ export function LiveRefresh({ gymId }: { gymId: string }) {
       last = Date.now();
       startTransition(() => router.refresh());
     };
-    const interval = window.setInterval(refresh, INTERVAL);
+    const deadline = pollUntil ? Date.parse(pollUntil) : 0;
+    const interval = window.setInterval(() => {
+      if (Date.now() >= deadline) {
+        window.clearInterval(interval);
+        return;
+      }
+      refresh();
+    }, INTERVAL);
+    // Reprise à l'approche de la séance suivante (le rendu suivant pose un nouveau pollUntil).
+    const resume = resumeAt
+      ? window.setTimeout(refresh, Math.max(0, Date.parse(resumeAt) - Date.now()))
+      : undefined;
     const onVisible = () => {
       if (Date.now() - last >= INTERVAL) refresh();
     };
@@ -44,11 +66,12 @@ export function LiveRefresh({ gymId }: { gymId: string }) {
 
     return () => {
       window.clearInterval(interval);
+      window.clearTimeout(resume);
       window.clearTimeout(debounce);
       document.removeEventListener("visibilitychange", onVisible);
       void supabase.removeChannel(channel);
     };
-  }, [gymId, router]);
+  }, [gymId, pollUntil, resumeAt, router]);
 
   return null;
 }

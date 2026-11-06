@@ -10,7 +10,6 @@ import { ClosureAlert } from "@/components/today/closure-alert";
 import { FinanceSection } from "@/components/today/finance-section";
 import { Greeting } from "@/components/today/greeting";
 import { HomeSectionSkeleton } from "@/components/today/home-section";
-import { LiveRefresh } from "@/components/today/live-refresh";
 import { OperationsSection } from "@/components/today/operations-section";
 import { SetupChecklist } from "@/components/today/setup-checklist";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,7 +70,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="grid gap-8">
-      <LiveRefresh gymId={context.gym.id} />
       <PageHeader
         title={
           <Suspense fallback={t("today.greetingShort", { name: firstName })}>

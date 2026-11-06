@@ -100,15 +100,16 @@ select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-00000
   'pipeline : valeurs des champs par clé');
 select is((select string_agg(first_name, ',') from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', '{"fields": [{"key": "suivi", "op": "is", "value": "contacte"}]}')),
   'Prospect', 'pipeline : filtre sur un champ');
--- Droits : une autre salle ne lit rien ; l'adhérent ne lit que sa fiche, sans valeur de champ.
+-- Droits : le Pipeline est au gérant de la salle (fonction security definer, garde explicite).
 select pg_temp.login_as('60000000-0000-0000-0000-000000000005');
-select is((select count(*) from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')), 0::bigint,
-  'pipeline : autre salle, aucune fiche');
+select throws_ok($$select * from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')$$,
+  'P0001', 'forbidden', 'pipeline : gérant d''une autre salle, refusé');
+select pg_temp.login_as('60000000-0000-0000-0000-000000000004');
+select throws_ok($$select * from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')$$,
+  'P0001', 'forbidden', 'pipeline : accueil, refusé');
 select pg_temp.login_as('60000000-0000-0000-0000-000000000001');
-select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')), '{}'::jsonb,
-  'pipeline : l''adhérent ne lit pas ses valeurs de champ');
-select is((select count(*) from public.crm_pipeline('8a000000-0000-0000-0000-000000000000', '{"fields": [{"key": "suivi", "op": "is_not_empty"}]}')),
-  0::bigint, 'pipeline : l''adhérent ne filtre pas sur une valeur invisible');
+select throws_ok($$select * from public.crm_pipeline('8a000000-0000-0000-0000-000000000000')$$,
+  'P0001', 'forbidden', 'pipeline : adhérent, refusé');
 select pg_temp.login_as('60000000-0000-0000-0000-000000000003');
 select is((select fields from public.crm_pipeline('8a000000-0000-0000-0000-000000000000') where first_name = 'Un'), '{"suivi": "nouveau"}'::jsonb,
   'pipeline : le gérant lit la valeur de cette fiche');

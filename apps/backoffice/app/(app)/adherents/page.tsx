@@ -174,12 +174,6 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const page = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
   const size = pageSizeOf(typeof params.taille === "string" ? params.taille : undefined);
 
-  const countFor = (status: MemberStatus) =>
-    supabase
-      .from("members")
-      .select("id", { count: "exact", head: true })
-      .eq("gym_id", context.gym.id)
-      .eq("status", status);
   const todoKind = manager ? TODO_KINDS.find((kind) => kind === params.a_faire) : undefined;
   const todoIds = todoKind
     ? ((await getCrmTodo(context.gym.id)).find((row) => row.kind === todoKind)?.member_ids ?? [])
@@ -221,9 +215,15 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           p_offset: (page - 1) * size,
           p_sort: sort,
         }),
-    ...STATUSES.map(countFor),
+    // Comptes des onglets en une lecture (member_status_counts), au lieu d'un count par statut.
+    supabase.rpc("member_status_counts", { p_gym_id: context.gym.id }),
   ]);
-  const statusCount = new Map(STATUSES.map((status, i) => [status, counts[i]?.count ?? 0]));
+  const statusCount = new Map<MemberStatus, number>(
+    STATUSES.map((status) => [
+      status,
+      counts[0]?.data?.find((row) => row.status === status)?.total ?? 0,
+    ]),
+  );
   const members = result.data ?? [];
   const total = members[0]?.total_count ?? 0;
   const pages = Math.max(1, Math.ceil(total / size));
@@ -444,6 +444,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                                 <span className="grid min-w-0">
                                   <Link
                                     href={`/adherents/${member.id}`}
+                                    prefetch={false}
                                     className="font-medium hover:underline"
                                   >
                                     {member.last_name}{" "}

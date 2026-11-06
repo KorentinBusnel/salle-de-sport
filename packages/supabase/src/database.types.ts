@@ -3249,6 +3249,13 @@ export type Database = {
         }[];
       };
       member_overview: { Args: { p_member_id: string }; Returns: Json };
+      member_status_counts: {
+        Args: { p_gym_id: string };
+        Returns: {
+          status: Database["public"]["Enums"]["member_status"];
+          total: number;
+        }[];
+      };
       move_session: {
         Args: { p_session_id: string; p_starts_at: string };
         Returns: {
